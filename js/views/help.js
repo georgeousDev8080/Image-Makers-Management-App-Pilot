@@ -1,0 +1,183 @@
+// =====================================================================
+//  Οδηγός χρήσης (tutorial), Συχνές ερωτήσεις, περιήγηση πρώτης χρήσης
+// =====================================================================
+import { L, vocative, esc, icon, matches, isIOS, isAndroid, toast } from '../core.js';
+import { S, isAdmin, isVideoAdmin } from '../data.js';
+import { pageHead } from '../layout.js';
+import { enablePush, pushState } from '../push.js';
+
+// [τίτλος EL, κείμενο EL, τίτλος EN, κείμενο EN]
+const SECTIONS = [
+  { id: 'start', ic: 'sparkles', t: ['Πρώτα βήματα', 'First steps'], intro: ['Τι είναι η εφαρμογή και πώς κινείστε μέσα της.', 'What the app is and how to move around.'], steps: [
+    ['Τι κάνει η εφαρμογή', 'Κρατά σε ένα σημείο εκδηλώσεις, πελάτες, προσφορές, πληρωμές, έξοδα και την ομάδα. Ό,τι αλλάζει ένας, το βλέπουν αμέσως όλοι οι υπόλοιποι — σε κινητό, tablet και υπολογιστή.', 'What the app does', 'It keeps events, customers, offers, payments, expenses and the team in one place. What one person changes, everyone sees instantly — on phone, tablet and computer.'],
+    ['Μενού στον υπολογιστή', 'Αριστερά υπάρχει το μενού με όλες τις σελίδες. Με το κουμπί ▭ πάνω δεξιά του μενού, το μενού μικραίνει σε εικονίδια (και ξαναμεγαλώνει με το ίδιο κουμπί).', 'Menu on computer', 'On the left is the menu with all pages. The ▭ button at the top of the menu shrinks it to icons (press again to expand).'],
+    ['Μενού στο κινητό', 'Κάτω υπάρχει μπάρα με τις πιο συχνές σελίδες. Το «Περισσότερα» (ή το ☰ πάνω αριστερά, ή σύρσιμο από την αριστερή άκρη) ανοίγει όλο το μενού.', 'Menu on phone', 'At the bottom there is a bar with the most used pages. “More” (or ☰ top-left, or swiping from the left edge) opens the full menu.'],
+    ['Καμπανάκι', 'Πάνω δεξιά το 🔔 δείχνει πόσες νέες ειδοποιήσεις έχετε. Πατώντας μια ειδοποίηση πηγαίνετε κατευθείαν εκεί που αφορά.', 'Bell', 'The 🔔 top-right shows how many new notifications you have. Tapping one takes you straight to what it is about.'],
+    ['Σκούρο / φωτεινό & γλώσσα', 'Ρυθμίσεις → Εμφάνιση & γλώσσα. Το «Αυτόματο» ακολουθεί τη ρύθμιση της συσκευής σας.', 'Dark / light & language', 'Settings → Appearance & language. “Auto” follows your device setting.'],
+    ['Δεν χαλάει τίποτα', 'Πριν από κάθε διαγραφή η εφαρμογή ρωτά. Οι διαγραφές πληρωμών/εκδηλώσεων καταγράφονται στο «Ιστορικό ασφαλείας» (Ομάδα).', 'You can’t break things', 'Before any deletion the app asks. Deleted payments/events are recorded in the “Security history” (Team).'],
+  ] },
+  { id: 'install', ic: 'install', t: ['Εγκατάσταση στο κινητό', 'Install on your phone'], intro: ['Για εικονίδιο στην αρχική οθόνη και για ειδοποιήσεις.', 'For a home screen icon and notifications.'], steps: [
+    ['iPhone / iPad (Safari)', 'Ανοίξτε τη διεύθυνση της εφαρμογής στο Safari → πατήστε το κουμπί Κοινοποίηση (τετράγωνο με βελάκι) → «Προσθήκη στην οθόνη Αφετηρίας» → «Προσθήκη». Από εδώ και πέρα ανοίγετε την εφαρμογή ΜΟΝΟ από το νέο εικονίδιο. Χρειάζεται iOS 16.4 ή νεότερο για ειδοποιήσεις.', 'iPhone / iPad (Safari)', 'Open the app address in Safari → tap Share (square with arrow) → “Add to Home Screen” → “Add”. From now on open the app ONLY from the new icon. iOS 16.4 or newer is needed for notifications.'],
+    ['Android (Chrome)', 'Ανοίξτε τη διεύθυνση στο Chrome → μενού ⋮ → «Εγκατάσταση εφαρμογής» ή «Προσθήκη στην αρχική οθόνη». Ή: Ρυθμίσεις → Εγκατάσταση στη συσκευή.', 'Android (Chrome)', 'Open the address in Chrome → menu ⋮ → “Install app” or “Add to Home screen”. Or: Settings → Install on this device.'],
+    ['Υπολογιστής (Chrome / Edge)', 'Στη γραμμή διευθύνσεων πατήστε το εικονίδιο εγκατάστασης (οθόνη με βελάκι) ή Ρυθμίσεις → Εγκατάσταση. Σε Mac με Safari: Αρχείο → «Προσθήκη στο Dock».', 'Computer (Chrome / Edge)', 'In the address bar click the install icon, or Settings → Install. On Mac Safari: File → “Add to Dock”.'],
+  ] },
+  { id: 'notifications', ic: 'bell', t: ['Ειδοποιήσεις', 'Notifications'], intro: ['Πώς τις ενεργοποιείτε και τι θα λαμβάνετε.', 'How to turn them on and what you will get.'], steps: [
+    ['Ενεργοποίηση', 'Ρυθμίσεις → «Ειδοποιήσεις σε αυτή τη συσκευή» → «Ενεργοποίηση ειδοποιήσεων» → «Να επιτρέπεται». Μετά πατήστε «Δοκιμαστική ειδοποίηση» για να βεβαιωθείτε. Κάθε συσκευή ενεργοποιείται ξεχωριστά.', 'Turning on', 'Settings → “Notifications on this device” → “Turn on notifications” → “Allow”. Then tap “Test notification” to check. Each device is turned on separately.'],
+    ['Τι λαμβάνει το συνεργείο', 'Όταν σας ανατεθεί ή αφαιρεθείτε από εκδήλωση, όταν αλλάξει κάτι σε δική σας εκδήλωση (ώρα, ημερομηνία, τοποθεσία, ανάλυση, σημειώσεις) και υπενθύμιση την προηγούμενη μέρα. Ποτέ για εκδηλώσεις που δεν σας αφορούν.', 'What the crew gets', 'When you are assigned to or removed from an event, when something changes in your event (time, date, location, resolution, notes) and a reminder the day before. Never for events that are not yours.'],
+    ['Τι λαμβάνουν οι διαχειριστές', 'Νέα αιτήματα προσφοράς, νέους λογαριασμούς, μηνύματα πελατών έτοιμα για αποστολή, και (ο Διαχειριστής Βιντεογράφος) ειδοποιήσεις editing/SOS.', 'What admins get', 'New offer requests, new accounts, client messages ready to send, and (the Admin Videographer) editing/SOS alerts.'],
+    ['Αν δεν έρχονται', 'Ελέγξτε: 1) ότι στο iPhone ανοίγετε την εφαρμογή από το εικονίδιο της αρχικής οθόνης, 2) ότι δεν είναι σε «Μην ενοχλείτε», 3) Ρυθμίσεις τηλεφώνου → Ειδοποιήσεις → Image Makers = επιτρέπεται. Όλες οι ειδοποιήσεις υπάρχουν πάντα και στο 🔔 μέσα στην εφαρμογή.', 'If they don’t arrive', 'Check: 1) on iPhone you open the app from the home screen icon, 2) Do Not Disturb is off, 3) phone Settings → Notifications → Image Makers = allowed. All notifications are always in the 🔔 inside the app too.'],
+  ] },
+  { id: 'events', ic: 'events', admin: true, t: ['Νέα εκδήλωση', 'New event'], intro: ['Ο οδηγός 4 βημάτων. Τα πεδία με κόκκινο * είναι υποχρεωτικά.', 'The 4-step wizard. Fields with a red * are required.'], steps: [
+    ['Ξεκίνημα', 'Πατήστε «+ Νέα εκδήλωση» (Αρχική, Εκδηλώσεις, Ημερολόγιο ή διπλό κλικ σε μέρα του ημερολογίου).', 'Start', 'Tap “+ New event” (Home, Events, Calendar or double-click a calendar day).'],
+    ['Βήμα 1 · Πελάτης', 'Διαλέξτε υπάρχοντα πελάτη (αναζήτηση) ή «Νέος πελάτης». Υποχρεωτικά: Ονοματεπώνυμο 1, Κινητό 1, Email 1. Αν υπάρχει ήδη πελάτης με ίδιο κινητό/email, η εφαρμογή σάς το λέει.', 'Step 1 · Customer', 'Choose an existing customer (search) or “New customer”. Required: Full name 1, Mobile 1, Email 1. If a customer with the same mobile/email exists, the app tells you.'],
+    ['Βήμα 2 · Εκδήλωση', 'Κατηγορία, ημερομηνία, ώρα, ανάλυση (Full HD / 4K) και εκκλησία είναι υποχρεωτικά. Σπίτι και δεξίωση προαιρετικά. Σε κάθε τοποθεσία μπορείτε να γράψετε διεύθυνση ή να επικολλήσετε σύνδεσμο Google Maps — το κουμπί χάρτη ανοίγει τον χάρτη. Αν υπάρχει άλλη εκδήλωση την ίδια μέρα, θα δείτε προειδοποίηση.', 'Step 2 · Event', 'Category, date, time, resolution (Full HD / 4K) and church are required. House and reception are optional. For each location you can type an address or paste a Google Maps link — the map button opens the map. If there is another event that day, you will see a warning.'],
+    ['Βήμα 3 · Συνεργείο', 'Τσεκάρετε ποιοι θα πάνε και αν κάνουν Φωτογραφία ή Βίντεο. Όταν αποθηκεύσετε, θα λάβουν ειδοποίηση. Προαιρετικό — μπορεί να γίνει και αργότερα.', 'Step 3 · Crew', 'Tick who goes and whether they do Photo or Video. When you save, they get notified. Optional — can be done later.'],
+    ['Βήμα 4 · Προσφορά', 'Υποχρεωτικό PDF προσφοράς: «Δημιουργία με τον Οδηγό προσφοράς» (ανοίγει συμπληρωμένος με τα στοιχεία) ή «Ανέβασμα έτοιμου PDF». Η αξία πακέτου, το όνομα πακέτου, το 2ο συνεργείο και το 4K συμπληρώνονται αυτόματα από την προσφορά.', 'Step 4 · Offer', 'Required offer PDF: “Create with offer builder” (opens pre-filled) or “Upload ready PDF”. Package value, package name, 2nd crew and 4K are filled automatically from the offer.'],
+    ['Αποθήκευση', 'Πατήστε «Αποθήκευση εκδήλωσης». Δημιουργούνται αυτόματα: ο πελάτης, η εκδήλωση, η γραμμή στο Excel, το ευχαριστήριο μήνυμα προς αποστολή και οι ειδοποιήσεις του συνεργείου.', 'Save', 'Tap “Save event”. Automatically created: the customer, the event, the Excel row, the thank-you message to send and the crew notifications.'],
+    ['Επεξεργασία / ακύρωση', 'Ανοίξτε την εκδήλωση → «Επεξεργασία». «Ακύρωση εκδήλωσης» την κρατά στο ιστορικό (και ενημερώνει το συνεργείο). «Οριστική διαγραφή» τη σβήνει μαζί με τις πληρωμές της.', 'Edit / cancel', 'Open the event → “Edit”. “Cancel event” keeps it in history (and informs the crew). “Delete permanently” removes it with its payments.'],
+  ] },
+  { id: 'offer', ic: 'wand', admin: true, t: ['Προσφορές (PDF) & σελίδα πελάτη', 'Offers (PDF) & client page'], intro: ['Τα δύο αρχεία προσφοράς σας, δεμένα με την εφαρμογή.', 'Your two offer files, connected to the app.'], steps: [
+    ['Οδηγός προσφοράς', 'Είναι το εσωτερικό εργαλείο προσφορών σας. Από μια εκδήλωση: «Δημιουργία/Επεξεργασία προσφοράς». Αλλάζετε ό,τι θέλετε (αφαιρέσεις, αναβαθμίσεις, τελική τιμή) και πατάτε «Αποθήκευση στην εκδήλωση». Το PDF δημιουργείται και επισυνάπτεται μόνο του.', 'Offer builder', 'Your internal offer tool. From an event: “Create/Edit offer”. Change anything (removals, upgrades, final price) and tap “Save to event”. The PDF is created and attached by itself.'],
+    ['Ποιος βλέπει το PDF', 'Μόνο οι διαχειριστές. Το συνεργείο βλέπει στη σελίδα της εκδήλωσης μόνο τι περιλαμβάνει το πακέτο (χωρίς καμία τιμή).', 'Who sees the PDF', 'Only admins. The crew sees on the event page only what the package includes (no prices at all).'],
+    ['Σελίδα πελάτη', 'Αιτήματα προσφορών → «Αντιγραφή συνδέσμου» και στείλτε τον στο ζευγάρι (Viber/SMS/email), ή «Αρχείο για email» για συνημμένο. Το ζευγάρι διαλέγει τις επιλογές του και πατά «Αποστολή στην Image Makers».', 'Client page', 'Offer requests → “Copy link” and send it to the couple (Viber/SMS/email), or “File for email” as an attachment. The couple picks options and taps “Send to Image Makers”.'],
+    ['Από αίτημα σε εκδήλωση', 'Μόλις στείλει το ζευγάρι, έρχεται ειδοποίηση. Ανοίξτε το αίτημα → «Δημιουργία εκδήλωσης»: όλα (ονόματα, τηλέφωνα, εκκλησία, επιλογές πακέτου) είναι ήδη συμπληρωμένα. Στο βήμα 4 πατήστε τον Οδηγό για να βγει το PDF.', 'From request to event', 'When the couple sends, you get notified. Open the request → “Create event”: everything (names, phones, church, package choices) is pre-filled. In step 4 open the builder to produce the PDF.'],
+    ['Χωρίς εκδήλωση', 'Για γρήγορη προσφορά χωρίς καταχώρηση: Αιτήματα προσφορών → «Οδηγός προσφοράς» (ανοίγει σε νέα καρτέλα, με «Λήψη PDF» και «Αποθήκευση PDF»).', 'Without an event', 'For a quick offer without saving: Offer requests → “Offer builder” (opens in a new tab, with “Download PDF” and “Save PDF”).'],
+  ] },
+  { id: 'calendar', ic: 'calendar', t: ['Ημερολόγιο', 'Calendar'], intro: ['Μήνας ή λίστα, με χρώμα ανά κατηγορία.', 'Month or list view, colored by category.'], steps: [
+    ['Μήνας', 'Βλέπετε όλες τις εκδηλώσεις του μήνα. Στο κινητό σύρετε αριστερά/δεξιά για αλλαγή μήνα και πατήστε μια μέρα για να δείτε τις εκδηλώσεις της από κάτω.', 'Month', 'See all events of the month. On mobile swipe left/right to change month and tap a day to see its events below.'],
+    ['Λίστα', 'Όλες οι εκδηλώσεις από τον τρέχοντα μήνα και μετά, ομαδοποιημένες ανά μήνα.', 'List', 'All events from the current month onwards, grouped by month.'],
+    ['Στο ημερολόγιο του κινητού', 'Μέσα σε κάθε εκδήλωση το «Στο κινητό» κατεβάζει αρχείο ημερολογίου (.ics) με υπενθύμιση μία μέρα πριν — ανοίξτε το και πατήστε «Προσθήκη».', 'To phone calendar', 'Inside each event, “To phone” downloads a calendar file (.ics) with a reminder one day before — open it and tap “Add”.'],
+  ] },
+  { id: 'money', ic: 'wallet', admin: true, t: ['Έσοδα & Έξοδα', 'Income & Expenses'], intro: ['Κάθε καταχώρηση ενημερώνει αυτόματα τα Excel.', 'Every entry updates the Excel sheets automatically.'], steps: [
+    ['Νέα κίνηση', 'Πατήστε το στρογγυλό «+» → «Έσοδο» ή «Έξοδο».', 'New entry', 'Tap the round “+” → “Income” or “Expense”.'],
+    ['Έσοδο (δόση)', 'Διαλέξτε κατηγορία (Γάμος, Βάπτιση, Γαμοβάπτιση, Promotional, Άλλο) και μετά την εκδήλωση. Βλέπετε αξία, τι έχει πληρωθεί και υπόλοιπο. Η εφαρμογή προτείνει «Προκαταβολή» / «1η Δόση» κ.λπ. και γρήγορα ποσά (υπόλοιπο, 40%, 20%). Αποθήκευση.', 'Income (installment)', 'Choose a category and then the event. You see value, paid and balance. The app suggests “Deposit” / “Installment 1” etc. and quick amounts (balance, 40%, 20%). Save.'],
+    ['Τι γίνεται αυτόματα', 'Η πληρωμή μπαίνει στο Μητρώο Εισπράξεων και στη στήλη δόσεων του Excel, ετοιμάζεται μήνυμα επιβεβαίωσης για τον πελάτη, και όταν το σύνολο φτάσει την αξία πακέτου η γραμμή γίνεται πράσινη.', 'What happens automatically', 'The payment goes into the Receipts register and the installments column of the Excel, a confirmation message for the client is prepared, and when the total reaches the package value the row turns green.'],
+    ['Έξοδα', 'Μισθοδοσία (μέλος + μήνας), Μεροκάματα (μέλος + «πληρωμένος μέχρι και»), Επενδύσεις (περιγραφή), Μαγαζί (ενοίκιο, ρεύμα, internet, νερό, κοινόχρηστα, διάφορα με σημείωση), Άλλο.', 'Expenses', 'Payroll (member + month), Daily wages (member + “paid up to”), Investments (description), Shop (rent, electricity, internet, water, building fees, misc with note), Other.'],
+    ['Μεροκάματα', 'Στη σελίδα Έσοδα & Έξοδα βλέπετε για κάθε συνεργάτη: «Γιώργος έχει πάρει … € και είναι πληρωμένος μέχρι και για …». Πατήστε πάνω του για νέα πληρωμή.', 'Daily wages', 'On the Income & Expenses page you see for each member: “George has received … € and is paid up to and including …”. Tap to record a new payment.'],
+    ['Διόρθωση', 'Πατήστε μια κίνηση → Επεξεργασία ή Διαγραφή.', 'Corrections', 'Tap an entry → Edit or Delete.'],
+  ] },
+  { id: 'sheets', ic: 'table', admin: true, t: ['Φύλλα (Excel)', 'Sheets (Excel)'], intro: ['Ο ίδιος πίνακας που είχατε, αλλά αυτόματος.', 'The same sheet you had, but automatic.'], steps: [
+    ['Καρτέλες', 'Κάτω από τον τίτλο: Κεντρικό (όλα), Πελάτες & εκδηλώσεις, Πληρωμές, Φωτογραφίες & editing, Μητρώο Εισπράξεων, Έξοδα, Σύνοψη, Dashboard, Έλεγχος δεδομένων (και Mitsos για τον Διαχειριστή Βιντεογράφο). Πάνω δεξιά επιλέγετε έτος.', 'Tabs', 'Below the title: Main (all), Clients & events, Payments, Photos & editing, Receipts register, Expenses, Summary, Dashboard, Data checks (and Mitsos for the Admin Videographer). Choose the year top-right.'],
+    ['Εμφάνιση/απόκρυψη ενοτήτων', 'Στο Κεντρικό, τα κουμπιά (Βασικά, Ζευγάρι, Κατηγορία, Οικονομικά, Φωτογραφίες, Οικονομική εικόνα) κρύβουν ή εμφανίζουν ολόκληρες ομάδες στηλών.', 'Show/hide sections', 'In Main, the buttons (Basics, Couple, Category, Finances, Photos, Financial picture) hide or show whole column groups.'],
+    ['Επεξεργασία κελιού', 'Υπολογιστής: κλικ για επιλογή, διπλό κλικ ή Enter για αλλαγή, Enter για αποθήκευση, Esc για ακύρωση, βελάκια/Tab για μετακίνηση, ή απλά αρχίστε να γράφετε. Κινητό: ένα πάτημα ανοίγει παράθυρο αλλαγής. Αποθηκεύεται αμέσως για όλους.', 'Editing a cell', 'Computer: click to select, double-click or Enter to edit, Enter to save, Esc to cancel, arrows/Tab to move, or just start typing. Phone: one tap opens an edit window. Saved instantly for everyone.'],
+    ['PDF & δόσεις', 'Η στήλη PDF ανοίγει την προσφορά. Οι στήλες Προκαταβολή / 1η–Νη Δόση δείχνουν ποσό και ημερομηνία· το «+ Δόση» προσθέτει νέα. Νέες στήλες δόσεων εμφανίζονται μόνες τους.', 'PDF & installments', 'The PDF column opens the offer. Deposit / Installment columns show amount and date; “+ Pay” adds a new one. New installment columns appear by themselves.'],
+    ['Πράσινη γραμμή', 'Όταν το σύνολο των δόσεων φτάσει την «Αξία πακέτου», όλη η γραμμή γίνεται πράσινη και το «Εξόφληση OK» γίνεται «Ναι».', 'Green row', 'When installments reach the “Package value”, the whole row turns green and “Paid OK” becomes “Yes”.'],
+    ['Κατάσταση φωτογραφιών', 'Προεπιλογή «Να γίνουν δείγματα». Όταν τη βάλετε σε «Αλλαγές», το «Κατάσταση Editing» γίνεται αυτόματα «Να γίνει» (αν ήταν «—») και ειδοποιείται ο Διαχειριστής Βιντεογράφος.', 'Photos status', 'Default “Samples to be made”. When you set it to “Changes”, “Editing status” automatically becomes “To do” (if it was “—”) and the Admin Videographer is notified.'],
+    ['Εξαγωγή', 'Το κουμπί «Excel» κατεβάζει ό,τι βλέπετε (με τα φίλτρα) σε αρχείο .xlsx.', 'Export', 'The “Excel” button downloads what you see (with filters) as an .xlsx file.'],
+    ['Έλεγχος δεδομένων', 'Δείχνει τι λείπει ή δεν ταιριάζει: χωρίς τιμή, χωρίς PDF, απλήρωτα παλιά, χωρίς συνεργείο κ.λπ. Πατήστε για διόρθωση.', 'Data checks', 'Shows what is missing or wrong: no price, no PDF, unpaid past events, no crew etc. Tap to fix.'],
+  ] },
+  { id: 'mitsos', ic: 'film', video: true, t: ['Mitsos (μοντάζ)', 'Mitsos (editing)'], intro: ['Μόνο για τον Διαχειριστή Βιντεογράφο.', 'Only for the Admin Videographer.'], steps: [
+    ['Τι δείχνει', 'Όλες τις εκδηλώσεις με κατάσταση editing, υπολογιστή μοντάζ (Mac Mini, MacBook, Win PC), ανάλυση και σχόλια βίντεο.', 'What it shows', 'All events with editing status, editing computer (Mac Mini, MacBook, Win PC), resolution and video notes.'],
+    ['Αυτόματα', 'Φωτογραφίες σε «Αλλαγές» → Editing «Να γίνει». Φωτογραφίες σε «Εκτύπωση στο εργαστήριο» → η γραμμή γίνεται κόκκινη με SOS και έρχεται ειδοποίηση, μέχρι το editing να γίνει «Ολοκληρώθηκε».', 'Automatic', 'Photos to “Changes” → Editing “To do”. Photos to “Printing at the lab” → the row turns red with SOS and you get notified, until editing is “Done”.'],
+    ['Φίλτρα', 'Εκκρεμή (ό,τι δεν έχει ολοκληρωθεί), SOS, Όλα.', 'Filters', 'Pending (not done), SOS, All.'],
+  ] },
+  { id: 'messages', ic: 'message', admin: true, t: ['Αυτόματα μηνύματα πελατών', 'Automated client messages'], intro: ['Χωρίς χρεώσεις: η εφαρμογή ετοιμάζει, εσείς στέλνετε με ένα πάτημα.', 'No charges: the app prepares, you send with one tap.'], steps: [
+    ['Πρότυπα', 'Μηνύματα πελατών → Πρότυπα. Υπάρχουν έτοιμα: Ευχαριστήριο κράτησης, 10 ημέρες πριν, Μετά την εκδήλωση, Επιβεβαίωση πληρωμής, Υπενθύμιση πληρωμής μετά την εκδήλωση (αν δεν έχει καλυφθεί το ποσοστό).', 'Templates', 'Client messages → Templates. Ready-made: Booking thank-you, 10 days before, After the event, Payment confirmation, Payment reminder after the event (if the % is not covered).'],
+    ['Αλλαγές', 'Σε κάθε πρότυπο αλλάζετε: κείμενο, πότε (ημέρες/ώρα), ποσοστό, κατηγορίες, τρόπους (SMS, Email, WhatsApp, Viber) και ποιος διαχειριστής ειδοποιείται. Τα κουμπιά κάτω από το κείμενο βάζουν στοιχεία που συμπληρώνονται μόνα τους (ονόματα, ημερομηνία, ποσά). Βλέπετε προεπισκόπηση.', 'Changes', 'In each template you change: text, when (days/hour), percent, categories, channels (SMS, Email, WhatsApp, Viber) and which admin is notified. Buttons under the text insert auto-filled details (names, date, amounts). You see a preview.'],
+    ['Αποστολή', 'Όταν έρθει η ώρα, λαμβάνετε ειδοποίηση. Ανοίγετε το μήνυμα, το διορθώνετε αν θέλετε και πατάτε SMS ή Email: ανοίγει η εφαρμογή μηνυμάτων/email του κινητού έτοιμη. Μετά «Στάλθηκε».', 'Sending', 'When it is time, you get notified. Open the message, edit if you want and tap SMS or Email: your phone’s messages/email app opens ready. Then “Sent”.'],
+    ['Έλεγχος τώρα', 'Ο έλεγχος γίνεται μόνος του κάθε 15 λεπτά. Το «Έλεγχος τώρα» τον τρέχει αμέσως.', 'Check now', 'Checks run by themselves every 15 minutes. “Check now” runs it immediately.'],
+  ] },
+  { id: 'team', ic: 'shield', admin: true, t: ['Ομάδα, ρόλοι & ασφάλεια', 'Team, roles & security'], intro: ['Ποιος βλέπει τι και πώς μπαίνει κάποιος νέος.', 'Who sees what and how someone new joins.'], steps: [
+    ['Νέος συνεργάτης', 'Του στέλνετε τη διεύθυνση της εφαρμογής. Κάνει «Δημιουργία λογαριασμού» (όνομα, username, email, PIN 6 ψηφίων) και βλέπει «Καλώς ήρθες στην ομάδα» μέχρι να του δώσετε ρόλο. Εσείς λαμβάνετε ειδοποίηση.', 'New member', 'Send them the app address. They tap “Create account” (name, username, email, 6-digit PIN) and see “Welcome to the team” until you give a role. You get notified.'],
+    ['Δίνω ρόλο', 'Ομάδα → πατήστε το άτομο → διαλέξτε ρόλο. Για ρόλο διαχειριστή ζητείται το δικό σας PIN.', 'Giving a role', 'Team → tap the person → choose a role. For an admin role your own PIN is required.'],
+    ['Κωδικός πρόσκλησης', 'Ομάδα → «Κωδικός πρόσκλησης» → ρόλος & διάρκεια → στείλτε το έτοιμο μήνυμα. Ο κωδικός ισχύει μία φορά και λήγει· δίνει τον ρόλο αμέσως.', 'Invite code', 'Team → “Invite code” → role & duration → send the ready message. The code works once and expires; it gives the role instantly.'],
+    ['Πώς γίνεται κάποιος διαχειριστής με ασφάλεια', '1) Ο πρώτος (ιδιοκτήτης) με τον «Κωδικό ιδιοκτήτη» της εγκατάστασης. 2) Μετά, μόνο ένας υπάρχων διαχειριστής μπορεί να δώσει ρόλο διαχειριστή (με επιβεβαίωση PIN) ή κωδικό πρόσκλησης διαχειριστή. 3) Πάντα μένει τουλάχιστον ένας διαχειριστής. 4) Όλα καταγράφονται στο Ιστορικό ασφαλείας.', 'How someone becomes admin safely', '1) The first one (owner) with the setup “Owner code”. 2) Afterwards only an existing admin can grant admin (with PIN confirmation) or an admin invite code. 3) At least one admin always remains. 4) Everything is logged in Security history.'],
+    ['Αποχώρηση μέλους', 'Ομάδα → άτομο → «Απενεργοποίηση λογαριασμού». Δεν μπορεί πια να μπει, τα δεδομένα μένουν.', 'Member leaves', 'Team → person → “Disable account”. They can no longer sign in, data remains.'],
+  ] },
+  { id: 'crew', ic: 'camera', t: ['Για φωτογράφους & βιντεογράφους', 'For photographers & videographers'], intro: ['Τι βλέπετε ως μέλος του συνεργείου.', 'What you see as a crew member.'], steps: [
+    ['Οι εκδηλώσεις μου', 'Βλέπετε μόνο τις εκδηλώσεις που σας έχουν ανατεθεί: ζευγάρι, τηλέφωνα, ώρες, τοποθεσίες με χάρτη, σημειώσεις και τι περιλαμβάνει το πακέτο. Δεν βλέπετε τιμές.', 'My events', 'You see only the events assigned to you: couple, phones, times, locations with map, notes and what the package includes. You do not see prices.'],
+    ['Χάρτης & κλήση', 'Μέσα στην εκδήλωση: «Χάρτης» ανοίγει Google Maps, «Κλήση»/«SMS» επικοινωνία με το ζευγάρι, «Στο κινητό» το βάζει στο ημερολόγιό σας.', 'Map & call', 'Inside the event: “Map” opens Google Maps, “Call”/“SMS” contacts the couple, “To phone” adds it to your calendar.'],
+    ['Ειδοποιήσεις', 'Ενεργοποιήστε τις (Ρυθμίσεις) για να μαθαίνετε αμέσως αναθέσεις και αλλαγές.', 'Notifications', 'Turn them on (Settings) to hear about assignments and changes instantly.'],
+  ] },
+  { id: 'backup', ic: 'archive', admin: true, t: ['Αντίγραφα ασφαλείας', 'Backups'], intro: ['Τα δεδομένα σας, σε δικό σας δίσκο, σε μορφή που διαβάζεται.', 'Your data, on your own drive, in a readable format.'], steps: [
+    ['Εξαγωγή Excel', 'Ρυθμίσεις → «Εξαγωγή όλων σε Excel»: ένα .xlsx με καρτέλες Πελάτες, Εκδηλώσεις, Πληρωμές, Έξοδα, Συνεργείο, Πρότυπα — ανοίγει σε Excel, Numbers, Google Sheets.', 'Excel export', 'Settings → “Export everything to Excel”: one .xlsx with Customers, Events, Payments, Expenses, Crew, Templates tabs — opens in Excel, Numbers, Google Sheets.'],
+    ['Πλήρες αντίγραφο', '«Πλήρες αντίγραφο»: .zip με το Excel και όλα τα PDF προσφορών. Αποθηκεύστε το σε εξωτερικό δίσκο κάθε μήνα.', 'Full backup', '“Full backup”: a .zip with the Excel and all offer PDFs. Save it to an external drive every month.'],
+    ['Επαναφορά', '«Επαναφορά από αντίγραφο» και επιλέξτε το .xlsx ή .zip. Οι εγγραφές ενημερώνονται/προστίθενται (δεν σβήνεται τίποτα).', 'Restore', '“Restore from backup” and choose the .xlsx or .zip. Records are updated/added (nothing is deleted).'],
+    ['Από το παλιό Google Sheet', 'Στο Google Sheets: Αρχείο → Λήψη → Microsoft Excel. Μετά Ρυθμίσεις → «Εισαγωγή από το παλιό Google Sheet». Βλέπετε προεπισκόπηση πριν την εισαγωγή.', 'From the old Google Sheet', 'In Google Sheets: File → Download → Microsoft Excel. Then Settings → “Import from the old Google Sheet”. You see a preview before importing.'],
+  ] },
+];
+
+const FAQ = [
+  ['Ξέχασα το PIN μου. Τι κάνω;', 'Στην οθόνη σύνδεσης πατήστε «Ξέχασα το PIN», γράψτε το email σας και πατήστε τον σύνδεσμο που θα λάβετε (ελέγξτε και τα Ανεπιθύμητα). Θα ορίσετε νέο PIN.', 'I forgot my PIN. What do I do?', 'On the sign-in screen tap “Forgot PIN”, enter your email and tap the link you receive (check Spam too). You will set a new PIN.'],
+  ['Γιατί μου ζητά PIN κάθε φορά;', 'Για ασφάλεια, αφού η εφαρμογή έχει οικονομικά στοιχεία. Αλλάζετε πόσο συχνά στις Ρυθμίσεις → Ασφάλεια.', 'Why does it ask for my PIN every time?', 'For safety, since the app has financial data. Change how often in Settings → Security.'],
+  ['Έκανα εγγραφή αλλά βλέπω μόνο «Καλώς ήρθες».', 'Είναι φυσιολογικό. Περιμένετε έναν διαχειριστή να σας δώσει ρόλο ή γράψτε τον κωδικό πρόσκλησης που σας έδωσε. Η εφαρμογή θα ανοίξει μόνη της.', 'I signed up but only see “Welcome”.', 'That is normal. Wait for an admin to give you a role or enter the invite code they gave you. The app will open by itself.'],
+  ['Δεν μου έρχονται ειδοποιήσεις στο iPhone.', 'Στο iPhone οι ειδοποιήσεις δουλεύουν μόνο αν η εφαρμογή έχει προστεθεί στην οθόνη Αφετηρίας (Κοινοποίηση → Προσθήκη στην οθόνη Αφετηρίας) και την ανοίγετε από εκεί. Μετά Ρυθμίσεις → Ενεργοποίηση ειδοποιήσεων.', 'I get no notifications on iPhone.', 'On iPhone notifications only work if the app is added to the Home Screen (Share → Add to Home Screen) and opened from there. Then Settings → Turn on notifications.'],
+  ['Τα SMS/email χρεώνονται;', 'Όχι από την εφαρμογή. Τα μηνύματα στέλνονται από το δικό σας κινητό/email, όπως κάθε φορά που στέλνετε μήνυμα.', 'Are SMS/emails charged?', 'Not by the app. Messages are sent from your own phone/email, like any message you send.'],
+  ['Το συνεργείο βλέπει τιμές;', 'Όχι. Φωτογράφοι και βιντεογράφοι βλέπουν μόνο τις δικές τους εκδηλώσεις, χωρίς τιμές, πληρωμές και PDF. Αυτό ελέγχεται από τη βάση δεδομένων, όχι μόνο από την οθόνη.', 'Does the crew see prices?', 'No. Photographers and videographers only see their own events, without prices, payments or PDFs. This is enforced by the database, not just the screen.'],
+  ['Δύο άτομα αλλάζουν το ίδιο κελί ταυτόχρονα;', 'Κρατιέται η τελευταία αλλαγή. Όλοι βλέπουν τις αλλαγές των άλλων σε λίγα δευτερόλεπτα.', 'Two people edit the same cell at once?', 'The last change is kept. Everyone sees others’ changes within seconds.'],
+  ['Δουλεύει χωρίς internet;', 'Ανοίγει και δείχνει τα τελευταία δεδομένα, αλλά για αλλαγές χρειάζεται σύνδεση. Θα δείτε σχετική ένδειξη.', 'Does it work offline?', 'It opens and shows the latest data, but changes need a connection. You will see a notice.'],
+  ['Πώς διορθώνω λάθος πληρωμή;', 'Έσοδα & Έξοδα → πατήστε την πληρωμή → Επεξεργασία ή Διαγραφή. Ή στο Μητρώο Εισπράξεων αλλάξτε απευθείας το κελί.', 'How do I fix a wrong payment?', 'Income & Expenses → tap the payment → Edit or Delete. Or change the cell directly in the Receipts register.'],
+  ['Η γραμμή δεν γίνεται πράσινη ενώ πλήρωσαν.', 'Ελέγξτε ότι υπάρχει «Αξία πακέτου» και ότι το άθροισμα των δόσεων είναι τουλάχιστον ίσο. Η καρτέλα «Έλεγχος δεδομένων» δείχνει εκδηλώσεις χωρίς τιμή.', 'The row doesn’t turn green though they paid.', 'Check that a “Package value” exists and installments add up to at least that. The “Data checks” tab shows events without a price.'],
+  ['Κόστος; Υπάρχουν κρυφές χρεώσεις;', 'Το GitHub Pages και το δωρεάν πλάνο του Supabase δεν χρεώνουν και δεν ζητούν κάρτα. Προσοχή: ένα δωρεάν project Supabase «κοιμάται» αν δεν το ανοίξει κανείς για 7 ημέρες — αρκεί να το ξυπνήσετε από το Supabase. Με καθημερινή χρήση δεν συμβαίνει.', 'Cost? Hidden charges?', 'GitHub Pages and the Supabase free plan don’t charge and don’t ask for a card. Note: a free Supabase project “pauses” if nobody uses it for 7 days — just restore it from Supabase. With daily use this does not happen.'],
+  ['Πού είναι αποθηκευμένα τα δεδομένα;', 'Στη βάση Supabase (στην Ευρώπη, αν επιλέξατε Frankfurt κατά τη δημιουργία). Κάντε επιπλέον τακτικά «Πλήρες αντίγραφο» σε δικό σας δίσκο.', 'Where is the data stored?', 'In the Supabase database (in Europe if you chose Frankfurt at creation). Also make regular “Full backups” to your own drive.'],
+  ['Χάθηκαν όλοι οι διαχειριστές. Τι κάνω;', 'Στο Supabase → SQL Editor τρέξτε: select public.new_owner_code(); — θα πάρετε νέο κωδικό ιδιοκτήτη. Μπείτε στην εφαρμογή, «Είμαι ο ιδιοκτήτης» στην οθόνη καλωσορίσματος και γράψτε τον.', 'All admins are gone. What do I do?', 'In Supabase → SQL Editor run: select public.new_owner_code(); — you get a new owner code. Sign in, tap “I am the owner” on the welcome screen and enter it.'],
+  ['Μπορώ να αλλάξω τις τιμές στον Οδηγό προσφοράς;', 'Ναι, για μία προσφορά: «Τελική τιμή πακέτου». Για μόνιμη αλλαγή των τιμών του πακέτου, επικοινωνήστε με τον δημιουργό της εφαρμογής.', 'Can I change prices in the offer builder?', 'Yes, for one offer: “Final package price”. For permanent price changes contact the app’s developer.'],
+];
+
+export function renderHelp(root, params = {}) {
+  const admin = isAdmin();
+  const secs = SECTIONS.filter((s) => (!s.admin || admin) && (!s.video || isVideoAdmin()) && (s.id !== 'crew' || !admin || true));
+  const sel = params.sec || '';
+  const lang = (a, i) => L(a[i], a[i + 2]);
+  let html = pageHead(L('Οδηγός & Συχνές ερωτήσεις', 'Guide & FAQ'), { sub: esc(L('Όλα όσα χρειάζεστε, βήμα-βήμα.', 'Everything you need, step by step.')) });
+  html += `<div class="search mb">${icon('search')}<input class="input" id="hq" type="search" placeholder="${esc(L('Αναζήτηση στον οδηγό (π.χ. PIN, δόση, PDF)…', 'Search the guide (e.g. PIN, installment, PDF)…'))}"></div>`;
+  html += `<div class="help-nav chips scroll"><button class="chip ${!sel ? 'on' : ''}" data-sec="">${esc(L('Όλα', 'All'))}</button>${secs.map((s) => `<button class="chip ${sel === s.id ? 'on' : ''}" data-sec="${s.id}">${icon(s.ic)} ${esc(L(s.t[0], s.t[1]))}</button>`).join('')}<button class="chip ${sel === 'faq' ? 'on' : ''}" data-sec="faq">${icon('help')} ${esc(L('Συχνές ερωτήσεις', 'FAQ'))}</button></div>`;
+  html += `<div id="helpBody"></div>`;
+  root.innerHTML = html;
+  const body = root.querySelector('#helpBody');
+  const draw = (q = '') => {
+    let out = '';
+    secs.filter((s) => !sel || sel === s.id).forEach((s) => {
+      const steps = s.steps.filter((st) => matches(q, st[0], st[1], st[2], st[3]));
+      if (!steps.length) return;
+      out += `<div class="section-title" id="sec-${s.id}"><h2>${icon(s.ic)} ${esc(L(s.t[0], s.t[1]))}</h2></div><div class="small muted" style="margin:-4px 4px 8px">${esc(L(s.intro[0], s.intro[1]))}</div>
+        <div class="card tut">${steps.map((st) => `<div class="tut-step"><b>${esc(lang(st, 0))}</b><p>${esc(lang(st, 1))}</p></div>`).join('')}</div>`;
+      if (s.id === 'install') out += `<div class="banner mt-s">${icon('install')}<div><b>${esc(L('Αυτή η συσκευή', 'This device'))}</b><span>${esc(isIOS() ? L('iPhone/iPad: ακολουθήστε το πρώτο βήμα.', 'iPhone/iPad: follow the first step.') : isAndroid() ? L('Android: ακολουθήστε το δεύτερο βήμα.', 'Android: follow the second step.') : L('Υπολογιστής: ακολουθήστε το τρίτο βήμα.', 'Computer: follow the third step.'))}</span></div></div>`;
+    });
+    if (!sel || sel === 'faq') {
+      const fq = FAQ.filter((f) => matches(q, ...f));
+      if (fq.length) out += `<div class="section-title" id="sec-faq"><h2>${icon('help')} ${esc(L('Συχνές ερωτήσεις', 'Frequently asked questions'))}</h2></div>${fq.map((f) => `<details class="faq" ${q ? 'open' : ''}><summary>${esc(lang(f, 0))}</summary><div class="a">${esc(lang(f, 1))}</div></details>`).join('')}`;
+    }
+    out += `<div class="card pad mt center"><b>${esc(L('Χρειάζεστε βοήθεια;', 'Need help?'))}</b><div class="small muted mt-s">made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>
+      <button class="btn small mt" data-tour>${icon('sparkles')} ${esc(L('Ξανά η σύντομη περιήγηση', 'Replay the quick tour'))}</button></div>`;
+    body.innerHTML = out || `<div class="empty">${icon('search')}<b>${esc(L('Δεν βρέθηκε κάτι', 'Nothing found'))}</b></div>`;
+    body.querySelector('[data-tour]')?.addEventListener('click', () => showTour(true));
+  };
+  draw();
+  root.querySelector('#hq').addEventListener('input', (e) => draw(e.target.value));
+  root.querySelectorAll('[data-sec]').forEach((b) => b.addEventListener('click', () => { location.hash = b.dataset.sec ? `#/help/${b.dataset.sec}` : '#/help'; }));
+}
+
+// ---------- Περιήγηση πρώτης χρήσης ----------
+export function maybeShowTour() {
+  const k = 'im.tour.' + S.profile?.id;
+  try { if (localStorage.getItem(k)) return; } catch { return; }
+  setTimeout(() => showTour(), 700);
+}
+export async function showTour(force = false) {
+  const admin = isAdmin();
+  const mob = window.innerWidth < 900;
+  const slides = [
+    { e: '👋', t: L(`Καλώς ήρθες, ${vocative(S.profile?.full_name)}!`, `Welcome, ${(S.profile?.full_name || '').split(' ')[0]}!`), p: admin ? L('Εδώ οργανώνονται όλες οι εκδηλώσεις, οι πελάτες, οι προσφορές και τα οικονομικά της Image Makers.', 'All Image Makers events, customers, offers and finances live here.') : L('Εδώ βλέπεις τις εκδηλώσεις που σου ανατίθενται, με όλες τις λεπτομέρειες και τον χάρτη.', 'Here you see the events assigned to you, with all details and the map.') },
+    { e: mob ? '📱' : '🧭', t: L('Πλοήγηση', 'Navigation'), p: mob ? L('Η μπάρα κάτω έχει τις βασικές σελίδες. Το «Περισσότερα» ανοίγει όλο το μενού.', 'The bottom bar has the main pages. “More” opens the full menu.') : L('Το μενού είναι αριστερά. Μπορείς να το μικρύνεις σε εικονίδια με το κουμπί στην κορυφή του.', 'The menu is on the left. Shrink it to icons with the button at its top.') },
+    ...(admin ? [{ e: '✨', t: L('Όλα αυτόματα', 'Everything automatic'), p: L('Νέα εκδήλωση → προσφορά PDF → δόσεις. Τα Excel, οι ειδοποιήσεις του συνεργείου και τα μηνύματα προς τους πελάτες ενημερώνονται μόνα τους.', 'New event → offer PDF → installments. The Excel sheets, crew notifications and client messages update by themselves.') }] : []),
+    { e: '🔔', t: L('Ειδοποιήσεις', 'Notifications'), p: L('Ενεργοποίησέ τες για να μαθαίνεις αμέσως ό,τι σε αφορά.', 'Turn them on to hear immediately about what concerns you.'), push: true },
+    { e: '📘', t: L('Βοήθεια πάντα δίπλα σου', 'Help is always there'), p: L('Στο «Οδηγός & Συχνές ερωτήσεις» θα βρεις βήμα-βήμα οδηγίες για τα πάντα.', 'In “Guide & FAQ” you’ll find step-by-step instructions for everything.') },
+  ];
+  let i = 0;
+  const elx = document.createElement('div');
+  elx.className = 'tour';
+  const close = () => { try { localStorage.setItem('im.tour.' + S.profile?.id, '1'); } catch {} elx.remove(); };
+  const draw = async () => {
+    const s = slides[i];
+    const ps = s.push ? await pushState().catch(() => 'unsupported') : null;
+    elx.innerHTML = `<div class="card"><div class="big">${s.e}</div><h3>${esc(s.t)}</h3><p>${esc(s.p)}</p>
+      ${s.push ? (ps === 'on' ? `<div class="pill green mt">${icon('check')} ${esc(L('Ήδη ενεργές', 'Already on'))}</div>` : ps === 'ios-install' ? `<p class="small mt">${L('Στο iPhone: <span class="ios-share">' + icon('share') + '</span> → «Προσθήκη στην οθόνη Αφετηρίας», και άνοιξε από εκεί.', 'On iPhone: <span class="ios-share">' + icon('share') + '</span> → “Add to Home Screen”, then open from there.')}</p>` : `<button class="btn primary mt" data-push>${icon('bell')} ${esc(L('Ενεργοποίηση τώρα', 'Turn on now'))}</button>`) : ''}
+      <div class="dots">${slides.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>
+      <div class="spread"><button class="btn plain" data-skip>${esc(i === slides.length - 1 ? '' : L('Παράλειψη', 'Skip'))}</button><button class="btn primary" data-next>${esc(i === slides.length - 1 ? L('Ας ξεκινήσουμε!', 'Let’s start!') : L('Επόμενο', 'Next'))}</button></div></div>`;
+    elx.querySelector('[data-next]').onclick = () => { if (i === slides.length - 1) close(); else { i++; draw(); } };
+    elx.querySelector('[data-skip]').onclick = close;
+    elx.querySelector('[data-push]')?.addEventListener('click', async () => { const r = await enablePush().catch(() => 'error'); if (r === 'on') toast(L('Ενεργοποιήθηκαν!', 'Turned on!')); else if (r === 'server-missing') toast(L('Θα ενεργοποιηθούν όταν ολοκληρωθεί η ρύθμιση από διαχειριστή.', 'They will work after admin setup is finished.'), { type: 'info' }); draw(); });
+  };
+  if (force || !document.querySelector('.tour')) { document.body.appendChild(elx); draw(); }
+}

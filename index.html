@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Image Makers · Studio Manager</title>
+  <meta name="description" content="Διαχείριση εκδηλώσεων, πελατών και οικονομικών της Image Makers.">
+  <meta name="theme-color" content="#f2f2f7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Image Makers">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script>
+    (function () {
+      try {
+        var p = localStorage.getItem('im.theme') || 'auto';
+        var dark = p === 'dark' || (p === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        if (localStorage.getItem('im.sb') === '1') document.documentElement.classList.add('sb-pre');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div class="boot" id="boot"><img src="icons/logo-white.png" alt="Image Makers"></div>
+  <div id="root"></div>
+  <noscript><p style="padding:24px;font-family:sans-serif">Η εφαρμογή χρειάζεται JavaScript. · This app needs JavaScript.</p></noscript>
+  <script src="config.js"></script>
+  <script src="vendor/supabase.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
