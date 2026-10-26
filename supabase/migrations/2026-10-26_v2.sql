@@ -270,3 +270,10 @@ end $$;
 
 grant execute on all functions in schema public to authenticated, service_role;
 revoke execute on function public.run_automations(uuid) from anon;
+
+-- Ασφάλεια: αυτές οι δύο συναρτήσεις ΔΕΝ πρέπει να καλούνται από χρήστες της εφαρμογής
+revoke execute on function public.new_owner_code() from public, anon, authenticated, service_role;
+revoke execute on function public.push_get_config() from public, anon, authenticated;
+grant execute on function public.push_get_config() to service_role;
+alter function private.events_before() set search_path = public, private;
+alter function private.appointments_before() set search_path = public, private;
