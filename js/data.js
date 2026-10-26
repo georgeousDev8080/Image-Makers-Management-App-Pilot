@@ -26,6 +26,8 @@ export const S = {
   queue: [],
   templates: [],
   requests: [],
+  appointments: [],
+  wfTemplates: [],
   settings: {},
   invites: [],
   loaded: false,
@@ -111,6 +113,16 @@ const loaders = {
     const { data, error } = await sb.from('offer_requests').select('*').order('created_at', { ascending: false }).limit(500);
     if (error) throw error; S.requests = data;
   },
+  appointments: async () => {
+    if (!isAdmin()) { S.appointments = []; return; }
+    const { data, error } = await sb.from('appointments').select('*').order('appt_date', { ascending: false }).order('created_at', { ascending: false }).limit(3000);
+    if (error) throw error; S.appointments = data;
+  },
+  workflow_templates: async () => {
+    if (!isAdmin()) { S.wfTemplates = []; return; }
+    const { data, error } = await sb.from('workflow_templates').select('*').order('sort', { ascending: true });
+    if (error) throw error; S.wfTemplates = data;
+  },
   app_settings: async () => {
     const { data, error } = await sb.from('app_settings').select('*');
     if (error) throw error; S.settings = Object.fromEntries(data.map((r) => [r.key, r.value]));
@@ -138,7 +150,7 @@ let onNewNotification = null;
 export function setNotificationHandler(fn) { onNewNotification = fn; }
 export function startRealtime() {
   stopRealtime();
-  const tables = ['notifications', 'events', 'event_crew', 'event_finance', 'payments', 'expenses', 'customers', 'message_queue', 'offer_requests', 'profiles'];
+  const tables = ['notifications', 'events', 'event_crew', 'event_finance', 'payments', 'expenses', 'customers', 'message_queue', 'offer_requests', 'profiles', 'appointments', 'workflow_templates'];
   channel = sb.channel('im-db');
   tables.forEach((t) => {
     channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, (payload) => {
@@ -225,6 +237,10 @@ export function nextPaymentLabel(eventId) {
 export const unreadCount = () => S.notifications.filter((n) => !n.read_at).length;
 export const pendingMessages = () => S.queue.filter((m) => m.status === 'pending');
 export const newRequests = () => S.requests.filter((r) => r.status === 'new');
+export const STALE_DAYS = 10;
+export const isStaleAppt = (a) => a.status === 'pending' && (Date.now() - new Date(a.status_at).getTime()) > STALE_DAYS * 864e5;
+export const pendingAppointments = () => S.appointments.filter((a) => a.status === 'pending');
+export const staleAppointments = () => S.appointments.filter(isStaleAppt);
 export const pendingUsers = () => S.profiles.filter((p) => !p.role && p.active);
 
 export function wageStatus() {
@@ -412,6 +428,60 @@ export const business = () => ({ name: 'Image Makers', phone: '2410 550361', ema
 export async function updateRequest(id, patch) {
   const data = await q(sb.from('offer_requests').update(patch).eq('id', id).select().single());
   S.requests = S.requests.map((r) => (r.id === id ? data : r)); emit('offer_requests');
+  return data;
+}
+
+// Προσφορές / Ραντεβού
+const APPT_FIELDS = ['mode', 'appt_date', 'category', 'name1', 'name2', 'phone', 'email', 'event_date', 'church', 'church_time', 'reception', 'reception_time', 'notes', 'offer_path', 'offer_data', 'selections', 'total', 'status', 'status_at', 'reason', 'comments', 'customer_id', 'event_id', 'handled_by'];
+export async function saveAppointment(a) {
+  const row = {};
+  APPT_FIELDS.forEach((k) => { if (k in a) row[k] = a[k] === '' ? null : a[k]; });
+  let data;
+  if (a.id && S.appointments.some((x) => x.id === a.id)) data = await q(sb.from('appointments').update(row).eq('id', a.id).select().single());
+  else data = await q(sb.from('appointments').insert({ ...(a.id ? { id: a.id } : {}), ...row, created_by: S.profile.id }).select().single());
+  S.appointments = [data, ...S.appointments.filter((x) => x.id !== data.id)]; emit('appointments');
+  return data;
+}
+export async function deleteAppointment(id) {
+  const a = S.appointments.find((x) => x.id === id);
+  await q(sb.from('appointments').delete().eq('id', id));
+  if (a?.offer_path && ![...S.events.values()].some((e) => e.offer_path === a.offer_path)) sb.storage.from('offers').remove([a.offer_path]).catch(() => {});
+  S.appointments = S.appointments.filter((x) => x.id !== id); emit('appointments');
+}
+export async function uploadAppointmentOffer(apptId, blob) {
+  const path = `appointments/${apptId}/offer-${Date.now()}.pdf`;
+  const { error } = await sb.storage.from('offers').upload(path, blob, { contentType: 'application/pdf', upsert: true });
+  if (error) { toastErr(L('Το PDF δεν ανέβηκε', 'PDF upload failed'), friendlyError(error)); throw error; }
+  const old = S.appointments.find((x) => x.id === apptId)?.offer_path;
+  if (old && old !== path && ![...S.events.values()].some((e) => e.offer_path === old)) sb.storage.from('offers').remove([old]).catch(() => {});
+  return path;
+}
+/** Αντιγραφή του PDF ενός ραντεβού στην εκδήλωση που δημιουργήθηκε */
+export async function copyOfferToEvent(fromPath, eventId) {
+  const to = `${eventId}/offer-${Date.now()}.pdf`;
+  const { error } = await sb.storage.from('offers').copy(fromPath, to);
+  if (error) { console.warn('copy offer', error); return fromPath; }
+  return to;
+}
+
+// Μηνύματα workflow
+export async function saveWfTemplate(t) {
+  const row = { name: t.name, stage: t.stage || 'any', channels: t.channels?.length ? t.channels : ['email'], subject: t.subject || null, body: t.body, enabled: t.enabled !== false, sort: Number(t.sort) || 0 };
+  let data;
+  if (t.id) data = await q(sb.from('workflow_templates').update(row).eq('id', t.id).select().single());
+  else data = await q(sb.from('workflow_templates').insert(row).select().single());
+  S.wfTemplates = [...S.wfTemplates.filter((x) => x.id !== data.id), data].sort((a, b) => a.sort - b.sort); emit('workflow_templates');
+  return data;
+}
+export async function deleteWfTemplate(id) {
+  await q(sb.from('workflow_templates').delete().eq('id', id));
+  S.wfTemplates = S.wfTemplates.filter((x) => x.id !== id); emit('workflow_templates');
+}
+/** Καταγραφή μηνύματος που στάλθηκε χειροκίνητα (εμφανίζεται στο ιστορικό «Μηνύματα προς πελάτες») */
+export async function logSentMessage({ eventId, title, channels, toPhone, toEmail, subject, body }) {
+  const row = { template_id: null, event_id: eventId, dedupe_key: `manual:${eventId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`, due_at: new Date().toISOString(), status: 'sent', channels, assigned_to: [S.profile.id], to_phone: toPhone || null, to_email: toEmail || null, subject: subject || null, body, title: title || null, sent_at: new Date().toISOString(), sent_by: S.profile.id };
+  const data = await q(sb.from('message_queue').insert(row).select().single());
+  S.queue = [data, ...S.queue]; emit('message_queue');
   return data;
 }
 

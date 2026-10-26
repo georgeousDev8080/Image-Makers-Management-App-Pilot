@@ -1,7 +1,7 @@
 // =====================================================================
 //  Αντίγραφα ασφαλείας (Excel / ZIP), επαναφορά, εισαγωγή παλιού Sheet
 // =====================================================================
-import { L, esc, icon, loadScript, download, norm, lbl, opt, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, ROLES, TRIGGERS, sheet, toast, toastErr, confirmBox, busy, money, fmtDate, pad2 } from './core.js';
+import { L, esc, icon, loadScript, download, norm, lbl, opt, APPT_MODES, APPT_STATUS, REJECT_REASONS, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, ROLES, TRIGGERS, sheet, toast, toastErr, confirmBox, busy, money, fmtDate, pad2 } from './core.js';
 import { sb, S, coupleName, profileName, loadAll, offerBlob, friendlyError } from './data.js';
 
 const XL = () => loadScript('vendor/xlsx.full.min.js');
@@ -79,6 +79,7 @@ function buildWorkbook() {
   add('Συνεργείο', S.crew.map((c) => ({ 'Εκδήλωση ID': c.event_id, 'Ζευγάρι': coupleName(S.customers.get(S.events.get(c.event_id)?.customer_id)), 'Ημερομηνία': S.events.get(c.event_id)?.event_date || '', 'Μέλος ID': c.user_id, 'Μέλος': profileName(S.profiles.find((p) => p.id === c.user_id)), 'Αρμοδιότητα': c.duty === 'video' ? 'Βίντεο' : 'Φωτογραφία' })), { 'Εκδήλωση ID': 38, 'Μέλος ID': 38 });
   add('Πρότυπα μηνυμάτων', S.templates.map((t) => ({ ID: t.id, 'Κλειδί': t.key || '', 'Όνομα': t.name, 'Πότε': human(TRIGGERS, t.trigger_type), 'Ημέρες': t.offset_days, 'Ώρα': t.send_hour, 'Ποσοστό %': t.threshold_pct ?? '', 'Κατηγορίες': (t.categories || []).map((c) => human(CATEGORIES, c)).join(', '), 'Τρόποι': (t.channels || []).join(', '), 'Θέμα': t.subject || '', 'Κείμενο': t.body, 'Ενεργό': t.enabled ? 'Ναι' : 'Όχι' })), { ID: 38, 'Κείμενο': 80 });
   add('Ομάδα', S.profiles.map((p) => ({ 'Όνομα': profileName(p), 'Username': p.username, 'Email': p.email, 'Ρόλος': human(ROLES, p.role) || 'Χωρίς ρόλο', 'Ενεργός': p.active ? 'Ναι' : 'Όχι' })));
+  add('Ραντεβού', S.appointments.map((a) => ({ ID: a.id, 'Τύπος': human(APPT_MODES, a.mode), 'Ημερομηνία ραντεβού': a.appt_date, 'Κατηγορία': human(CATEGORIES, a.category), 'Ονοματεπώνυμο 1': a.name1 || '', 'Ονοματεπώνυμο 2': a.name2 || '', 'Κινητό': a.phone || '', Email: a.email || '', 'Ημερομηνία εκδήλωσης': a.event_date || '', 'Εκκλησία': a.church || '', 'Ώρα εκκλησίας': a.church_time || '', 'Δεξίωση': a.reception || '', 'Αξία προσφοράς': a.total ?? '', 'Κατάσταση': human(APPT_STATUS, a.status), 'Ημερομηνία κατάστασης': a.status_at, 'Λόγος': human(REJECT_REASONS, a.reason), 'Σχόλια': a.comments || '', 'Σημειώσεις': a.notes || '', 'Εκδήλωση ID': a.event_id || '', 'Αρχείο PDF': a.offer_path || '', 'Προσφορά (δεδομένα)': a.offer_data ? JSON.stringify(a.offer_data) : '', 'Επιλογές πελάτη': a.selections ? JSON.stringify(a.selections) : '' })), { ID: 38, 'Ονοματεπώνυμο 1': 24, 'Ονοματεπώνυμο 2': 24, 'Σχόλια': 40 });
   return wb;
 }
 
@@ -170,6 +171,10 @@ export async function importBackup() {
     const crewRows = K.filter((r) => profIds.has(r['Μέλος ID']) && evRows.some((e) => e.ID === r['Εκδήλωση ID'])).map((r) => ({ event_id: r['Εκδήλωση ID'], user_id: r['Μέλος ID'], duty: r['Αρμοδιότητα'] === 'Βίντεο' ? 'video' : 'photo' }));
     if (crewRows.length) await chunked('event_crew', crewRows, { onConflict: 'event_id,user_id', ignoreDuplicates: true });
     if (T.length) await chunked('message_templates', T.filter((r) => r.ID && r['Κείμενο']).map((r) => ({ id: r.ID, key: r['Κλειδί'] || null, name: r['Όνομα'], trigger_type: back(TRIGGERS, r['Πότε']) || 'before_event', offset_days: Number(r['Ημέρες']) || 0, send_hour: Number(r['Ώρα']) || 11, threshold_pct: num(r['Ποσοστό %']), categories: String(r['Κατηγορίες'] || '').split(',').map((s) => back(CATEGORIES, s)).filter(Boolean), channels: String(r['Τρόποι'] || 'sms,email').split(',').map((s) => s.trim()).filter(Boolean), subject: r['Θέμα'] || null, body: r['Κείμενο'], enabled: yes(r['Ενεργό']) })));
+    const A = rows('Ραντεβού');
+    const evIds = new Set([...S.events.keys(), ...evRows.map((r) => r.ID)]);
+    const js = (v) => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
+    if (A.length) await chunked('appointments', A.filter((r) => r.ID && toISODate(r['Ημερομηνία ραντεβού'])).map((r) => ({ id: r.ID, mode: back(APPT_MODES, r['Τύπος']) || 'store', appt_date: toISODate(r['Ημερομηνία ραντεβού']), category: back(CATEGORIES, r['Κατηγορία']) || 'wedding', name1: r['Ονοματεπώνυμο 1'] || null, name2: r['Ονοματεπώνυμο 2'] || null, phone: String(r['Κινητό'] || '') || null, email: r.Email || null, event_date: toISODate(r['Ημερομηνία εκδήλωσης']), church: r['Εκκλησία'] || null, church_time: r['Ώρα εκκλησίας'] || null, reception: r['Δεξίωση'] || null, total: num(r['Αξία προσφοράς']), status: back(APPT_STATUS, r['Κατάσταση']) || 'pending', status_at: r['Ημερομηνία κατάστασης'] || new Date().toISOString(), reason: back(REJECT_REASONS, r['Λόγος']), comments: r['Σχόλια'] || null, notes: r['Σημειώσεις'] || null, event_id: evIds.has(r['Εκδήλωση ID']) ? r['Εκδήλωση ID'] : null, offer_path: r['Αρχείο PDF'] || null, offer_data: js(r['Προσφορά (δεδομένα)']), selections: js(r['Επιλογές πελάτη']) })));
     for (const p of pdfs) {
       const blob = new Blob([await p.file.async('arraybuffer')], { type: 'application/pdf' });
       const path = `${p.id}/offer-restored-${Date.now()}.pdf`;

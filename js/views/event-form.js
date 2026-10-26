@@ -2,7 +2,7 @@
 //  Νέα εκδήλωση / επεξεργασία (οδηγός σε 4 βήματα)
 // =====================================================================
 import { L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, initSegmented, toast, toastErr, busy, mapsUrl, money, parseMoney } from '../core.js';
-import { S, coupleName, profileName, saveCustomer, saveEvent, saveFinance, setCrew, uploadOffer, eventView, updateRequest } from '../data.js';
+import { S, coupleName, profileName, saveCustomer, saveEvent, saveFinance, setCrew, uploadOffer, eventView, updateRequest, saveAppointment, copyOfferToEvent } from '../data.js';
 import { pageHead, go, backBtn } from '../layout.js';
 import { avatar, packageNameFrom, offerSummaryHTML } from '../components.js';
 import { openOfferBuilder, requestToOfferState, pickPdfFile } from '../offer.js';
@@ -20,6 +20,7 @@ function freshState(params) {
     crew: [],
     offer: { pdf: null, pdfName: '', data: null, existingPath: null },
     requestId: params.request || null,
+    appointmentId: params.appointment || null,
   };
   if (!S.customers.size) s.custMode = 'new';
   if (params.customer && S.customers.has(params.customer)) { s.custMode = 'existing'; s.customerId = params.customer; }
@@ -56,13 +57,36 @@ function freshState(params) {
       s.fin.second_crew = !!s.offer.data?.adds?.includes('2ο συνεργείο');
     }
   }
+  if (params.appointment) {
+    const a = S.appointments.find((x) => x.id === params.appointment);
+    if (a) {
+      s.custMode = 'new';
+      s.cust = { name1: a.name1 || '', name2: a.name2 || '', phone1: a.phone || '', phone2: '', email1: a.email || '', email2: '' };
+      const ph = (a.phone || '').replace(/\D/g, '');
+      const ex = a.customer_id && S.customers.has(a.customer_id) ? S.customers.get(a.customer_id)
+        : ph && [...S.customers.values()].find((c) => [c.phone1, c.phone2].some((p) => (p || '').replace(/\D/g, '').endsWith(ph.slice(-10))));
+      if (ex) { s.custMode = 'existing'; s.customerId = ex.id; }
+      s.ev.category = a.category || 'wedding';
+      s.ev.event_date = a.event_date || '';
+      s.ev.event_time = (a.church_time || '').slice(0, 5);
+      s.ev.church_location = a.church || '';
+      s.ev.reception_location = [a.reception, a.reception_time].filter(Boolean).join(' · ');
+      s.ev.notes = a.notes || '';
+      s.offer.data = a.offer_data || (a.selections ? requestToOfferState({ partner1: a.name1, partner2: a.name2, phone1: a.phone, wedding_date: a.event_date, church: a.church, church_time: a.church_time, reception: a.reception, reception_time: a.reception_time, selections: a.selections }) : null);
+      s.offer.fromAppointment = a.offer_path || null;
+      if (a.offer_path) s.offer.pdfName = L('Προσφορά από το ραντεβού', 'Offer from the appointment');
+      if (s.offer.data?.adds?.includes('Παράδοση video σε 4K')) s.ev.resolution = '4k';
+      if (a.total != null) s.fin.package_price = a.total;
+      if (s.offer.data) { s.fin.package_name = packageNameFrom(s.offer.data); s.fin.second_crew = !!s.offer.data?.adds?.includes('2ο συνεργείο'); }
+    }
+  }
   return s;
 }
 
 const STEPS = () => [L('Πελάτης', 'Customer'), L('Εκδήλωση', 'Event'), L('Συνεργείο', 'Crew'), L('Προσφορά & πακέτο', 'Offer & package')];
 
 export function renderEventForm(root, params = {}) {
-  const k = JSON.stringify([params.id, params.request, params.date, params.customer]);
+  const k = JSON.stringify([params.id, params.request, params.date, params.customer, params.appointment]);
   if (!W || k !== key) { W = freshState(params); key = k; }
   draw(root, params);
 }
@@ -70,7 +94,7 @@ export function renderEventForm(root, params = {}) {
 function draw(root, params) {
   const steps = STEPS();
   const title = W.mode === 'edit' ? L('Επεξεργασία εκδήλωσης', 'Edit event') : L('Νέα εκδήλωση', 'New event');
-  let html = backBtn(W.mode === 'edit' ? `#/event/${params.id}` : '#/events') + pageHead(title, { sub: esc(L(`Βήμα ${W.step + 1} από 4 · ${steps[W.step]}`, `Step ${W.step + 1} of 4 · ${steps[W.step]}`)) });
+  let html = backBtn(W.mode === 'edit' ? `#/event/${params.id}` : W.appointmentId ? '#/appointments' : '#/events') + pageHead(title, { sub: esc(L(`Βήμα ${W.step + 1} από 4 · ${steps[W.step]}`, `Step ${W.step + 1} of 4 · ${steps[W.step]}`)) });
   html += `<div class="steps">${steps.map((s, i) => `<button type="button" data-step="${i}" class="${i < W.step ? 'done' : ''} ${i === W.step ? 'cur' : ''}"><i></i><span>${i + 1}. ${esc(s)}</span></button>`).join('')}</div>`;
   html += `<div id="stepBody" class="view-enter"></div>`;
   html += `<div class="wizard-foot">
@@ -128,7 +152,7 @@ function validate(root, step) {
     return ok;
   }
   if (step === 3) {
-    if (!W.offer.pdf && !W.offer.existingPath) { toastErr(L('Λείπει η προσφορά (PDF)', 'Offer PDF missing'), L('Δημιουργήστε την με τον Οδηγό προσφοράς ή ανεβάστε έτοιμο PDF.', 'Create it with the offer builder or upload a ready PDF.')); return false; }
+    if (!W.offer.pdf && !W.offer.existingPath && !W.offer.fromAppointment) { toastErr(L('Λείπει η προσφορά (PDF)', 'Offer PDF missing'), L('Δημιουργήστε την με τον Οδηγό προσφοράς ή ανεβάστε έτοιμο PDF.', 'Create it with the offer builder or upload a ready PDF.')); return false; }
     const p = parseMoney(W.fin.package_price);
     if (W.fin.package_price !== '' && (p === null || p < 0)) { showErr(root, 'package_price', L('Μη έγκυρο ποσό', 'Invalid amount')); return false; }
     return true;
@@ -166,7 +190,7 @@ function stepCustomer(body, root, params) {
     const list = [...S.customers.values()].filter((c) => matches(W.cq, c.name1, c.name2, c.phone1, c.phone2, c.email1, c.email2)).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 60);
     html += `<div class="search mt">${icon('search')}<input class="input" id="cq" type="search" placeholder="${esc(L('Αναζήτηση πελάτη (όνομα, τηλέφωνο, email)', 'Search customer (name, phone, email)'))}" value="${esc(W.cq)}"></div>
       <div class="list pick-list mt-s" id="clist">${list.map((c) => `<button type="button" class="row pick ${W.customerId === c.id ? 'on' : ''}" data-c="${c.id}"><div class="main-col"><div class="t">${esc(coupleName(c))}</div><div class="s">${esc([c.phone1, c.email1].filter(Boolean).join(' · ') || '—')}</div></div>${W.customerId === c.id ? icon('checkCircle', 'pos') : ''}</button>`).join('') || `<div class="row muted">${esc(L('Δεν βρέθηκε πελάτης. Πατήστε «Νέος πελάτης».', 'No customer found. Tap “New customer”.'))}</div>`}</div>`;
-    if (W.customerId && W.mode === 'edit') html += `<div class="help mt-s">${esc(L('Για να αλλάξετε τα στοιχεία του πελάτη, ανοίξτε την καρτέλα του από τη σελίδα Πελάτες.', 'To change customer details, open their card in Customers.'))}</div>`;
+    if (W.customerId && W.mode === 'edit') html += `<div class="help mt-s">${esc(L('Για να αλλάξετε τα στοιχεία του πελάτη, ανοίξτε την εκδήλωση και πατήστε «Καρτέλα πελάτη».', 'To change customer details, open their card in Customers.'))}</div>`;
   } else {
     html += `<div class="form-grid mt">
       ${fld('name1', L('Ονοματεπώνυμο 1', 'Full name 1'), W.cust.name1, { req: true, ph: L('π.χ. Μαρία Παπαδοπούλου', 'e.g. Maria Papadopoulou') })}
@@ -266,13 +290,13 @@ function stepCrew(body) {
 
 // ---------- Βήμα 4: Προσφορά ----------
 function stepOffer(body, root, params) {
-  const has = W.offer.pdf || W.offer.existingPath;
+  const has = W.offer.pdf || W.offer.existingPath || W.offer.fromAppointment;
   const c = W.custMode === 'existing' && W.customerId ? S.customers.get(W.customerId) : W.cust;
   body.innerHTML = `
     <div class="card pad">
       <div class="spread"><b>${esc(L('Προσφορά (PDF)', 'Offer (PDF)'))} <span class="req" style="color:var(--red)">*</span></b>${has ? `<span class="pill green">${icon('check')} ${esc(L('Επισυνάφθηκε', 'Attached'))}</span>` : `<span class="pill red">${esc(L('Λείπει', 'Missing'))}</span>`}</div>
       <p class="muted small mt-s">${esc(L('Το PDF το βλέπουν μόνο οι διαχειριστές. Το συνεργείο βλέπει μόνο τι περιλαμβάνει το πακέτο, χωρίς τιμές.', 'Only admins can open the PDF. The crew only sees what the package includes, without prices.'))}</p>
-      ${has ? `<div class="offer-box" style="padding:12px 0 0"><div class="pdf-thumb">PDF</div><div class="main-col" style="flex:1"><div class="t">${esc(W.offer.pdfName || L('Υπάρχουσα προσφορά', 'Existing offer'))}</div><div class="s">${esc(W.offer.pdf ? L('Θα ανέβει με την αποθήκευση', 'Will upload when you save') : L('Ήδη αποθηκευμένη', 'Already saved'))}</div></div></div>` : ''}
+      ${has ? `<div class="offer-box" style="padding:12px 0 0"><div class="pdf-thumb">PDF</div><div class="main-col" style="flex:1"><div class="t">${esc(W.offer.pdfName || L('Υπάρχουσα προσφορά', 'Existing offer'))}</div><div class="s">${esc(W.offer.pdf ? L('Θα ανέβει με την αποθήκευση', 'Will upload when you save') : W.offer.fromAppointment && !W.offer.existingPath ? L('Από το ραντεβού — θα αντιγραφεί στην εκδήλωση', 'From the appointment — will be copied to the event') : L('Ήδη αποθηκευμένη', 'Already saved'))}</div></div></div>` : ''}
       <div class="grid cols-2 mt" style="gap:10px">
         <button class="btn primary large" data-builder>${icon('wand')} ${esc(W.offer.data ? L('Επεξεργασία στον Οδηγό προσφοράς', 'Edit in offer builder') : L('Δημιουργία με τον Οδηγό προσφοράς', 'Create with offer builder'))}</button>
         <button class="btn large" data-upload>${icon('upload')} ${esc(L('Ανέβασμα έτοιμου PDF', 'Upload ready PDF'))}</button>
@@ -327,12 +351,17 @@ async function save(root, params, btn) {
       const path = await uploadOffer(ev.id, W.offer.pdf);
       await saveEvent({ id: ev.id, offer_path: path, offer_updated_at: new Date().toISOString() });
       W.offer.existingPath = path; W.offer.pdf = null;
+    } else if (W.offer.fromAppointment && !W.offer.existingPath) {
+      const path = await copyOfferToEvent(W.offer.fromAppointment, ev.id);
+      await saveEvent({ id: ev.id, offer_path: path, offer_updated_at: new Date().toISOString() });
+      W.offer.existingPath = path;
     }
     const price = parseMoney(W.fin.package_price);
     await saveFinance(ev.id, { package_price: price, package_name: W.fin.package_name || null, second_crew: !!W.fin.second_crew, office_notes: W.fin.office_notes || null });
     const curCrew = S.crew.filter((c) => c.event_id === ev.id);
     const crewChanged = W.crew.length !== curCrew.length || W.crew.some((c) => !curCrew.some((x) => x.user_id === c.user_id && x.duty === c.duty));
     if (crewChanged) await setCrew(ev.id, W.crew);
+    if (W.appointmentId) await saveAppointment({ id: W.appointmentId, status: 'confirmed', event_id: ev.id, customer_id: customerId, handled_by: S.profile.id }).catch(() => {});
     if (W.requestId) await updateRequest(W.requestId, { status: 'converted', event_id: ev.id, customer_id: customerId, handled_by: S.profile.id }).catch(() => {});
     toast(W.mode === 'edit' ? L('Οι αλλαγές αποθηκεύτηκαν', 'Changes saved') : L('Η εκδήλωση δημιουργήθηκε! 🎉', 'Event created! 🎉'), { body: W.crew.length ? L('Το συνεργείο ειδοποιήθηκε.', 'The crew was notified.') : '' });
     W = null; key = '';

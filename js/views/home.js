@@ -2,7 +2,9 @@
 //  Αρχική
 // =====================================================================
 import { L, vocative, esc, icon, money, fmtDateLong, fmtTime, todayISO, daysBetween, sum, addDays, isIOS, isStandalone } from '../core.js';
-import { S, isAdmin, isVideoAdmin, allEventViews, profileName, myEventIds, newRequests, pendingMessages, pendingUsers, unreadCount } from '../data.js';
+import { S, isAdmin, isVideoAdmin, allEventViews, profileName, myEventIds, pendingAppointments, staleAppointments, pendingMessages, pendingUsers, unreadCount } from '../data.js';
+import { wfLevel } from './workflow.js';
+import { newAppointmentChooser } from './appointments.js';
 import { pageHead } from '../layout.js';
 import { eventRow } from '../components.js';
 import { openIncomeForm, openExpenseForm } from './money.js';
@@ -38,8 +40,10 @@ export function renderHome(root) {
   if (admin) {
     // Χρειάζεται προσοχή
     const todo = [];
-    const nr = newRequests().length; if (nr) todo.push({ h: '#/requests', i: 'inbox', c: 'var(--blue)', t: L(`${nr} νέα αιτήματα προσφοράς`, `${nr} new offer requests`) });
-    const pm = pendingMessages().length; if (pm) todo.push({ h: '#/outbox', i: 'message', c: 'var(--accent)', t: L(`${pm} μηνύματα πελατών προς αποστολή`, `${pm} client messages to send`) });
+    const sa = staleAppointments().length; if (sa) todo.push({ h: '#/appointments', i: 'handshake', c: 'var(--orange)', t: L(`${sa} ραντεβού χωρίς απάντηση πάνω από 10 ημέρες`, `${sa} appointments without an answer for 10+ days`) });
+    const pa = pendingAppointments().length - sa; if (pa > 0) todo.push({ h: '#/appointments', i: 'handshake', c: 'var(--blue)', t: L(`${pa} προσφορές σε αναμονή απάντησης`, `${pa} offers waiting for an answer`) });
+    const wl = all.filter((v) => wfLevel(v.e, today).level === 'late').length; if (wl) todo.push({ h: '#/workflow', i: 'flow', c: 'var(--red)', t: L(`${wl} εργασίες με μεγάλη καθυστέρηση (φωτογραφίες)`, `${wl} jobs with a long delay (photos)`) });
+    const pm = pendingMessages().length; if (pm) todo.push({ h: '#/outbox', i: 'message', c: 'var(--accent)', t: L(`${pm} μηνύματα προς πελάτες για αποστολή`, `${pm} client messages to send`) });
     const pu = pendingUsers().length; if (pu) todo.push({ h: '#/team', i: 'shield', c: 'var(--purple)', t: L(`${pu} νέοι λογαριασμοί περιμένουν ρόλο`, `${pu} new accounts need a role`) });
     if (isVideoAdmin()) {
       const sos = all.filter((v) => ['lab', 'ready', 'delivered'].includes(v.e.photo_status) && v.e.editing_status !== 'done').length;
@@ -58,7 +62,7 @@ export function renderHome(root) {
     // Γρήγορες ενέργειες
     html += `<div class="section-title"><h2>${esc(L('Γρήγορες ενέργειες', 'Quick actions'))}</h2></div>
       <div class="grid cols-4">
-        <a class="kpi" href="#/new-event" style="display:block"><div class="k-label" style="color:var(--accent)">${icon('plus')} ${esc(L('Νέα εκδήλωση', 'New event'))}</div><div class="k-sub">${esc(L('Πελάτης, στοιχεία, προσφορά', 'Customer, details, offer'))}</div></a>
+        <button class="kpi" data-act="appt" style="text-align:left;border:0"><div class="k-label" style="color:var(--accent)">${icon('plus')} ${esc(L('Νέο ραντεβού', 'New appointment'))}</div><div class="k-sub">${esc(L('Παρουσίαση στο μαγαζί ή link', 'In store or by link'))}</div></button>
         <button class="kpi" data-act="income" style="text-align:left;border:0"><div class="k-label" style="color:var(--green)">${icon('incoming')} ${esc(L('Νέο έσοδο', 'New income'))}</div><div class="k-sub">${esc(L('Προκαταβολή ή δόση', 'Deposit or installment'))}</div></button>
         <button class="kpi" data-act="expense" style="text-align:left;border:0"><div class="k-label" style="color:var(--red)">${icon('outgoing')} ${esc(L('Νέο έξοδο', 'New expense'))}</div><div class="k-sub">${esc(L('Μισθοδοσία, μεροκάματο, μαγαζί…', 'Payroll, wages, shop…'))}</div></button>
         <a class="kpi" href="#/sheets" style="display:block"><div class="k-label" style="color:var(--blue)">${icon('table')} ${esc(L('Φύλλα (Excel)', 'Sheets (Excel)'))}</div><div class="k-sub">${esc(L('Όλα τα δεδομένα σε πίνακες', 'All data in tables'))}</div></a>
@@ -91,6 +95,7 @@ export function renderHome(root) {
   html += list.length ? `<div class="list">${list.map((v) => eventRow(v)).join('')}</div>` : `<div class="card pad muted center">${esc(L('Καμία επερχόμενη εκδήλωση.', 'No upcoming events.'))}</div>`;
 
   root.innerHTML = html;
+  root.querySelector('[data-act="appt"]')?.addEventListener('click', () => newAppointmentChooser());
   root.querySelector('[data-act="income"]')?.addEventListener('click', () => openIncomeForm({}));
   root.querySelector('[data-act="expense"]')?.addEventListener('click', () => openExpenseForm({}));
 

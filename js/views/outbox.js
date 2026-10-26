@@ -37,7 +37,7 @@ export function renderOutbox(root, params = {}) {
   setTopActions(`<button class="btn small" data-run title="${esc(L('Έλεγχος αυτοματισμών τώρα', 'Check automations now'))}">${icon('refresh')} <span class="hide-mobile">${esc(L('Έλεγχος τώρα', 'Check now'))}</span></button>`);
   const pending = S.queue.filter((m) => m.status === 'pending');
   const done = S.queue.filter((m) => m.status !== 'pending');
-  let html = pageHead(L('Μηνύματα πελατών', 'Client messages'), { sub: esc(L('Η εφαρμογή ετοιμάζει τα μηνύματα και σας ειδοποιεί. Εσείς πατάτε «Αποστολή».', 'The app prepares the messages and notifies you. You tap “Send”.')) });
+  let html = pageHead(L('Μηνύματα προς πελάτες', 'Messages to clients'), { sub: esc(L('Η εφαρμογή ετοιμάζει τα μηνύματα και σας ειδοποιεί. Εσείς πατάτε «Αποστολή».', 'The app prepares the messages and notifies you. You tap “Send”.')) });
   html += `<div class="mb">${segmented('t', [{ v: 'pending', label: L(`Προς αποστολή (${pending.length})`, `To send (${pending.length})`) }, { v: 'sent', label: L('Ιστορικό', 'History') }, { v: 'templates', label: L('Πρότυπα', 'Templates') }], st.tab)}</div>`;
   if (st.tab === 'templates') html += templatesHTML();
   else {
@@ -45,7 +45,7 @@ export function renderOutbox(root, params = {}) {
     html += list.length ? `<div class="list">${list.map((m) => {
       const v = eventView(m.event_id); const t = S.templates.find((x) => x.id === m.template_id);
       return `<button class="row has-icon" data-m="${m.id}"><span class="row-icon" style="background:${m.status === 'pending' ? 'var(--accent)' : m.status === 'sent' ? 'var(--green)' : 'var(--label-3)'}">${icon(m.status === 'sent' ? 'check' : 'message')}</span>
-        <div class="main-col"><div class="t">${esc(t?.name || L('Μήνυμα', 'Message'))} · ${esc(v ? v.title : '—')}</div><div class="s">${esc(m.body.slice(0, 110))}…</div></div>
+        <div class="main-col"><div class="t">${esc(t?.name || m.title || L('Μήνυμα', 'Message'))} · ${esc(v ? v.title : '—')}</div><div class="s">${esc(m.body.slice(0, 110))}…</div></div>
         <div class="v tiny">${esc(timeAgo(m.status === 'pending' ? m.due_at : m.sent_at || m.created_at))}</div>${icon('chevR', 'chev')}</button>`;
     }).join('')}</div>` : emptyState('message', st.tab === 'pending' ? L('Όλα τα μηνύματα έχουν σταλεί 🎉', 'All messages sent 🎉') : L('Κανένα μήνυμα ακόμη', 'No messages yet'), st.tab === 'pending' ? L('Νέα μηνύματα εμφανίζονται αυτόματα με βάση τα πρότυπα.', 'New messages appear automatically from the templates.') : '');
   }
@@ -80,7 +80,7 @@ function openMessage(m) {
   const f = { body: m.body, subject: m.subject || '', to_phone: m.to_phone || v?.c?.phone1 || '', to_email: m.to_email || v?.c?.email1 || '' };
   const ch = t?.channels?.length ? t.channels : ['sms', 'email'];
   const body = `<div class="form">
-    <div class="card" style="background:var(--fill-2);box-shadow:none"><div class="row"><div class="main-col"><div class="t">${esc(v ? v.title : '—')}</div><div class="s">${esc(t?.name || '')} · ${v ? esc(fmtDate(v.e.event_date)) : ''}</div></div>${v ? `<a class="btn small" href="#/event/${v.e.id}" data-close>${esc(L('Εκδήλωση', 'Event'))}</a>` : ''}</div></div>
+    <div class="card" style="background:var(--fill-2);box-shadow:none"><div class="row"><div class="main-col"><div class="t">${esc(v ? v.title : '—')}</div><div class="s">${esc(t?.name || m.title || '')} · ${v ? esc(fmtDate(v.e.event_date)) : ''}</div></div>${v ? `<a class="btn small" href="#/event/${v.e.id}" data-close>${esc(L('Εκδήλωση', 'Event'))}</a>` : ''}</div></div>
     <div class="form-grid"><div class="field"><label>${esc(L('Κινητό', 'Mobile'))}</label><input class="input" name="to_phone" type="tel" value="${esc(f.to_phone)}"></div><div class="field"><label>Email</label><input class="input" name="to_email" type="email" value="${esc(f.to_email)}"></div></div>
     ${ch.includes('email') ? `<div class="field"><label>${esc(L('Θέμα email', 'Email subject'))}</label><input class="input" name="subject" value="${esc(f.subject)}"></div>` : ''}
     <div class="field"><label>${esc(L('Κείμενο (μπορείτε να το αλλάξετε)', 'Text (you can edit it)'))}</label><textarea class="textarea" name="body" style="min-height:170px">${esc(f.body)}</textarea></div>

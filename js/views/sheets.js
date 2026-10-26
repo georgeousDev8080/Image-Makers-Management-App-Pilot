@@ -10,6 +10,7 @@ import { openIncomeForm, openExpenseForm, expenseTitle, paymentActions, expenseA
 import { openCrewSheet } from './events.js';
 import { uploadPdfForEvent } from '../offer.js';
 import { barPairs, hbars, bindTips } from '../charts.js';
+import { apptSummaryHTML } from './appointments.js';
 
 const TABS = () => [
   { v: 'main', t: L('Κεντρικό (όλα)', 'Main (all)') },
@@ -107,8 +108,6 @@ function eventsSheet(body, tab, redraw) {
   const add = (g, c) => { if (visible.has(g)) cols.push({ group: g, ...c }); };
   add('basic', { key: 'month', label: L('Μήνας', 'Month'), w: 104, get: (v) => monthUp(v.e.event_date) });
   add('basic', { key: 'date', label: L('Ημερομηνία', 'Date'), w: 96, type: 'date', editable: true, required: true, get: (v) => v.e.event_date, set: (v, val) => val && patchEvent(v.e.id, { event_date: val }) });
-  add('basic', { key: 'pdf', label: 'PDF', w: 62, align: 'center', get: (v) => (v.e.offer_path ? 'PDF' : ''), display: (v) => v.e.offer_path ? `<button class="pdf-btn" data-pdf="${v.e.id}" title="${esc(L('Άνοιγμα προσφοράς', 'Open offer'))}">${icon('doc')}PDF</button>` : `<button class="pdf-btn" data-upl="${v.e.id}" style="color:var(--label-3)" title="${esc(L('Ανέβασμα PDF', 'Upload PDF'))}">${icon('upload')}</button>` });
-  add('basic', { key: 'time', label: L('Ώρα', 'Time'), w: 64, type: 'time', editable: true, get: (v) => v.e.event_time, set: (v, val) => patchEvent(v.e.id, { event_time: val }) });
   add('basic', { key: 'loc', label: L('Τοποθεσία', 'Location'), w: 210, editable: true, get: (v) => v.e.church_location, set: (v, val) => patchEvent(v.e.id, { church_location: val }) });
   add('couple', { key: 'name1', label: L('Όνομα 1', 'Name 1'), w: 160, editable: (v) => !!v.c, get: (v) => v.c?.name1, set: (v, val) => updCust(v, 'name1', val) });
   add('couple', { key: 'name2', label: L('Όνομα 2', 'Name 2'), w: 160, editable: (v) => !!v.c, get: (v) => v.c?.name2, set: (v, val) => updCust(v, 'name2', val) });
@@ -117,6 +116,7 @@ function eventsSheet(body, tab, redraw) {
   add('couple', { key: 'email1', label: 'Email 1', w: 190, editable: (v) => !!v.c, get: (v) => v.c?.email1, set: (v, val) => updCust(v, 'email1', val) });
   add('couple', { key: 'email2', label: 'Email 2', w: 170, editable: (v) => !!v.c, get: (v) => v.c?.email2, set: (v, val) => updCust(v, 'email2', val) });
   add('cat', { key: 'cat', label: L('Κατηγορία Εκδήλωσης', 'Event category'), w: 130, type: 'select', blank: false, options: CATEGORIES, editable: true, get: (v) => v.e.category, set: (v, val) => patchEvent(v.e.id, { category: val }) });
+  add('cat', { key: 'pdf', label: 'PDF', w: 62, align: 'center', get: (v) => (v.e.offer_path ? 'PDF' : ''), display: (v) => v.e.offer_path ? `<button class="pdf-btn" data-pdf="${v.e.id}" title="${esc(L('Άνοιγμα προσφοράς', 'Open offer'))}">${icon('doc')}PDF</button>` : `<button class="pdf-btn" data-upl="${v.e.id}" style="color:var(--label-3)" title="${esc(L('Ανέβασμα PDF', 'Upload PDF'))}">${icon('upload')}</button>` });
   add('cat', { key: 'second', label: L('Δεύτερο Συνεργείο', 'Second crew'), w: 92, type: 'select', blank: false, options: yesNo, editable: true, get: (v) => (v.f.second_crew ? 'true' : 'false'), set: (v, val) => saveFinance(v.e.id, { second_crew: val === 'true' }) });
   add('cat', { key: 'crew', label: L('Συνεργείο', 'Crew'), w: 170, editable: true, onOpen: (v) => openCrewSheet(v.e.id), get: (v) => v.crew.map((c) => profileName(c.profile)).join(', '), display: (v) => v.crew.length ? esc(v.crew.map((c) => profileName(c.profile).split(' ')[0] + (c.duty === 'video' ? ' 🎥' : ' 📷')).join(', ')) : `<span class="muted">+ ${esc(L('ανάθεση', 'assign'))}</span>` });
   add('cat', { key: 'res', label: L('Ανάλυση', 'Resolution'), w: 92, type: 'select', options: RESOLUTIONS, editable: true, get: (v) => v.e.resolution, set: (v, val) => patchEvent(v.e.id, { resolution: val }) });
@@ -332,6 +332,7 @@ function dashboardSheet(body) {
       <div class="card pad"><b>${esc(L('Εκδηλώσεις ανά κατηγορία', 'Events by category'))}</b><div class="mt-s">${hbars(s.byCat.filter((r) => r.n).map((r) => ({ label: L(r.c.el, r.c.en).replace(' (Promotional)', ''), v: r.n, dot: r.c.v }))) || `<div class="muted small">—</div>`}</div></div>
       <div class="card pad"><b>${esc(L('Έξοδα ανά κατηγορία', 'Expenses by category'))}</b><div class="mt-s">${hbars(s.expKinds.slice(0, 8).map((r) => ({ label: r.label, v: r.v })), { fmt: m0 }) || `<div class="muted small">—</div>`}</div></div>
     </div>
+    ${apptSummaryHTML(st.year)}
     <div class="small muted mt-s">${esc(L('Αναλυτικοί αριθμοί σε πίνακα: καρτέλα «Σύνοψη».', 'Detailed numbers in a table: the “Summary” tab.'))}</div>`;
   bindTips(body.querySelector('#mchart'));
 }
@@ -349,7 +350,6 @@ function checksSheet(body) {
   push('red', L('Χωρίς PDF προσφοράς', 'No offer PDF'), views.filter((v) => !v.e.offer_path), ev);
   push('orange', L('Περασμένες εκδηλώσεις με υπόλοιπο', 'Past events with a balance'), views.filter((v) => v.e.event_date < today && v.balance > 0.009), (v) => ev(v).replace('</div></div>', `</div></div><div class="v money neg">${esc(money(v.balance))}</div>`));
   push('orange', L('Πληρωμές μεγαλύτερες από την αξία πακέτου', 'Payments larger than package value'), views.filter((v) => v.price != null && v.paid > v.price + 0.009), ev);
-  push('orange', L('Χωρίς ώρα', 'No time'), views.filter((v) => !v.e.event_time), ev);
   push('orange', L('Χωρίς εκκλησία / τοποθεσία', 'No church / location'), views.filter((v) => !v.e.church_location), ev);
   push('orange', L('Χωρίς ανάλυση video', 'No video resolution'), views.filter((v) => !v.e.resolution), ev);
   push('orange', L('Επόμενες 30 ημέρες χωρίς συνεργείο', 'Next 30 days without crew'), views.filter((v) => v.e.event_date >= today && daysBetween(today, v.e.event_date) <= 30 && !v.crew.length), ev);

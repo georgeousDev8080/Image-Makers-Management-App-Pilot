@@ -51,15 +51,41 @@ export function pickPdfFile() {
   });
 }
 
+/** Δημιουργία PDF χωρίς να φανεί ο Οδηγός (π.χ. για ηλεκτρονικές προσφορές πελατών) */
+export function generateOfferPdf(prefill) {
+  return new Promise((resolve, reject) => {
+    const frame = document.createElement('iframe');
+    frame.src = 'offer/builder.html?embed=1';
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;left:-12000px;top:0;width:1200px;height:900px;border:0;opacity:0;pointer-events:none';
+    document.body.appendChild(frame);
+    const fail = (e) => { frame.remove(); reject(e); };
+    const timer = setTimeout(() => fail(new Error('timeout')), 60000);
+    frame.addEventListener('load', async () => {
+      try {
+        let api = null;
+        for (let i = 0; i < 80 && !(api = frame.contentWindow?.IMOffer); i++) await new Promise((r) => setTimeout(r, 100));
+        if (!api) throw new Error('builder');
+        api.setState(prefill);
+        await new Promise((r) => setTimeout(r, 400));
+        const state = api.getState();
+        const blob = await api.exportPdf();
+        clearTimeout(timer); frame.remove();
+        resolve({ pdf: blob, state, total: state.total });
+      } catch (e) { clearTimeout(timer); fail(e); }
+    });
+  });
+}
+
 /** Ανοίγει τον Οδηγό προσφοράς πάνω από την εφαρμογή. Επιστρέφει {pdf, fileName, state, total} ή null */
-export function openOfferBuilder({ prefill = {} } = {}) {
+export function openOfferBuilder({ prefill = {}, saveLabel = null } = {}) {
   return new Promise((resolve) => {
     const layer = document.createElement('div');
     layer.className = 'offer-layer';
     layer.innerHTML = `<div class="offer-bar">
         <button class="btn" data-x>${icon('x')} <span class="hide-mobile">${esc(L('Ακύρωση', 'Cancel'))}</span></button>
         <b>${esc(L('Οδηγός προσφοράς', 'Offer builder'))}</b>
-        <button class="btn primary" data-save>${icon('check')} ${esc(L('Αποθήκευση στην εκδήλωση', 'Save to event'))}</button>
+        <button class="btn primary" data-save>${icon('check')} ${esc(saveLabel || L('Αποθήκευση στην εκδήλωση', 'Save to event'))}</button>
       </div>
       <iframe title="${esc(L('Οδηγός προσφοράς', 'Offer builder'))}" src="offer/builder.html?embed=1"></iframe>
       <div class="offer-busy"><div class="center"><div class="spinner"></div>${esc(L('Φόρτωση…', 'Loading…'))}</div></div>`;
