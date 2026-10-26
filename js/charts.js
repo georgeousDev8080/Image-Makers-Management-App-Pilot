@@ -2,7 +2,9 @@
 import { esc, money, L } from './core.js';
 
 /** Ομαδοποιημένες μπάρες: έσοδα vs έξοδα ανά μήνα */
-export function barPairs(data, { h = 220 } = {}) {
+export function barPairs(data, { h = 220, labels = null, fmt = null } = {}) {
+  const [la, lb] = labels || [L('Έσοδα', 'Income'), L('Έξοδα', 'Expenses')];
+  const f = fmt || ((v) => money(v, { dec: 0 }));
   // data: [{label, a (έσοδα), b (έξοδα)}]
   const raw = Math.max(0, ...data.flatMap((d) => [d.a, d.b]));
   const stepRaw = Math.max(raw / 4, 1);
@@ -27,12 +29,12 @@ export function barPairs(data, { h = 220 } = {}) {
   };
   data.forEach((d, i) => {
     const cx = pl + cw * i + cw / 2;
-    g += bar(cx - bw - 1, d.a, 'bar-in', `${d.label} · ${L('Έσοδα', 'Income')}: ${money(d.a, { dec: 0 })}`);
-    g += bar(cx + 1, d.b, 'bar-out', `${d.label} · ${L('Έξοδα', 'Expenses')}: ${money(d.b, { dec: 0 })}`);
+    g += bar(cx - bw - 1, d.a, 'bar-in', `${d.label} · ${la}: ${f(d.a)}`);
+    g += bar(cx + 1, d.b, 'bar-out', `${d.label} · ${lb}: ${f(d.b)}`);
     g += `<text x="${cx}" y="${H - 8}" text-anchor="middle">${esc(d.label)}</text>`;
   });
-  return `<div class="chart-legend"><span><i class="in"></i>${esc(L('Έσοδα', 'Income'))}</span><span><i class="out"></i>${esc(L('Έξοδα', 'Expenses'))}</span></div>
-    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(L('Μηνιαία έσοδα και έξοδα', 'Monthly income and expenses'))}">${g}</svg>`;
+  return `<div class="chart-legend"><span><i class="in"></i>${esc(la)}</span><span><i class="out"></i>${esc(lb)}</span></div>
+    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(la + ' / ' + lb)}">${g}</svg>`;
 }
 
 /** Οριζόντιες μπάρες μίας σειράς */

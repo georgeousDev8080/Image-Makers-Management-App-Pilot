@@ -5,7 +5,7 @@ import { L, esc, icon, timeAgo, actionSheet } from '../core.js';
 import { S, markRead, markAllRead, deleteNotification } from '../data.js';
 import { pageHead, emptyState, setTopActions, go } from '../layout.js';
 
-const KIND = { assignment: ['users', 'var(--accent)'], event: ['events', 'var(--blue)'], reminder: ['clock', 'var(--orange)'], message: ['message', 'var(--accent)'], request: ['inbox', 'var(--blue)'], team: ['shield', 'var(--purple)'], sos: ['warning', 'var(--red)'], editing: ['film', 'var(--purple)'], test: ['checkCircle', 'var(--green)'] };
+const KIND = { assignment: ['users', 'var(--accent)'], event: ['events', 'var(--blue)'], reminder: ['clock', 'var(--orange)'], message: ['message', 'var(--accent)'], request: ['inbox', 'var(--blue)'], appointment: ['handshake', 'var(--orange)'], team: ['shield', 'var(--purple)'], sos: ['warning', 'var(--red)'], editing: ['film', 'var(--purple)'], test: ['checkCircle', 'var(--green)'] };
 
 export function renderNotifications(root) {
   const list = S.notifications;

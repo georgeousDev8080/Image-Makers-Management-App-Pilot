@@ -225,6 +225,8 @@ const P = {
   sms: '<path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 20.5l1.5-5A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 11.5h.1M12 11.5h.1M16 11.5h.1"/>',
   heart: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20Z"/>',
   receipt: '<path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21Z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+  handshake: '<path d="m11 17 2 2a1.4 1.4 0 0 0 2-2"/><path d="m14 14 2.5 2.5a1.4 1.4 0 0 0 2-2l-3.9-3.9a2 2 0 0 0-2.8 0l-.9.9a1.4 1.4 0 0 1-2-2l2.8-2.8a4 4 0 0 1 4.6-.7l.4.2a2 2 0 0 0 1.3.2L21 6"/><path d="m21 5 1 9-2 2"/><path d="M2 5l-1 9 6.5 6.5a1.4 1.4 0 0 0 2-2"/><path d="M2 5h7"/>',
+  flow: '<rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/>',
   store: '<path d="M4 9.5V20h16V9.5M3 9.5 5 4h14l2 5.5a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0Z"/><path d="M10 20v-5h4v5"/>',
   trending: '<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
   briefcase: '<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v2M3 12.5h18"/>',
@@ -242,12 +244,35 @@ export const CATEGORIES = [
 ];
 export const PHOTO_STATUS = [
   { v: 'samples_todo', el: 'Να γίνουν δείγματα', en: 'Samples to be made' },
-  { v: 'samples_pickup', el: 'Να πάρουν δείγματα', en: 'Samples ready for client' },
   { v: 'samples_waiting', el: 'Έλαβαν δείγματα και περιμένουμε', en: 'Client has samples – waiting' },
   { v: 'changes', el: 'Αλλαγές', en: 'Changes' },
   { v: 'lab', el: 'Εκτύπωση στο εργαστήριο', en: 'Printing at the lab' },
   { v: 'ready', el: 'Έτοιμα προς παραλαβή', en: 'Ready for pickup' },
   { v: 'delivered', el: 'Παραδόθηκαν στον πελάτη', en: 'Delivered to client' },
+];
+/** Προειδοποιητικά χρώματα workflow: ημέρες στο ίδιο στάδιο → πορτοκαλί / κόκκινο */
+export const WF_RULES = {
+  samples_todo: { warn: 25, late: 35, next: 'samples_waiting' },
+  samples_waiting: { warn: 20, late: 35, next: 'changes' },
+  changes: { warn: 20, late: 30, next: 'lab' },
+  ready: { warn: 7, late: 14, next: 'delivered' },
+};
+export const APPT_MODES = [
+  { v: 'store', el: 'Παρουσίαση στο μαγαζί', en: 'In-store presentation', icon: 'store' },
+  { v: 'online', el: 'Ηλεκτρονική παρουσίαση', en: 'Online presentation', icon: 'link' },
+];
+export const APPT_STATUS = [
+  { v: 'pending', el: 'Σε αναμονή', en: 'Pending' },
+  { v: 'confirmed', el: 'Confirmed', en: 'Confirmed' },
+  { v: 'rejected', el: 'Rejected', en: 'Rejected' },
+];
+export const REJECT_REASONS = [
+  { v: 'price', el: 'Τιμή / budget', en: 'Price / budget' },
+  { v: 'date', el: 'Ημερομηνία μη διαθέσιμη', en: 'Date not available' },
+  { v: 'competitor', el: 'Επέλεξαν άλλον', en: 'Chose someone else' },
+  { v: 'no_answer', el: 'Δεν απάντησαν', en: 'No answer' },
+  { v: 'cancelled', el: 'Ακύρωσαν την εκδήλωση', en: 'Event cancelled' },
+  { v: 'other', el: 'Άλλο', en: 'Other' },
 ];
 export const EDIT_STATUS = [
   { v: 'none', el: '—', en: '—' },

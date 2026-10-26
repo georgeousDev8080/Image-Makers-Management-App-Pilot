@@ -3,7 +3,7 @@
 //  made by georgeousDev software solutions · gkararizosg@gmail.com
 // =====================================================================
 import { L, esc, icon, $, $$, on, applyTheme, toast, hasLayer, closeAllLayers, debounce, initials, colorFor, lbl, ROLES, setLang, LANG } from './core.js';
-import { sb, S, configured, loadProfile, loadAll, startRealtime, stopRealtime, subscribe, isAdmin, isVideoAdmin, hasRole, setNotificationHandler, unreadCount, pendingMessages, newRequests, pendingUsers, markRead, updateBadge, profileName, emit } from './data.js';
+import { sb, S, configured, loadProfile, loadAll, startRealtime, stopRealtime, subscribe, isAdmin, isVideoAdmin, hasRole, setNotificationHandler, unreadCount, pendingMessages, newRequests, pendingUsers, pendingAppointments, staleAppointments, markRead, updateBadge, profileName, emit } from './data.js';
 import { UI, go } from './layout.js';
 import { registerSW, onSWMessage, ensureSubscription } from './push.js';
 import { renderAuth, renderWelcome, showLock, needsLock, showNewPin, renderNotConfigured } from './views/auth.js';
@@ -14,7 +14,8 @@ import { renderEventForm } from './views/event-form.js';
 import { renderCustomers, renderCustomer } from './views/customers.js';
 import { renderMoney } from './views/money.js';
 import { renderSheets } from './views/sheets.js';
-import { renderRequests } from './views/requests.js';
+import { renderAppointments, renderAppointmentForm } from './views/appointments.js';
+import { renderWorkflow, wfLateCount } from './views/workflow.js';
 import { renderOutbox } from './views/outbox.js';
 import { renderTeam } from './views/team.js';
 import { renderSettings } from './views/settings.js';
@@ -36,7 +37,11 @@ const ROUTES = [
   { p: 'money', v: renderMoney, admin: true },
   { p: 'sheets', v: renderSheets, admin: true, wide: true },
   { p: 'sheets/:tab', v: renderSheets, admin: true, wide: true },
-  { p: 'requests', v: renderRequests, admin: true },
+  { p: 'requests', v: () => go('#/appointments'), admin: true },
+  { p: 'appointments', v: renderAppointments, admin: true },
+  { p: 'appointment-new', v: renderAppointmentForm, admin: true },
+  { p: 'appointment/:id/edit', v: renderAppointmentForm, admin: true },
+  { p: 'workflow', v: renderWorkflow, admin: true },
   { p: 'outbox', v: renderOutbox, admin: true },
   { p: 'outbox/:id', v: renderOutbox, admin: true },
   { p: 'team', v: renderTeam, admin: true },
@@ -69,17 +74,17 @@ function navItems() {
     { sec: L('Γενικά', 'General') },
     { h: '#/home', i: 'home', t: L('Αρχική', 'Home') },
     { h: '#/calendar', i: 'calendar', t: L('Ημερολόγιο', 'Calendar') },
-    { h: '#/events', i: 'events', t: admin ? L('Εκδηλώσεις', 'Events') : L('Οι εκδηλώσεις μου', 'My events') },
+    admin ? { h: '#/appointments', i: 'handshake', t: L('Προσφορές / Ραντεβού', 'Offers / Appointments'), count: () => pendingAppointments().length, warn: () => staleAppointments().length }
+      : { h: '#/events', i: 'events', t: L('Οι εκδηλώσεις μου', 'My events') },
   ];
   if (admin) {
-    items.push({ h: '#/customers', i: 'users', t: L('Πελάτες', 'Customers') });
+    items.push({ h: '#/workflow', i: 'flow', t: L('Κατάσταση Εργασιών', 'Work status'), count: () => wfLateCount() });
     items.push({ sec: L('Οικονομικά', 'Finance') });
     items.push({ h: '#/money', i: 'wallet', t: L('Έσοδα & Έξοδα', 'Income & Expenses') });
     items.push({ h: '#/sheets', i: 'table', t: L('Φύλλα (Excel)', 'Sheets (Excel)') });
     if (isVideoAdmin()) items.push({ h: '#/sheets/mitsos', i: 'film', t: 'Mitsos', count: () => sosCount() });
     items.push({ sec: L('Επικοινωνία', 'Communication') });
-    items.push({ h: '#/requests', i: 'inbox', t: L('Αιτήματα προσφορών', 'Offer requests'), count: () => newRequests().length });
-    items.push({ h: '#/outbox', i: 'message', t: L('Μηνύματα πελατών', 'Client messages'), count: () => pendingMessages().length });
+    items.push({ h: '#/outbox', i: 'message', t: L('Μηνύματα προς πελάτες', 'Messages to clients'), count: () => pendingMessages().length });
   }
   items.push({ h: '#/notifications', i: 'bell', t: L('Ειδοποιήσεις', 'Notifications'), count: () => unreadCount() });
   items.push({ sec: L('Ομάδα & ρυθμίσεις', 'Team & settings') });
@@ -98,9 +103,9 @@ function tabItems() {
   return [
     { h: '#/home', i: 'home', t: L('Αρχική', 'Home') },
     { h: '#/calendar', i: 'calendar', t: L('Ημερολόγιο', 'Calendar') },
-    { h: '#/events', i: 'events', t: L('Εκδηλώσεις', 'Events') },
+    admin ? { h: '#/appointments', i: 'handshake', t: L('Ραντεβού', 'Offers'), count: () => staleAppointments().length } : { h: '#/events', i: 'events', t: L('Εκδηλώσεις', 'Events') },
     admin ? { h: '#/money', i: 'wallet', t: L('Έσοδα/Έξοδα', 'Money') } : { h: '#/notifications', i: 'bell', t: L('Ειδοποιήσεις', 'Alerts'), count: () => unreadCount() },
-    { h: '#more', i: 'grid', t: L('Περισσότερα', 'More'), count: () => (admin ? newRequests().length + pendingMessages().length + pendingUsers().length + unreadCount() : 0) },
+    { h: '#more', i: 'grid', t: L('Περισσότερα', 'More'), count: () => (admin ? pendingMessages().length + pendingUsers().length + unreadCount() + wfLateCount() : 0) },
   ];
 }
 
@@ -143,7 +148,7 @@ function renderNav() {
   const isActive = (h) => {
     if (h === '#/sheets') return cur.startsWith('#/sheets') && cur !== '#/sheets/mitsos';
     if (h === '#/events') return cur === '#/events' || cur.startsWith('#/event/') || cur === '#/new-event';
-    if (h === '#/customers') return cur.startsWith('#/customer');
+    if (h === '#/appointments') return cur.startsWith('#/appointment');
     if (h === '#/outbox') return cur.startsWith('#/outbox');
     if (h === '#/help') return cur.startsWith('#/help');
     return cur === h;
