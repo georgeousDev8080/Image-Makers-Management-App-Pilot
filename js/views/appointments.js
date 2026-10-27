@@ -8,7 +8,7 @@ import { L, esc, icon, money, fmtDate, todayISO, daysBetween, matches, lbl, sum,
 import { S, isStaleAppt, STALE_DAYS, saveAppointment, deleteAppointment, uploadAppointmentOffer, openOffer, offerUrl, business, eventView } from '../data.js';
 import { pageHead, emptyState, setTopActions, go, backBtn } from '../layout.js';
 import { catPill, catShort, packageNameFrom, offerSummaryHTML } from '../components.js';
-import { openOfferBuilder, generateOfferPdf, requestToOfferState, pickPdfFile } from '../offer.js';
+import { openOfferBuilder, generateOfferPdf, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf } from '../offer.js';
 import { clientPageUrl, downloadClientFile } from './requests.js';
 import { barPairs, hbars, bindTips } from '../charts.js';
 
@@ -336,10 +336,9 @@ export function renderAppointmentForm(root, params = {}) {
     const res = await openOfferBuilder({ prefill: { ...(F.offer_data || {}), partner1: F.name1, partner2: F.name2, phone1: F.phone, eventDate: F.event_date, church: F.church, reception: F.reception, city: (F.church || '').split(',').slice(1).join(',').trim(), finalPrice: F.offer_data?.finalPrice ?? undefined }, saveLabel: L('Αποθήκευση στο ραντεβού', 'Save to appointment') });
     if (!res) return;
     F.pdf = res.pdf; F.pdfName = res.fileName; F.offer_data = res.state; F.total = res.total;
-    if (!F.name1 && res.state.partner1) F.name1 = res.state.partner1;
-    if (!F.name2 && res.state.partner2) F.name2 = res.state.partner2;
-    if (!F.phone && res.state.phone1) F.phone = res.state.phone1;
-    if (!F.event_date && res.state.eventDate) F.event_date = res.state.eventDate;
+    // ό,τι γράφτηκε στον Οδηγό περνά και στη φόρμα, ώστε φόρμα και PDF να συμφωνούν
+    F.name1 = res.state.partner1 || F.name1; F.name2 = res.state.partner2 || ''; F.phone = res.state.phone1 || F.phone;
+    F.event_date = res.state.eventDate || F.event_date; F.church = res.state.church || F.church; F.reception = res.state.reception || F.reception;
     toast(L('Η προσφορά επισυνάφθηκε', 'Offer attached'), { body: `${money(res.total, { dec: 0 })} · ${packageNameFrom(res.state)}` });
     renderAppointmentForm(root, params);
   });
@@ -356,6 +355,14 @@ export function renderAppointmentForm(root, params = {}) {
     if (!F.pdf && !F.offer_path && !await confirmBox(L('Αποθήκευση χωρίς προσφορά;', 'Save without an offer?'), L('Μπορείτε να τη φτιάξετε και αργότερα από τη λίστα.', 'You can make it later from the list.'), { ok: L('Αποθήκευση', 'Save') })) return;
     busy(_btn, true, L('Αποθήκευση…', 'Saving…'));
     try {
+      // Διορθώθηκαν στοιχεία μετά τη δημιουργία της προσφοράς; Το PDF ξαναφτιάχνεται με τα σωστά.
+      const cur = { partner1: F.name1.trim(), partner2: (F.name2 || '').trim(), phone1: F.phone.trim(), eventDate: F.event_date || '', church: F.church || '', reception: F.reception || '' };
+      if (F.offer_data && offerIsStale(F.offer_data, cur)) {
+        busy(_btn, true, L('Ενημέρωση PDF με τα σωστά στοιχεία…', 'Updating the PDF with the correct details…'));
+        try { const r = await refreshOfferPdf(F.offer_data, cur); F.pdf = r.pdf; F.pdfName = r.fileName; F.offer_data = r.state; }
+        catch (err) { console.warn(err); toastErr(L('Το PDF δεν ενημερώθηκε', 'PDF not updated'), L('Ανοίξτε τον Οδηγό προσφοράς και αποθηκεύστε ξανά.', 'Open the offer builder and save again.')); }
+        busy(_btn, true, L('Αποθήκευση…', 'Saving…'));
+      }
       const total = parseMoney(F.total);
       let a = await saveAppointment({ id: F.id, mode: 'store', appt_date: F.appt_date, category: F.category, name1: F.name1.trim(), name2: (F.name2 || '').trim() || null, phone: F.phone.trim(), email: (F.email || '').trim() || null, event_date: F.event_date || null, church: F.church || null, reception: F.reception || null, notes: F.notes || null, offer_data: F.offer_data || null, total });
       if (F.pdf) { const path = await uploadAppointmentOffer(a.id, F.pdf); a = await saveAppointment({ id: a.id, offer_path: path }); }

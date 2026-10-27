@@ -51,6 +51,21 @@ export function pickPdfFile() {
   });
 }
 
+const SYNC_KEYS = ['partner1', 'partner2', 'phone1', 'eventDate', 'church', 'reception'];
+const norm = (v) => String(v ?? '').trim().replace(/\s+/g, ' ');
+/** Τα στοιχεία της φόρμας διαφέρουν από αυτά που τυπώθηκαν στο PDF; */
+export function offerIsStale(state, fields) {
+  if (!state) return false;
+  return SYNC_KEYS.some((k) => k in fields && norm(state[k]) !== norm(fields[k]));
+}
+/** Ξαναφτιάχνει το PDF με τα διορθωμένα στοιχεία, κρατώντας πακέτο και τιμή */
+export async function refreshOfferPdf(state, fields) {
+  const res = await generateOfferPdf({ ...state, ...fields, finalPrice: state.finalPrice ?? undefined });
+  const safe = [fields.partner1, fields.partner2].filter(Boolean).join('_').replace(/[^\p{L}\p{N}_-]+/gu, '_').slice(0, 60) || 'offer';
+  const fileName = `Image_Makers_Prosfora_${safe}_${fields.eventDate || ''}.pdf`;
+  return { pdf: new File([res.pdf], fileName, { type: 'application/pdf' }), fileName, state: res.state, total: res.total };
+}
+
 /** Δημιουργία PDF χωρίς να φανεί ο Οδηγός (π.χ. για ηλεκτρονικές προσφορές πελατών) */
 export function generateOfferPdf(prefill) {
   return new Promise((resolve, reject) => {

@@ -4,7 +4,7 @@
 import { L, esc, icon, money, fmtDate, fmtDateLong, fmtTime, todayISO, daysBetween, matches, mapsUrl, telUrl, smsUrl, mailUrl, lbl, CATEGORIES, RESOLUTIONS, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, options, segmented, initSegmented, segValue, sheet, confirmBox, actionSheet, toast, download, icsFor, busy, monthName } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, coupleName, profileName, patchEvent, deleteEvent, setCrew, openOffer, deletePayment, myEventIds } from '../data.js';
 import { pageHead, setTopActions, emptyState, go, backBtn, UI } from '../layout.js';
-import { eventRow, catPill, offerSummaryHTML, crewChips, avatar, photoStatusPill, editStatusPill } from '../components.js';
+import { eventRow, catPill, offerSummaryHTML, crewBriefHTML, crewChips, avatar, photoStatusPill, editStatusPill } from '../components.js';
 import { openIncomeForm } from './money.js';
 import { editOfferForEvent, uploadPdfForEvent } from '../offer.js';
 
@@ -86,8 +86,8 @@ export function renderEventDetail(root, { id }) {
     <h1 style="margin-top:10px">${esc(v.title)}</h1>
     <div class="when"><span>${icon('calendar')} ${esc(fmtDateLong(e.event_date))}</span>${e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(e.event_time))}</span>` : ''}</div>
     <div class="quick-actions">
-      ${phone ? `<a class="qa" href="${telUrl(phone)}">${icon('phone')}${esc(L('Κλήση', 'Call'))}</a><a class="qa" href="${smsUrl(phone)}">${icon('sms')}SMS</a>` : ''}
-      ${email ? `<a class="qa" href="${mailUrl(email)}">${icon('mail')}Email</a>` : ''}
+      ${phone ? `<a class="qa" href="${telUrl(phone)}">${icon('phone')}${esc(L('Κλήση', 'Call'))}</a>${admin ? `<a class="qa" href="${smsUrl(phone)}">${icon('sms')}SMS</a>` : ''}` : ''}
+      ${email && admin ? `<a class="qa" href="${mailUrl(email)}">${icon('mail')}Email</a>` : ''}
       ${e.church_location ? `<a class="qa" href="${mapsUrl(e.church_location)}" target="_blank" rel="noopener">${icon('map')}${esc(L('Χάρτης', 'Map'))}</a>` : ''}
       <button class="qa" data-act="ics">${icon('calendar')}${esc(L('Στο κινητό', 'To phone'))}</button>
     </div>
@@ -117,7 +117,7 @@ export function renderEventDetail(root, { id }) {
     <div class="card pad"><div class="chips">${crewChips(v)}</div>${e.extra_crew ? `<div class="small muted mt-s">${esc(L('Εξωτερικοί συνεργάτες', 'External crew'))}: ${esc(e.extra_crew)}</div>` : ''}</div>`;
 
   // Πακέτο / Προσφορά
-  html += `<div class="group-label">${esc(L('Πακέτο & προσφορά', 'Package & offer'))}</div>`;
+  html += `<div class="group-label">${esc(admin ? L('Πακέτο & προσφορά', 'Package & offer') : L('Τι περιλαμβάνει η κάλυψη', 'What the coverage includes'))}</div>`;
   if (admin) {
     html += `<div class="list">
       <div class="offer-box">
@@ -133,20 +133,19 @@ export function renderEventDetail(root, { id }) {
     </div>`;
     if (e.offer_data) html += `<div class="card pad mt-s">${offerSummaryHTML(e.offer_data)}</div>`;
   } else {
-    html += `<div class="card pad">${e.offer_data ? offerSummaryHTML(e.offer_data) : `<span class="muted small">${esc(L('Δεν υπάρχουν λεπτομέρειες πακέτου.', 'No package details.'))}</span>`}</div>`;
+    const myDuty = v.crew.find((x) => x.user_id === S.profile?.id)?.duty || null;
+    html += `<div class="card pad">${crewBriefHTML(e, myDuty)}</div>`;
   }
 
-  // Κατάσταση παραγωγής
-  html += `<div class="group-label">${esc(L('Παραγωγή', 'Production'))}</div>`;
+  // Κατάσταση παραγωγής (μόνο διαχειριστές)
   if (admin) {
+    html += `<div class="group-label">${esc(L('Παραγωγή', 'Production'))}</div>`;
     html += `<div class="card pad"><div class="form-grid">
       <div class="field"><label>${esc(L('Κατάσταση φωτογραφιών', 'Photos status'))}</label><select class="select" data-patch="photo_status">${options(PHOTO_STATUS, e.photo_status)}</select></div>
       <div class="field"><label>${esc(L('Κατάσταση editing', 'Editing status'))}</label><select class="select" data-patch="editing_status">${options(EDIT_STATUS, e.editing_status)}</select></div>
       ${isVideoAdmin() ? `<div class="field"><label>${esc(L('Υπολογιστής μοντάζ', 'Editing computer'))}</label><select class="select" data-patch="editing_pc">${options(PCS, e.editing_pc, { blank: '—' })}</select></div>
       <div class="field"><label>${esc(L('Σχόλια βίντεο', 'Video notes'))}</label><input class="input" data-patch="video_notes" value="${esc(e.video_notes || '')}"></div>` : ''}
     </div><div class="help mt-s">${esc(L('Όταν οι φωτογραφίες γίνουν «Αλλαγές», το editing γίνεται αυτόματα «Να γίνει».', 'When photos become “Changes”, editing automatically becomes “To do”.'))}</div></div>`;
-  } else {
-    html += `<div class="card pad hstack">${photoStatusPill(e.photo_status)}${editStatusPill(e.editing_status)}</div>`;
   }
 
   if (e.notes) html += `<div class="group-label">${esc(L('Σημειώσεις', 'Notes'))}</div><div class="card pad" style="white-space:pre-wrap">${esc(e.notes)}</div>`;

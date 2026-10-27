@@ -90,6 +90,35 @@ export function offerSummaryHTML(od) {
       ${s.notes ? `<b class="small muted" style="display:block;margin-top:10px">${esc(L('ΣΗΜΕΙΩΣΕΙΣ', 'NOTES'))}</b><p class="small">${esc(s.notes)}</p>` : ''}
     </div></div>`;
 }
+/** Τι χρειάζεται να ξέρει το συνεργείο για την κάλυψη (χωρίς album, εκτυπώσεις, τιμές) */
+export function crewBriefHTML(e, myDuty) {
+  const od = e.offer_data || null;
+  const removes = od?.removes || [], adds = od?.adds || [];
+  const hours = 3 + (Number(od?.extraHours) || 0);
+  const P = 'photo', V = 'video', B = 'both';
+  const items = [];
+  const add = (who, text) => items.push({ who, text });
+  add(B, L('Σπίτι γαμπρού και νύφης', 'Groom and bride homes'));
+  add(B, L('Μυστήριο', 'Ceremony'));
+  add(B, L(`Δεξίωση: έως ${hours} ώρες μετά την είσοδο`, `Reception: up to ${hours} hours after the entrance`));
+  add(V, e.resolution === '4k' || adds.includes('Παράδοση video σε 4K') ? L('Λήψη video σε 4K', 'Video in 4K') : L('Λήψη video σε Full HD (1080p)', 'Video in Full HD (1080p)'));
+  if (od) {
+    if (!removes.includes('Drone εκκλησίας')) add(V, L('Drone στην εκκλησία', 'Drone at the church'));
+    if (adds.includes('2ο συνεργείο')) add(B, L('Δεύτερο συνεργείο', 'Second crew'));
+    if (adds.includes('Pre-wedding photo & video')) add(B, L('Pre-wedding φωτογράφηση & video', 'Pre-wedding photo & video'));
+    if (adds.includes('Slide show για τη δεξίωση')) add(B, L('Slide show στη δεξίωση', 'Slide show at the reception'));
+    if (!removes.includes('Φωτογράφηση next day')) add(P, L('Φωτογράφηση next day', 'Next-day photo shoot'));
+    if (!removes.includes('Video next day')) add(V, L('Video next day', 'Next-day video'));
+    if (!removes.includes('Drone next day')) add(V, L('Drone next day', 'Next-day drone'));
+  }
+  const tag = (w) => (w === P ? '📷' : w === V ? '🎥' : '📷🎥');
+  const mine = (w) => !myDuty || w === B || w === myDuty;
+  const list = [...items.filter((i) => mine(i.who)), ...items.filter((i) => !mine(i.who))];
+  return `${myDuty ? `<div class="small muted" style="margin-bottom:8px">${esc(L('Η ανάθεσή σου', 'Your assignment'))}: <b style="color:var(--label)">${esc(myDuty === V ? L('Βίντεο', 'Video') : L('Φωτογραφία', 'Photo'))}</b></div>` : ''}
+    <ul class="pkg-list">${list.map((i) => `<li style="${mine(i.who) ? '' : 'opacity:.55'}">${esc(i.text)} <span class="tiny">${tag(i.who)}</span></li>`).join('')}</ul>
+    ${od ? '' : `<div class="small muted mt-s">${esc(L('Δεν υπάρχουν ακόμη λεπτομέρειες πακέτου· ρωτήστε τον διαχειριστή.', 'No package details yet; ask an admin.'))}</div>`}`;
+}
+
 /** Σύντομο όνομα πακέτου για το φύλλο (π.χ. BASIC PAC + 2ο συνεργείο) */
 export function packageNameFrom(od) {
   if (!od) return '';
