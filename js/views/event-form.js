@@ -5,7 +5,7 @@ import { L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, ini
 import { S, coupleName, profileName, saveCustomer, saveEvent, saveFinance, setCrew, uploadOffer, eventView, updateRequest, saveAppointment, copyOfferToEvent } from '../data.js';
 import { pageHead, go, backBtn } from '../layout.js';
 import { avatar, packageNameFrom, offerSummaryHTML } from '../components.js';
-import { openOfferBuilder, requestToOfferState, pickPdfFile } from '../offer.js';
+import { openOfferBuilder, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf } from '../offer.js';
 
 let W = null;
 let key = '';
@@ -317,6 +317,8 @@ function stepOffer(body, root, params) {
     const res = await openOfferBuilder({ prefill: { ...(W.offer.data || {}), partner1: c?.name1 || '', partner2: c?.name2 || '', phone1: c?.phone1 || '', phone2: c?.phone2 || '', eventDate: W.ev.event_date, church: [W.ev.church_location, W.ev.event_time].filter(Boolean).join(' · '), reception: W.ev.reception_location, city: (W.ev.church_location || '').split(',').pop().trim(), finalPrice: W.fin.package_price || undefined } });
     if (!res) return;
     W.offer.pdf = res.pdf; W.offer.pdfName = res.fileName; W.offer.data = res.state;
+    if (W.custMode === 'new') { W.cust.name1 = res.state.partner1 || W.cust.name1; W.cust.name2 = res.state.partner2 || ''; W.cust.phone1 = res.state.phone1 || W.cust.phone1; }
+    if (res.state.eventDate) W.ev.event_date = res.state.eventDate;
     W.fin.package_price = res.total; W.fin.package_name = packageNameFrom(res.state); W.fin.second_crew = (res.state.adds || []).includes('2ο συνεργείο');
     if ((res.state.adds || []).includes('Παράδοση video σε 4K')) W.ev.resolution = '4k';
     toast(L('Η προσφορά επισυνάφθηκε', 'Offer attached'), { body: `${money(res.total, { dec: 0 })} · ${W.fin.package_name}` });
@@ -342,6 +344,18 @@ async function save(root, params, btn) {
     if (W.custMode === 'new') {
       const c = await saveCustomer({ ...W.cust });
       customerId = c.id; W.customerId = c.id; W.custMode = 'existing';
+    }
+    // Διορθώθηκαν στοιχεία μετά τη δημιουργία της προσφοράς; Το PDF ξαναφτιάχνεται με τα σωστά.
+    const hasPdf = W.offer.pdf || W.offer.existingPath || W.offer.fromAppointment;
+    if (W.offer.data && hasPdf) {
+      const cc = S.customers.get(customerId) || W.cust;
+      const cur = { partner1: cc.name1 || '', partner2: cc.name2 || '', phone1: cc.phone1 || '', eventDate: W.ev.event_date || '', church: [W.ev.church_location, (W.ev.event_time || '').slice(0, 5)].filter(Boolean).join(' · '), reception: W.ev.reception_location || '' };
+      if (offerIsStale(W.offer.data, cur)) {
+        busy(btn, true, L('Ενημέρωση PDF με τα σωστά στοιχεία…', 'Updating the PDF with the correct details…'));
+        try { const r = await refreshOfferPdf(W.offer.data, cur); W.offer.pdf = r.pdf; W.offer.pdfName = r.fileName; W.offer.data = r.state; }
+        catch (err) { console.warn(err); toastErr(L('Το PDF δεν ενημερώθηκε', 'PDF not updated'), L('Ανοίξτε τον Οδηγό προσφοράς από την εκδήλωση και αποθηκεύστε ξανά.', 'Open the offer builder from the event and save again.')); }
+        busy(btn, true, L('Αποθήκευση…', 'Saving…'));
+      }
     }
     const evRow = { ...W.ev, customer_id: customerId, event_time: W.ev.event_time || null };
     if (W.mode === 'edit') evRow.id = params.id;
