@@ -310,18 +310,20 @@ async function boot() {
   registerSW();
   const root = $('#root');
   if (!configured) { hideBoot(); renderNotConfigured(root); return; }
-  const { data } = await sb.auth.getSession();
-  S.session = data.session;
-  let recovering = /type=recovery/.test(location.hash);
+  const urlInfo = window.__IM_URL || {};
+  let recovering = !!urlInfo.recovery || /type=recovery/.test(location.hash);
+  let recoveryShown = false;
+  const doRecovery = async () => {
+    if (recoveryShown) return;
+    recoveryShown = true;
+    hideBoot();
+    history.replaceState(null, '', location.pathname + '#/home');
+    await showNewPin({ recovery: true });
+    enterApp();
+  };
   sb.auth.onAuthStateChange(async (event, session) => {
     S.session = session;
-    if (event === 'PASSWORD_RECOVERY') {
-      recovering = true;
-      hideBoot();
-      await showNewPin({ recovery: true });
-      history.replaceState(null, '', '#/home');
-      enterApp();
-    }
+    if (event === 'PASSWORD_RECOVERY') { recovering = true; doRecovery(); }
     if (event === 'SIGNED_OUT') {
       stopRealtime();
       S.profile = null; S.loaded = false;
@@ -330,7 +332,19 @@ async function boot() {
       renderAuth($('#root'), { onDone: enterApp });
     }
   });
-  if (recovering) return;
+  const { data } = await sb.auth.getSession();
+  S.session = data.session;
+  if (urlInfo.error) {
+    history.replaceState(null, '', location.pathname + '#/home');
+    toast(L('Ο σύνδεσμος δεν ισχύει πια', 'The link is no longer valid'), { type: 'err', body: L('Ζητήστε νέο από «Ξέχασα το PIN». Ο σύνδεσμος ισχύει μία φορά και για λίγη ώρα.', 'Request a new one from “Forgot PIN”. The link works once and for a short time.'), ms: 8000 });
+  }
+  if (recovering) {
+    if (S.session) { doRecovery(); return; }
+    // περιμένουμε λίγο να ολοκληρωθεί η σύνδεση από τον σύνδεσμο
+    for (let i = 0; i < 20 && !S.session; i++) await new Promise((r) => setTimeout(r, 250));
+    if (S.session) { doRecovery(); return; }
+    toast(L('Ο σύνδεσμος δεν ισχύει πια', 'The link is no longer valid'), { type: 'err', body: L('Ζητήστε νέο από «Ξέχασα το PIN».', 'Request a new one from “Forgot PIN”.'), ms: 8000 });
+  }
   if (!S.session) { hideBoot(); renderAuth(root, { onDone: enterApp }); return; }
   enterApp();
 }
