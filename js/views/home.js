@@ -26,13 +26,28 @@ export function renderHome(root) {
   html += '<div id="banners"></div>';
 
   if (next) {
+    // Όλες οι εκδηλώσεις της πρώτης επερχόμενης ημέρας και της αμέσως επόμενης
+    const lastDay = addDays(next.e.event_date, 1);
+    const group = upcoming.filter((v) => v.e.event_date <= lastDay);
     const d = daysBetween(today, next.e.event_date);
-    html += `<a class="hero-card" href="#/event/${next.e.id}">
-      <div class="count"><b>${d}</b><span>${esc(d === 1 ? L('ημέρα', 'day') : L('ημέρες', 'days'))}</span></div>
-      <div class="eyebrow">${esc(admin ? L('Επόμενη εκδήλωση', 'Next event') : L('Η επόμενη εκδήλωσή σου', 'Your next event'))}</div>
-      <h2>${esc(next.title)}</h2>
-      <div class="meta"><span>${icon('calendar')} ${esc(fmtDateLong(next.e.event_date))}</span>${next.e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(next.e.event_time))}</span>` : ''}${next.e.church_location ? `<span>${icon('pin')} ${esc(next.e.church_location)}</span>` : ''}</div>
-    </a>`;
+    const countTxt = d === 0 ? L('σήμερα', 'today') : d === 1 ? L('αύριο', 'tomorrow') : '';
+    const count = `<div class="count"><b>${d === 0 || d === 1 ? '' : d}</b><span>${esc(countTxt || L('ημέρες', 'days'))}</span></div>`;
+    const meta = (v) => `<div class="meta">${group.length > 1 ? '' : `<span>${icon('calendar')} ${esc(fmtDateLong(v.e.event_date))}</span>`}${v.e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(v.e.event_time))}</span>` : ''}${v.e.church_location ? `<span>${icon('pin')} ${esc(v.e.church_location)}</span>` : ''}</div>`;
+    if (group.length === 1) {
+      html += `<a class="hero-card" href="#/event/${next.e.id}">${count}
+        <div class="eyebrow">${esc(admin ? L('Επόμενη εκδήλωση', 'Next event') : L('Η επόμενη εκδήλωσή σου', 'Your next event'))}</div>
+        <h2>${esc(next.title)}</h2>${meta(next)}</a>`;
+    } else {
+      let lastDate = '';
+      const items = group.map((v) => {
+        const head = v.e.event_date !== lastDate ? `<div class="hero-day">${icon('calendar')} ${esc(fmtDateLong(v.e.event_date))}</div>` : '';
+        lastDate = v.e.event_date;
+        return `${head}<a class="hero-item" href="#/event/${v.e.id}"><h3>${esc(v.title)}</h3>${meta(v)}</a>`;
+      }).join('');
+      html += `<div class="hero-card multi">${count}
+        <div class="eyebrow">${esc(admin ? L(`Επόμενες εκδηλώσεις · ${group.length}`, `Next events · ${group.length}`) : L(`Οι επόμενες εκδηλώσεις σου · ${group.length}`, `Your next events · ${group.length}`))}</div>
+        <div class="hero-list">${items}</div></div>`;
+    }
   } else {
     html += `<div class="hero-card"><div class="eyebrow">Image Makers</div><h2>${esc(admin ? L('Δεν υπάρχουν προγραμματισμένες εκδηλώσεις', 'No upcoming events') : L('Δεν σου έχει ανατεθεί ακόμη εκδήλωση', 'No events assigned to you yet'))}</h2></div>`;
   }
