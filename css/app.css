@@ -901,3 +901,17 @@ details.faq .a { padding: 0 16px 16px; color: var(--label-2); white-space: pre-l
 /* ένδειξη χωρίς σύνδεση */
 .offline-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + var(--safe-bottom, 0px)); z-index: 400; background: var(--red); color: #fff; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; box-shadow: 0 6px 20px rgba(0,0,0,.2); max-width: calc(100vw - 32px); text-align: center; pointer-events: none; }
 @media (max-width: 899px) { .offline-bar { bottom: calc(84px + var(--safe-bottom, 0px)); } }
+
+/* Αρχική: πολλές επόμενες εκδηλώσεις (ίδια ή επόμενη ημέρα) */
+.hero-card.multi { justify-content: flex-start; padding-top: 22px; }
+.hero-card.multi .eyebrow { padding-right: 80px; }
+.hero-card .count b:empty { display: none; }
+.hero-card .count b:empty + span { font-family: var(--font-display); font-size: 20px; font-weight: 750; color: #fff; }
+.hero-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.hero-day { margin-top: 6px; font-size: 13px; font-weight: 650; color: #e1b48c; display: flex; align-items: center; gap: 6px; }
+.hero-day svg { width: 15px; height: 15px; }
+.hero-item { display: block; color: #fff; text-decoration: none; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 11px 14px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); transition: background .15s; }
+.hero-item:hover, .hero-item:active { background: rgba(255,255,255,.16); }
+.hero-item h3 { font-family: var(--serif); font-weight: 500; font-size: 21px; line-height: 1.15; }
+.hero-item .meta { margin-top: 4px; font-size: 13.5px; gap: 12px; }
+@media (min-width: 900px) { .hero-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); } .hero-day { grid-column: 1 / -1; } }
