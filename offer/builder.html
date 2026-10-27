@@ -1387,7 +1387,9 @@
           var blob = await exportPdf();
           var s = getState();
           var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-          a.download = 'Image_Makers_Prosfora_' + ([s.partner1, s.partner2].filter(Boolean).join('_') || 'offer') + '.pdf';
+          var gr = { 'α':'a','ά':'a','β':'v','γ':'g','δ':'d','ε':'e','έ':'e','ζ':'z','η':'i','ή':'i','θ':'th','ι':'i','ί':'i','ϊ':'i','ΐ':'i','κ':'k','λ':'l','μ':'m','ν':'n','ξ':'x','ο':'o','ό':'o','π':'p','ρ':'r','σ':'s','ς':'s','τ':'t','υ':'y','ύ':'y','ϋ':'y','ΰ':'y','φ':'f','χ':'ch','ψ':'ps','ω':'o','ώ':'o' };
+          var nm = ([s.partner1, s.partner2].filter(Boolean).join('_') || 'offer').toLowerCase().split('').map(function (c) { return gr[c] !== undefined ? gr[c] : c; }).join('').replace(/[^a-z0-9_-]+/g, '_');
+          a.download = 'Image_Makers_Prosfora_' + nm + '.pdf';
           document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
         } catch (e) { alert('Δεν δημιουργήθηκε το PDF. Χρησιμοποιήστε «Αποθήκευση PDF».'); }
         b.disabled = false; b.textContent = t;

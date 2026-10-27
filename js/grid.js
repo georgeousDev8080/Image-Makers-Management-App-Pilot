@@ -2,7 +2,7 @@
 //  Πίνακας τύπου Excel: επεξεργασία κελιών, πλοήγηση με πλήκτρα,
 //  σταθερή πρώτη στήλη & επικεφαλίδες, ομάδες στηλών
 // =====================================================================
-import { L, esc, money, fmtDate, parseMoney, opt, sheet, toastErr, haptic } from './core.js';
+import { L, esc, money, fmtDate, parseMoney, opt, sheet, toastErr, haptic, latinName } from './core.js';
 
 const memory = {}; // id → { scrollLeft, scrollTop, sel: {rk, ck} }
 const coarse = () => window.matchMedia('(pointer: coarse)').matches;
@@ -217,5 +217,5 @@ export async function exportGrid(name, cols, rows) {
   ws['!cols'] = cols.map((c) => ({ wch: Math.max(10, Math.round((c.w || 110) / 7)) }));
   const wb = window.XLSX.utils.book_new();
   window.XLSX.utils.book_append_sheet(wb, ws, name.slice(0, 31).replace(/[\\/?*[\]:]/g, ''));
-  window.XLSX.writeFile(wb, `ImageMakers_${name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  window.XLSX.writeFile(wb, latinName(`ImageMakers_${name}_${new Date().toISOString().slice(0, 10)}.xlsx`));
 }
