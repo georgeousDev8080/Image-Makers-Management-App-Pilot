@@ -30,6 +30,19 @@
 </head>
 <body>
   <div class="boot" id="boot"><img src="icons/logo-white.png" alt="Image Makers"></div>
+  <script>
+    // Δίχτυ ασφαλείας: αν η φόρτωση κολλήσει, εμφανίζεται κουμπί ανανέωσης
+    setTimeout(function () {
+      var b = document.getElementById('boot');
+      if (!b || b.classList.contains('hide') || document.getElementById('bootRetry')) return;
+      var btn = document.createElement('button');
+      btn.id = 'bootRetry';
+      btn.textContent = 'Αργεί πολύ; Πατήστε για ανανέωση';
+      btn.style.cssText = 'position:absolute;bottom:calc(40px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);padding:12px 20px;border-radius:12px;border:0;background:#a96f45;color:#fff;font:600 15px -apple-system,Segoe UI,sans-serif';
+      btn.onclick = function () { location.replace(location.pathname + '#/home'); location.reload(); };
+      b.appendChild(btn);
+    }, 12000);
+  </script>
   <div id="root"></div>
   <noscript><p style="padding:24px;font-family:sans-serif">Η εφαρμογή χρειάζεται JavaScript. · This app needs JavaScript.</p></noscript>
   <script src="config.js"></script>
