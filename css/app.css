@@ -798,7 +798,7 @@ details.faq .a { padding: 0 16px 16px; color: var(--label-2); white-space: pre-l
 .codebox { font-family: var(--mono); font-size: 30px; font-weight: 750; letter-spacing: .12em; text-align: center; padding: 18px; border-radius: 16px; background: var(--fill-2); user-select: all; -webkit-user-select: all; }
 
 /* Offer builder overlay */
-.offer-layer { position: fixed; inset: 0; z-index: 250; display: flex; flex-direction: column; background: #131210; animation: viewIn .35s var(--ease); }
+.offer-layer { position: fixed; inset: 0; z-index: 150; display: flex; flex-direction: column; background: #131210; animation: viewIn .35s var(--ease); }
 .offer-bar { display: flex; align-items: center; gap: 10px; padding: calc(10px + var(--safe-top)) 14px 10px; background: #1c1a18; color: #fff; border-bottom: 1px solid rgba(255,255,255,.1); }
 .offer-bar b { flex: 1; font-size: 15px; }
 .offer-bar .btn { min-height: 36px; }
