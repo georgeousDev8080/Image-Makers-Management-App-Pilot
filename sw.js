@@ -1,7 +1,7 @@
 /* Image Makers · Service Worker — offline λειτουργία & ειδοποιήσεις push */
-const CACHE = 'im-v7';
+const CACHE = 'im-v8';
 const SHELL = [
-  './', 'index.html', 'config.js', 'manifest.webmanifest', 'css/app.css',
+  './', 'index.html', 'legal.html', 'config.js', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/core.js', 'js/data.js', 'js/layout.js', 'js/components.js', 'js/push.js', 'js/offer.js', 'js/grid.js', 'js/backup.js', 'js/charts.js',
   'js/views/auth.js', 'js/views/home.js', 'js/views/calendar.js', 'js/views/events.js', 'js/views/event-form.js',
   'js/views/customers.js', 'js/views/money.js', 'js/views/sheets.js', 'js/views/requests.js', 'js/views/appointments.js', 'js/views/workflow.js', 'js/views/outbox.js',
