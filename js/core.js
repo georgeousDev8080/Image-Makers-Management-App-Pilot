@@ -134,6 +134,12 @@ export const mailUrl = (to, subject = '', body = '') => `mailto:${encodeURICompo
 export const waUrl = (p, body = '') => `https://wa.me/${cleanPhone(p).replace('+', '')}?text=${encodeURIComponent(body)}`;
 export const viberUrl = (body = '') => `viber://forward?text=${encodeURIComponent(body)}`;
 
+/** Ονόματα αρχείων με λατινικούς χαρακτήρες (κάποιοι browsers αγνοούν ελληνικά ονόματα λήψης) */
+export function latinName(s) {
+  const m = { α: 'a', ά: 'a', β: 'v', γ: 'g', δ: 'd', ε: 'e', έ: 'e', ζ: 'z', η: 'i', ή: 'i', θ: 'th', ι: 'i', ί: 'i', ϊ: 'i', ΐ: 'i', κ: 'k', λ: 'l', μ: 'm', ν: 'n', ξ: 'x', ο: 'o', ό: 'o', π: 'p', ρ: 'r', σ: 's', ς: 's', τ: 't', υ: 'y', ύ: 'y', ϋ: 'y', ΰ: 'y', φ: 'f', χ: 'ch', ψ: 'ps', ω: 'o', ώ: 'o' };
+  return String(s || '').split('').map((ch) => { const lo = ch.toLowerCase(); const t = m[lo]; if (t === undefined) return ch; return ch !== lo ? t.charAt(0).toUpperCase() + t.slice(1) : t; }).join('')
+    .replace(/[^A-Za-z0-9._-]+/g, '_').replace(/_+/g, '_');
+}
 export function download(blob, name) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
