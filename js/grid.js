@@ -134,7 +134,12 @@ export function renderGrid(container, cols, opts) {
       if (save) {
         const val = parse(c, input.value);
         if (val === undefined) { box.innerHTML = show(c, r); }
-        else await commit(td, val);
+        else {
+          // αφαιρούμε το πεδίο αμέσως ώστε ο πίνακας να μπορεί να ανανεωθεί
+          const shown = input.tagName === 'SELECT' ? (input.selectedOptions[0]?.textContent || '') : input.value;
+          box.textContent = shown;
+          await commit(td, val);
+        }
       } else box.innerHTML = show(c, r);
       if (move) { const nx = tdAt(+td.dataset.r + move[0], +td.dataset.c + move[1]); if (nx) select(nx); }
       wrap.focus({ preventScroll: true });
@@ -179,7 +184,7 @@ export function renderGrid(container, cols, opts) {
     select(td, false);
     if (coarse() || wasSel) startEdit(td);
   });
-  wrap.addEventListener('dblclick', (e) => { const td = e.target.closest('td[data-r]'); if (td && !e.target.closest('button, a, input, select')) startEdit(td); });
+  wrap.addEventListener('dblclick', (e) => { const td = e.target.closest('td[data-r]'); if (!td || e.target.closest('button, a, input, select')) return; if (editing && editing.td === td) return; startEdit(td); });
   wrap.addEventListener('keydown', (e) => {
     if (editing || !sel) return;
     const r = +sel.dataset.r, c = +sel.dataset.c;
