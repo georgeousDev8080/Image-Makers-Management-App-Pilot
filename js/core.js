@@ -57,6 +57,7 @@ export function parseMoney(s) {
   if (!t) return null;
   if (t.includes(',') && t.includes('.')) t = t.lastIndexOf(',') > t.lastIndexOf('.') ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
   else if (t.includes(',')) t = t.replace(',', '.');
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, ''); // «2.800» = δύο χιλιάδες οκτακόσια (ελληνική γραφή)
   const n = Number(t);
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
 }
@@ -154,7 +155,7 @@ export function loadScript(src) {
     document.head.appendChild(s);
   });
 }
-export function haptic(ms = 8) { try { navigator.vibrate?.(ms); } catch {} }
+export function haptic(ms = 8) { try { if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return; navigator.vibrate?.(ms); } catch {} }
 
 // ---------- Εικονίδια ----------
 const P = {

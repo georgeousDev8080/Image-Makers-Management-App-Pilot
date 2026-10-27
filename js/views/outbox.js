@@ -45,7 +45,7 @@ export function renderOutbox(root, params = {}) {
     html += list.length ? `<div class="list">${list.map((m) => {
       const v = eventView(m.event_id); const t = S.templates.find((x) => x.id === m.template_id);
       return `<button class="row has-icon" data-m="${m.id}"><span class="row-icon" style="background:${m.status === 'pending' ? 'var(--accent)' : m.status === 'sent' ? 'var(--green)' : 'var(--label-3)'}">${icon(m.status === 'sent' ? 'check' : 'message')}</span>
-        <div class="main-col"><div class="t">${esc(t?.name || m.title || L('Μήνυμα', 'Message'))} · ${esc(v ? v.title : '—')}</div><div class="s">${esc(m.body.slice(0, 110))}…</div></div>
+        <div class="main-col"><div class="t">${esc(t?.name || m.title || L('Μήνυμα', 'Message'))} · ${esc(v ? v.title : '—')}</div><div class="s">${esc((m.body || '').slice(0, 110))}${(m.body || '').length > 110 ? '…' : ''}</div></div>
         <div class="v tiny">${esc(timeAgo(m.status === 'pending' ? m.due_at : m.sent_at || m.created_at))}</div>${icon('chevR', 'chev')}</button>`;
     }).join('')}</div>` : emptyState('message', st.tab === 'pending' ? L('Όλα τα μηνύματα έχουν σταλεί 🎉', 'All messages sent 🎉') : L('Κανένα μήνυμα ακόμη', 'No messages yet'), st.tab === 'pending' ? L('Νέα μηνύματα εμφανίζονται αυτόματα με βάση τα πρότυπα.', 'New messages appear automatically from the templates.') : '');
   }

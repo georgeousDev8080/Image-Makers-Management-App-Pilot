@@ -5,7 +5,7 @@ import { L, LANG, esc, icon, setLang, getThemePref, setThemePref, segmented, ini
 import { sb, S, isAdmin, profileName, saveSetting, business, reload, friendlyError, emit } from '../data.js';
 import { pageHead } from '../layout.js';
 import { pushState, enablePush, disablePushHere, sendTest, setupServerPush, serverStatus, checkFunction, deviceName } from '../push.js';
-import { verifyPinPrompt, showNewPin, lockAfterMinutes } from './auth.js';
+import { verifyPinPrompt, showNewPin, lockAfterMinutes, TERMS_ENABLED } from './auth.js';
 import { exportAllXlsx, exportFullZip, importBackup, importOldSheet } from '../backup.js';
 
 export const APP_VERSION = '1.0.0';
@@ -65,7 +65,7 @@ export function renderSettings(root) {
   html += `<div class="group-label">${esc(L('Εφαρμογή', 'App'))}</div><div class="list">
     ${!isStandalone() ? `<button class="row has-icon" id="install"><span class="row-icon">${icon('install')}</span><div class="main-col"><div class="t">${esc(L('Εγκατάσταση στη συσκευή', 'Install on this device'))}</div><div class="s">${esc(L('Εικονίδιο στην αρχική οθόνη, πλήρης οθόνη, ειδοποιήσεις', 'Home screen icon, full screen, notifications'))}</div></div>${icon('chevR', 'chev')}</button>` : ''}
     <a class="row has-icon" href="#/help"><span class="row-icon" style="background:var(--blue)">${icon('book')}</span><div class="main-col"><div class="t">${esc(L('Οδηγός χρήσης & Συχνές ερωτήσεις', 'User guide & FAQ'))}</div></div>${icon('chevR', 'chev')}</a>
-    <a class="row has-icon" href="legal.html" target="_blank" rel="noopener"><span class="row-icon" style="background:var(--label-2)">${icon('shield')}</span><div class="main-col"><div class="t">${esc(L('Όροι χρήσης & Πολιτική απορρήτου', 'Terms of use & Privacy policy'))}</div><div class="s">${S.profile?.terms_accepted_at ? esc(L('Αποδεχτήκατε την έκδοση', 'You accepted version') + ' ' + (S.profile.terms_version || '') + ' · ' + new Date(S.profile.terms_accepted_at).toLocaleDateString(LANG === 'en' ? 'en-GB' : 'el-GR')) : ''}</div></div>${icon('chevR', 'chev')}</a>
+    ${TERMS_ENABLED ? `<a class="row has-icon" href="legal.html" target="_blank" rel="noopener"><span class="row-icon" style="background:var(--label-2)">${icon('shield')}</span><div class="main-col"><div class="t">${esc(L('Όροι χρήσης & Πολιτική απορρήτου', 'Terms of use & Privacy policy'))}</div><div class="s">${S.profile?.terms_accepted_at ? esc(L('Αποδεχτήκατε την έκδοση', 'You accepted version') + ' ' + (S.profile.terms_version || '') + ' · ' + new Date(S.profile.terms_accepted_at).toLocaleDateString(LANG === 'en' ? 'en-GB' : 'el-GR')) : ''}</div></div>${icon('chevR', 'chev')}</a>` : ''}
     <button class="row has-icon" id="reload"><span class="row-icon" style="background:var(--label-2)">${icon('refresh')}</span><div class="main-col"><div class="t">${esc(L('Ανανέωση δεδομένων', 'Refresh data'))}</div></div></button>
     <button class="row has-icon" id="logout"><span class="row-icon" style="background:var(--red)">${icon('logout')}</span><div class="main-col"><div class="t neg">${esc(L('Αποσύνδεση', 'Sign out'))}</div></div></button>
   </div>

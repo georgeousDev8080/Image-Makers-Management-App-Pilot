@@ -120,7 +120,7 @@ function eventsSheet(body, tab, redraw) {
   add('cat', { key: 'second', label: L('Δεύτερο Συνεργείο', 'Second crew'), w: 92, type: 'select', blank: false, options: yesNo, editable: true, get: (v) => (v.f.second_crew ? 'true' : 'false'), set: (v, val) => saveFinance(v.e.id, { second_crew: val === 'true' }) });
   add('cat', { key: 'crew', label: L('Συνεργείο', 'Crew'), w: 170, editable: true, onOpen: (v) => openCrewSheet(v.e.id), get: (v) => v.crew.map((c) => profileName(c.profile)).join(', '), display: (v) => v.crew.length ? esc(v.crew.map((c) => profileName(c.profile).split(' ')[0] + (c.duty === 'video' ? ' 🎥' : ' 📷')).join(', ')) : `<span class="muted">+ ${esc(L('ανάθεση', 'assign'))}</span>` });
   add('cat', { key: 'res', label: L('Ανάλυση', 'Resolution'), w: 92, type: 'select', options: RESOLUTIONS, editable: true, get: (v) => v.e.resolution, set: (v, val) => patchEvent(v.e.id, { resolution: val }) });
-  add('fin', { key: 'price', label: L('Πακέτο (€)', 'Package (€)'), w: 104, type: 'money', editable: true, sum: true, get: (v) => v.price, set: (v, val) => saveFinance(v.e.id, { package_price: val }) });
+  add('fin', { key: 'price', label: L('Πακέτο (€)', 'Package (€)'), w: 104, type: 'money', editable: true, sum: true, get: (v) => v.price, set: (v, val) => { if (val != null && val < 0) throw new Error('negative'); return saveFinance(v.e.id, { package_price: val }); } });
   add('fin', { key: 'pname', label: L('Όνομα Πακέτου', 'Package name'), w: 220, editable: true, get: (v) => v.f.package_name, set: (v, val) => saveFinance(v.e.id, { package_name: val }) });
   if (visible.has('fin')) {
     const payCol = (i) => ({

@@ -125,7 +125,7 @@ function shellHTML() {
           <span class="avatar" style="--c:${p.color || colorFor(p.id)}">${esc(initials(profileName(p)))}</span>
           <span class="who"><b>${esc(profileName(p))}</b><small>${esc(lbl(ROLES, p.role))}</small></span>
         </a>
-        <div class="credit"><div>${legalLinks()}</div>made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>
+        <div class="credit">${legalLinks() ? `<div>${legalLinks()}</div>` : ''}made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>
       </div>
     </aside>
     <div class="scrim" id="scrim"></div>
@@ -193,6 +193,7 @@ function renderRoute({ animate = true } = {}) {
   UI.actions.innerHTML = '';
   page.innerHTML = '';
   try {
+    Object.defineProperty(m.params, '_fresh', { value: !samePage, enumerable: false, writable: true }); // πρώτη είσοδος στη σελίδα (όχι ανανέωση δεδομένων)
     cleanup = m.route.v(page, m.params) || null;
   } catch (e) {
     console.error(e);
@@ -351,3 +352,14 @@ async function boot() {
 }
 
 boot();
+
+// Ένδειξη «Χωρίς σύνδεση» σε όλες τις σελίδες
+function paintOffline() {
+  let el = document.getElementById('offlineBar');
+  if (navigator.onLine) { el?.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'offlineBar'; el.className = 'offline-bar'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+  el.textContent = L('Χωρίς σύνδεση · βλέπετε τα τελευταία δεδομένα, οι αλλαγές θέλουν internet', 'Offline · showing the latest data, changes need internet');
+}
+window.addEventListener('online', paintOffline);
+window.addEventListener('offline', paintOffline);
+paintOffline();

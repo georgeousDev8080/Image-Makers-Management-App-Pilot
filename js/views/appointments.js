@@ -54,7 +54,7 @@ export function renderAppointments(root) {
     </button>`;
   }).join('')}</div>`;
 
-  html += `<div class="spread mb" style="flex-wrap:wrap;gap:10px">${segmented('v', [{ v: 'list', label: L('Λίστα ραντεβού', 'Appointments') }, { v: 'stats', label: L('Dashboard / στατιστικά', 'Dashboard / stats') }], st.view)}
+  html += `<div class="spread mb" style="flex-wrap:wrap;gap:10px">${segmented('v', [{ v: 'list', label: L('Λίστα ραντεβού', 'Appointments') }, { v: 'stats', label: L('Στατιστικά', 'Statistics') }], st.view)}
     ${st.mode === 'online' ? `<button class="btn small" data-link>${icon('link')} ${esc(L('Αποστολή link σε πελάτη', 'Send link to client'))}</button>` : `<button class="btn small" data-store>${icon('plus')} ${esc(L('Νέα παρουσίαση στο μαγαζί', 'New in-store presentation'))}</button>`}</div>`;
   html += '<div id="apBody"></div>';
   root.innerHTML = html;
@@ -298,7 +298,8 @@ export function openSendLink() {
 let F = null; let fKey = '';
 export function renderAppointmentForm(root, params = {}) {
   const k = params.id || 'new';
-  if (!F || fKey !== k) {
+  if (!F || fKey !== k || params._fresh) {
+    params._fresh = false;
     const a = params.id ? find(params.id) : null;
     F = a ? { ...a, pdf: null, pdfName: '' } : { mode: 'store', appt_date: todayISO(), category: 'wedding', name1: '', name2: '', phone: '', email: '', event_date: '', church: '', reception: '', notes: '', total: '', offer_data: null, pdf: null, pdfName: '' };
     fKey = k;

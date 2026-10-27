@@ -171,7 +171,7 @@ export function renderEventDetail(root, { id }) {
       html += `<div class="group-label">${esc(L('Μηνύματα προς τον πελάτη', 'Messages to the client'))}</div><div class="list">${msgs.map((m) => {
         const t = S.templates.find((x) => x.id === m.template_id);
         const pill = m.status === 'sent' ? `<span class="pill green">${esc(L('Στάλθηκε', 'Sent'))}</span>` : m.status === 'dismissed' ? `<span class="pill">${esc(L('Παραλείφθηκε', 'Skipped'))}</span>` : `<span class="pill orange">${esc(L('Προς αποστολή', 'To send'))}</span>`;
-        return `<a class="row" href="#/outbox/${m.id}"><div class="main-col"><div class="t">${esc(t?.name || L('Μήνυμα', 'Message'))}</div><div class="s">${esc(m.body.slice(0, 90))}…</div></div>${pill}${icon('chevR', 'chev')}</a>`;
+        return `<a class="row" href="#/outbox/${m.id}"><div class="main-col"><div class="t">${esc(t?.name || m.title || L('Μήνυμα', 'Message'))}</div><div class="s">${esc((m.body || '').slice(0, 90))}${(m.body || '').length > 90 ? '…' : ''}</div></div>${pill}${icon('chevR', 'chev')}</a>`;
       }).join('')}</div>`;
     }
 
@@ -196,6 +196,7 @@ export function renderEventDetail(root, { id }) {
   root.querySelector('[data-act="pay"]')?.addEventListener('click', () => openIncomeForm({ eventId: id }));
   root.querySelectorAll('[data-pay]').forEach((b) => b.addEventListener('click', async () => {
     const p = S.payments.find((x) => x.id === b.dataset.pay);
+    if (!p) return;
     const a = await actionSheet({ title: `${p.label || ''} · ${money(p.amount)}`, actions: [{ label: L('Επεξεργασία', 'Edit'), value: 'edit', icon: 'edit' }, { label: L('Διαγραφή', 'Delete'), value: 'del', destructive: true, icon: 'trash' }] });
     if (a === 'edit') openIncomeForm({ payment: p });
     if (a === 'del' && await confirmBox(L('Διαγραφή πληρωμής;', 'Delete payment?'), `${p.label || ''} · ${money(p.amount)}`, { ok: L('Διαγραφή', 'Delete'), destructive: true })) { await deletePayment(p.id); toast(L('Η πληρωμή διαγράφηκε', 'Payment deleted')); }

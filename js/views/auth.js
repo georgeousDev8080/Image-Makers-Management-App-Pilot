@@ -6,9 +6,11 @@ import { sb, S, friendlyError, loadProfile, reload, profileName } from '../data.
 import { enablePush, pushState } from '../push.js';
 
 const PIN_LEN = 6;
+// Διακόπτης όρων χρήσης: false = χωρίς οθόνη αποδοχής και χωρίς συνδέσμους (προσωρινά, μέχρι την παράδοση).
+export const TERMS_ENABLED = false;
 export const TERMS_VERSION = '1.0';
-export const legalLinks = () => `<a href="legal.html#terms" target="_blank" rel="noopener">${esc(L('Όροι χρήσης', 'Terms of use'))}</a> · <a href="legal.html#privacy" target="_blank" rel="noopener">${esc(L('Απόρρητο', 'Privacy'))}</a>`;
-const credit = `<div class="credit center" style="margin-top:28px"><div style="margin-bottom:6px">${esc(L('Με τη χρήση της εφαρμογής αποδέχεστε τους', 'By using the app you accept the'))} ${legalLinks()}.</div>made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>`;
+export const legalLinks = () => !TERMS_ENABLED ? '' : `<a href="legal.html#terms" target="_blank" rel="noopener">${esc(L('Όροι χρήσης', 'Terms of use'))}</a> · <a href="legal.html#privacy" target="_blank" rel="noopener">${esc(L('Απόρρητο', 'Privacy'))}</a>`;
+const credit = `<div class="credit center" style="margin-top:28px">${TERMS_ENABLED ? `<div style="margin-bottom:6px">${esc(L('Με τη χρήση της εφαρμογής αποδέχεστε τους', 'By using the app you accept the'))} ${legalLinks()}.</div>` : ''}made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>`;
 
 // ---------- PIN hash (τοπικό ξεκλείδωμα) ----------
 async function sha(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join(''); }
@@ -400,7 +402,7 @@ export async function verifyPinPrompt(reason) {
 }
 
 // ---------- Αποδοχή όρων χρήσης (πρώτη είσοδος / νέα έκδοση) ----------
-export function needsTerms() { return !!S.profile && S.profile.terms_version !== TERMS_VERSION; }
+export function needsTerms() { return TERMS_ENABLED && !!S.profile && S.profile.terms_version !== TERMS_VERSION; }
 export function renderTermsGate(root) {
   return new Promise((resolve) => {
     const updated = !!S.profile?.terms_version;

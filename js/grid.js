@@ -85,6 +85,7 @@ export function renderGrid(container, cols, opts) {
     const r = rows[+td.dataset.r], c = cols[+td.dataset.c];
     const old = raw(c, r);
     if ((old ?? '') === (value ?? '') || (c.type === 'money' && Number(old) === Number(value) && value !== null)) { td.querySelector('.c').innerHTML = show(c, r); return; }
+    if (c.required && (value === null || value === undefined || value === '')) { toastErr(L('Το πεδίο δεν μπορεί να μείνει κενό', 'This field cannot be empty')); td.querySelector('.c').innerHTML = show(c, r); return; }
     td.classList.add('saving');
     try {
       await onEdit(r, c, value);
