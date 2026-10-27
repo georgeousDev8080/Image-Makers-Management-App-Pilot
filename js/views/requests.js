@@ -15,7 +15,7 @@ export async function downloadClientFile() {
   const res = await fetch('offer/client.html', { cache: 'no-cache' });
   let html = await res.text();
   const cfg = { SUPABASE_URL: window.IM_CONFIG.SUPABASE_URL, SUPABASE_ANON_KEY: window.IM_CONFIG.SUPABASE_ANON_KEY };
-  html = html.replace('/*__IM_INLINE_CONFIG__*/', `window.IM_CONFIG = ${JSON.stringify(cfg)};`).replace('<script src="../config.js"></script>', '');
+  html = html.replace('/*__IM_INLINE_CONFIG__*/', `window.IM_CONFIG = ${JSON.stringify(cfg)};`).replace('<script src="../config.js"></script>', '').replace('href="../legal.html#privacy"', `href="${new URL('legal.html#privacy', location.href.split('#')[0]).href}"`);
   download(new Blob([html], { type: 'text/html' }), 'IMAGE_MAKERS_WEDDING_OFFER_2027.html');
 }
 

@@ -6,7 +6,7 @@ import { L, esc, icon, $, $$, on, applyTheme, toast, hasLayer, closeAllLayers, d
 import { sb, S, configured, loadProfile, loadAll, startRealtime, stopRealtime, subscribe, isAdmin, isVideoAdmin, hasRole, setNotificationHandler, unreadCount, pendingMessages, newRequests, pendingUsers, pendingAppointments, staleAppointments, markRead, updateBadge, profileName, emit } from './data.js';
 import { UI, go } from './layout.js';
 import { registerSW, onSWMessage, ensureSubscription } from './push.js';
-import { renderAuth, renderWelcome, showLock, needsLock, showNewPin, renderNotConfigured } from './views/auth.js';
+import { renderAuth, renderWelcome, showLock, needsLock, showNewPin, renderNotConfigured, needsTerms, renderTermsGate, legalLinks } from './views/auth.js';
 import { renderHome } from './views/home.js';
 import { renderCalendar } from './views/calendar.js';
 import { renderEvents, renderEventDetail } from './views/events.js';
@@ -125,7 +125,7 @@ function shellHTML() {
           <span class="avatar" style="--c:${p.color || colorFor(p.id)}">${esc(initials(profileName(p)))}</span>
           <span class="who"><b>${esc(profileName(p))}</b><small>${esc(lbl(ROLES, p.role))}</small></span>
         </a>
-        <div class="credit">made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>
+        <div class="credit"><div>${legalLinks()}</div>made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>
       </div>
     </aside>
     <div class="scrim" id="scrim"></div>
@@ -269,6 +269,7 @@ async function enterApp() {
     $('#lo').onclick = () => sb.auth.signOut();
     return;
   }
+  if (needsTerms()) { hideBoot(); await renderTermsGate(root); }
   if (!hasRole()) {
     hideBoot();
     startRealtime();

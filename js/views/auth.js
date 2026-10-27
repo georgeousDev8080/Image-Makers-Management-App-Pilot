@@ -6,7 +6,9 @@ import { sb, S, friendlyError, loadProfile, reload, profileName } from '../data.
 import { enablePush, pushState } from '../push.js';
 
 const PIN_LEN = 6;
-const credit = `<div class="credit center" style="margin-top:28px">made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>`;
+export const TERMS_VERSION = '1.0';
+export const legalLinks = () => `<a href="legal.html#terms" target="_blank" rel="noopener">${esc(L('Όροι χρήσης', 'Terms of use'))}</a> · <a href="legal.html#privacy" target="_blank" rel="noopener">${esc(L('Απόρρητο', 'Privacy'))}</a>`;
+const credit = `<div class="credit center" style="margin-top:28px"><div style="margin-bottom:6px">${esc(L('Με τη χρήση της εφαρμογής αποδέχεστε τους', 'By using the app you accept the'))} ${legalLinks()}.</div>made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>`;
 
 // ---------- PIN hash (τοπικό ξεκλείδωμα) ----------
 async function sha(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, '0')).join(''); }
@@ -395,4 +397,43 @@ export async function verifyPinPrompt(reason) {
   }
   toastErr(L('Λάθος PIN', 'Wrong PIN'));
   return false;
+}
+
+// ---------- Αποδοχή όρων χρήσης (πρώτη είσοδος / νέα έκδοση) ----------
+export function needsTerms() { return !!S.profile && S.profile.terms_version !== TERMS_VERSION; }
+export function renderTermsGate(root) {
+  return new Promise((resolve) => {
+    const updated = !!S.profile?.terms_version;
+    root.innerHTML = `<div class="welcome"><div class="box">
+      <div style="font-size:54px">📄</div>
+      <h1>${esc(updated ? L('Ενημερώθηκαν οι όροι χρήσης', 'The terms were updated') : L('Όροι χρήσης & Απόρρητο', 'Terms of use & Privacy'))}</h1>
+      <p>${esc(L('Πριν συνεχίσετε, διαβάστε και αποδεχτείτε τους όρους της εφαρμογής.', 'Before you continue, please read and accept the terms of the app.'))}</p>
+      <div class="card pad mt" style="text-align:left">
+        <ul class="small" style="padding-left:18px;display:grid;gap:6px;margin:0">
+          <li>${esc(L('Η εφαρμογή παρέχεται «ως έχει». Ο προγραμματιστής δεν ευθύνεται για δυσλειτουργίες, διακοπές ή απώλεια δεδομένων, στον βαθμό που επιτρέπει ο νόμος.', 'The app is provided "as is". The developer is not liable for malfunctions, outages or data loss, to the extent permitted by law.'))}</li>
+          <li>${esc(L('Η φιλοξενία και η βάση δεδομένων ανήκουν και ελέγχονται από την Image Makers, η οποία είναι υπεύθυνη για τα δεδομένα και τα αντίγραφα ασφαλείας.', 'Hosting and the database are owned and controlled by Image Makers, which is responsible for the data and backups.'))}</li>
+          <li>${esc(L('Δεν είναι λογιστικό σύστημα· τα ποσά και τα μηνύματα ελέγχονται πριν χρησιμοποιηθούν.', 'It is not an accounting system; amounts and messages must be checked before use.'))}</li>
+          <li>${esc(L('Τεχνική υποστήριξη μόνο κατόπιν συμφωνίας και αμοιβής.', 'Technical support only by agreement and for a fee.'))}</li>
+          <li>${esc(L('Τα προσωπικά δεδομένα επεξεργάζονται σύμφωνα με τον ΓΚΠΔ (GDPR).', 'Personal data is processed in line with the GDPR.'))}</li>
+        </ul>
+        <a class="btn block mt" href="legal.html" target="_blank" rel="noopener">${icon('book')} ${esc(L('Ανάγνωση πλήρους κειμένου', 'Read the full text'))}</a>
+        <label class="check-row mt" style="align-items:flex-start;cursor:pointer"><input type="checkbox" id="tAgree" style="width:20px;height:20px;flex:none;margin-top:2px;accent-color:var(--accent)"><span>${esc(L('Διάβασα και αποδέχομαι τους Όρους χρήσης, την Πολιτική απορρήτου και την Αποποίηση ευθύνης.', 'I have read and accept the Terms of use, the Privacy policy and the Disclaimer.'))}</span></label>
+        <button class="btn primary block mt" id="tOk" disabled>${esc(L('Αποδέχομαι', 'I accept'))}</button>
+        <button class="btn plain block mt-s" id="tOut">${icon('logout')} ${esc(L('Αποσύνδεση', 'Sign out'))}</button>
+      </div>
+      <div class="small muted mt">${esc(L('Έκδοση όρων', 'Terms version'))} ${TERMS_VERSION}</div>
+    </div></div>`;
+    const cb = $('#tAgree', root), ok = $('#tOk', root);
+    cb.onchange = () => { ok.disabled = !cb.checked; };
+    $('#tOut', root).onclick = () => sb.auth.signOut();
+    ok.onclick = async () => {
+      busy(ok, true);
+      const { data, error } = await sb.rpc('accept_terms', { p_version: TERMS_VERSION });
+      busy(ok, false);
+      if (error) { toastErr(error); return; }
+      S.profile.terms_version = TERMS_VERSION;
+      S.profile.terms_accepted_at = data || new Date().toISOString();
+      resolve();
+    };
+  });
 }
