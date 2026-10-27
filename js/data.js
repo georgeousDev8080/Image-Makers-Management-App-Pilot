@@ -290,8 +290,9 @@ export async function patchEvent(id, patch) {
 }
 export async function deleteEvent(id) {
   const e = S.events.get(id);
-  if (e?.offer_path) await sb.storage.from('offers').remove([e.offer_path]).catch(() => {});
   await q(sb.from('events').delete().eq('id', id));
+  // το PDF σβήνεται μόνο αφού διαγραφεί η εκδήλωση και μόνο αν δεν το χρησιμοποιεί ραντεβού
+  if (e?.offer_path && !pathInUse(e.offer_path, { exceptEvent: id })) sb.storage.from('offers').remove([e.offer_path]).catch(() => {});
   S.events.delete(id); S.finance.delete(id);
   S.payments = S.payments.filter((p) => p.event_id !== id);
   S.crew = S.crew.filter((c) => c.event_id !== id);
@@ -341,12 +342,17 @@ export async function deleteExpense(id) {
 }
 
 // Αρχείο προσφοράς (PDF)
+/** Χρησιμοποιείται το αρχείο από άλλη εκδήλωση ή ραντεβού; (για να μη σβηστεί κοινό PDF) */
+function pathInUse(path, { exceptEvent = null, exceptAppt = null } = {}) {
+  return [...S.events.values()].some((e) => e.id !== exceptEvent && e.offer_path === path)
+    || S.appointments.some((a) => a.id !== exceptAppt && a.offer_path === path);
+}
 export async function uploadOffer(eventId, blob) {
   const path = `${eventId}/offer-${Date.now()}.pdf`;
   const { error } = await sb.storage.from('offers').upload(path, blob, { contentType: 'application/pdf', upsert: true });
   if (error) { toastErr(L('Το PDF δεν ανέβηκε', 'PDF upload failed'), friendlyError(error)); throw error; }
   const old = S.events.get(eventId)?.offer_path;
-  if (old && old !== path) sb.storage.from('offers').remove([old]).catch(() => {});
+  if (old && old !== path && !pathInUse(old, { exceptEvent: eventId })) sb.storage.from('offers').remove([old]).catch(() => {});
   return path;
 }
 export async function offerUrl(path) {
@@ -445,7 +451,7 @@ export async function saveAppointment(a) {
 export async function deleteAppointment(id) {
   const a = S.appointments.find((x) => x.id === id);
   await q(sb.from('appointments').delete().eq('id', id));
-  if (a?.offer_path && ![...S.events.values()].some((e) => e.offer_path === a.offer_path)) sb.storage.from('offers').remove([a.offer_path]).catch(() => {});
+  if (a?.offer_path && !pathInUse(a.offer_path, { exceptAppt: id })) sb.storage.from('offers').remove([a.offer_path]).catch(() => {});
   S.appointments = S.appointments.filter((x) => x.id !== id); emit('appointments');
 }
 export async function uploadAppointmentOffer(apptId, blob) {
@@ -453,7 +459,7 @@ export async function uploadAppointmentOffer(apptId, blob) {
   const { error } = await sb.storage.from('offers').upload(path, blob, { contentType: 'application/pdf', upsert: true });
   if (error) { toastErr(L('Το PDF δεν ανέβηκε', 'PDF upload failed'), friendlyError(error)); throw error; }
   const old = S.appointments.find((x) => x.id === apptId)?.offer_path;
-  if (old && old !== path && ![...S.events.values()].some((e) => e.offer_path === old)) sb.storage.from('offers').remove([old]).catch(() => {});
+  if (old && old !== path && !pathInUse(old, { exceptAppt: apptId })) sb.storage.from('offers').remove([old]).catch(() => {});
   return path;
 }
 /** Αντιγραφή του PDF ενός ραντεβού στην εκδήλωση που δημιουργήθηκε */

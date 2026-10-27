@@ -2,6 +2,7 @@
 //  Οδηγός χρήσης (tutorial), Συχνές ερωτήσεις, περιήγηση πρώτης χρήσης
 // =====================================================================
 import { L, vocative, esc, icon, matches, isIOS, isAndroid, toast } from '../core.js';
+import { TERMS_ENABLED } from './auth.js';
 import { S, isAdmin, isVideoAdmin } from '../data.js';
 import { pageHead } from '../layout.js';
 import { enablePush, pushState } from '../push.js';
@@ -159,7 +160,7 @@ export function renderHelp(root, params = {}) {
       const fq = FAQ.filter((f) => matches(q, ...f));
       if (fq.length) out += `<div class="section-title" id="sec-faq"><h2>${icon('help')} ${esc(L('Συχνές ερωτήσεις', 'Frequently asked questions'))}</h2></div>${fq.map((f) => `<details class="faq" ${q ? 'open' : ''}><summary>${esc(lang(f, 0))}</summary><div class="a">${esc(lang(f, 1))}</div></details>`).join('')}`;
     }
-    out += `<div class="card pad mt center"><b>${esc(L('Χρειάζεστε βοήθεια;', 'Need help?'))}</b><div class="small muted mt-s">made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div><div class="small mt-s"><a href="legal.html" target="_blank" rel="noopener">${esc(L('Όροι χρήσης, Πολιτική απορρήτου & Αποποίηση ευθύνης', 'Terms of use, Privacy policy & Disclaimer'))}</a></div>
+    out += `<div class="card pad mt center"><b>${esc(L('Χρειάζεστε βοήθεια;', 'Need help?'))}</b><div class="small muted mt-s">made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>${TERMS_ENABLED ? `<div class="small mt-s"><a href="legal.html" target="_blank" rel="noopener">${esc(L('Όροι χρήσης, Πολιτική απορρήτου & Αποποίηση ευθύνης', 'Terms of use, Privacy policy & Disclaimer'))}</a></div>` : ''}
       <button class="btn small mt" data-tour>${icon('sparkles')} ${esc(L('Ξανά η σύντομη περιήγηση', 'Replay the quick tour'))}</button></div>`;
     body.innerHTML = out || `<div class="empty">${icon('search')}<b>${esc(L('Δεν βρέθηκε κάτι', 'Nothing found'))}</b></div>`;
     body.querySelector('[data-tour]')?.addEventListener('click', () => showTour(true));

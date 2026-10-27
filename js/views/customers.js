@@ -73,8 +73,9 @@ export function openCustomerForm(c = {}, { onSaved } = {}) {
     let ok = true;
     const bad = (n) => { s.body.querySelector(`[name=${n}]`).classList.add('invalid'); ok = false; };
     if (!f.name1) bad('name1');
-    if (!f.phone1) bad('phone1');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email1)) bad('email1');
+    if (!f.phone1 && !f.id) bad('phone1');
+    if ((f.email1 || !f.id) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email1)) bad('email1');
+    if (f.email2 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email2)) bad('email2');
     if (!ok) { toastErr(L('Συμπληρώστε τα υποχρεωτικά πεδία', 'Fill in the required fields')); return; }
     busy(_btn, true);
     try { const saved = await saveCustomer(f); s.close(); toast(L('Ο πελάτης αποθηκεύτηκε', 'Customer saved')); onSaved?.(saved); if (!f.id) go('#/customer/' + saved.id); } catch { busy(_btn, false); }

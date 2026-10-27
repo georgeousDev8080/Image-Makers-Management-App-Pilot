@@ -198,7 +198,7 @@ export function openIncomeForm({ eventId = null, payment = null, category = null
     if (before?.price && !f.id && before.paid + amount > before.price + 0.01 && !await confirmBox(L('Το ποσό ξεπερνά το υπόλοιπο', 'Amount exceeds balance'), L(`Υπόλοιπο: ${money(before.balance)}. Να καταχωρηθεί ${money(amount)};`, `Balance: ${money(before.balance)}. Record ${money(amount)}?`), { ok: L('Ναι, καταχώρηση', 'Yes, record') })) return;
     busy(_btn, true);
     try {
-      await savePayment({ id: f.id, event_id: f.noEvent ? null : f.event_id, category: f.category, kind: f.kind, label: f.label || (f.noEvent ? null : nextPaymentLabel(f.event_id).label), amount, paid_on: f.paid_on, method: f.method, description: f.noEvent ? f.description : null, notes: f.notes });
+      await savePayment({ id: f.id, event_id: f.noEvent ? null : f.event_id, category: f.category, kind: f.kind, label: f.label || (f.noEvent ? null : nextPaymentLabel(f.event_id).label), amount, paid_on: f.paid_on || todayISO(), method: f.method, description: f.noEvent ? f.description : null, notes: f.notes });
       s.close();
       const after = f.event_id ? eventView(f.event_id) : null;
       if (after?.fullyPaid && !before?.fullyPaid) toast(L('Εξοφλήθηκε πλήρως! 🎉', 'Fully paid! 🎉'), { body: L('Η γραμμή στο Excel έγινε πράσινη.', 'The Excel row turned green.') });
@@ -275,7 +275,7 @@ export function openExpenseForm({ expense = null, kind = null, crew_id = null, c
     if (!amount) return bad('amount', L('Γράψτε ποσό', 'Enter an amount'));
     busy(_btn, true);
     try {
-      await saveExpense({ id: f.id, kind: f.kind, subcategory: f.subcategory || null, crew_id: f.crew_id || null, crew_name: f.crew_id ? null : f.crew_name || null, for_month: f.kind === 'payroll' ? f.for_month + '-01' : null, paid_until: f.kind === 'daily_wage' ? f.paid_until : null, days: f.kind === 'daily_wage' ? parseMoney(f.days) : null, amount, paid_on: f.paid_on, method: f.method, supplier: f.supplier, description: f.description, notes: f.notes });
+      await saveExpense({ id: f.id, kind: f.kind, subcategory: f.subcategory || null, crew_id: f.crew_id || null, crew_name: f.crew_id ? null : f.crew_name || null, for_month: f.kind === 'payroll' ? f.for_month + '-01' : null, paid_until: f.kind === 'daily_wage' ? f.paid_until : null, days: f.kind === 'daily_wage' ? parseMoney(f.days) : null, amount, paid_on: f.paid_on || todayISO(), method: f.method, supplier: f.supplier, description: f.description, notes: f.notes });
       s.close();
       if (f.kind === 'daily_wage') { const w = wageStatus().find((w) => (f.crew_id && w.crew_id === f.crew_id) || (!f.crew_id && w.name.toLowerCase() === (f.crew_name || '').toLowerCase())); toast(L('Το μεροκάματο καταχωρήθηκε', 'Wage recorded'), { body: w ? wageLine(w) : '' , ms: 5000 }); }
       else toast(f.id ? L('Το έξοδο ενημερώθηκε', 'Expense updated') : L('Το έξοδο καταχωρήθηκε', 'Expense recorded'));

@@ -87,7 +87,7 @@ const STEPS = () => [L('Πελάτης', 'Customer'), L('Εκδήλωση', 'Eve
 
 export function renderEventForm(root, params = {}) {
   const k = JSON.stringify([params.id, params.request, params.date, params.customer, params.appointment]);
-  if (!W || k !== key) { W = freshState(params); key = k; }
+  if (!W || k !== key || params._fresh) { W = freshState(params); key = k; params._fresh = false; }
   draw(root, params);
 }
 
@@ -359,8 +359,10 @@ async function save(root, params, btn) {
     }
     const evRow = { ...W.ev, customer_id: customerId, event_time: W.ev.event_time || null };
     if (W.mode === 'edit') evRow.id = params.id;
+    else if (W.savedId) evRow.id = W.savedId; // νέα προσπάθεια μετά από σφάλμα: όχι δεύτερη εκδήλωση
     if (W.offer.data) evRow.offer_data = W.offer.data;
     const ev = await saveEvent(evRow);
+    W.savedId = ev.id;
     if (W.offer.pdf) {
       const path = await uploadOffer(ev.id, W.offer.pdf);
       await saveEvent({ id: ev.id, offer_path: path, offer_updated_at: new Date().toISOString() });

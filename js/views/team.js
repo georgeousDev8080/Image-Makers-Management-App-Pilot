@@ -23,6 +23,8 @@ async function loadExtras(root) {
     sb.from('invite_codes').select('*').order('created_at', { ascending: false }).limit(50),
   ]);
   activity = a.data || []; invites = i.data || [];
+  // ο χρήστης μπορεί να έφυγε από τη σελίδα όσο φόρτωνε
+  if (!root.isConnected || !/^#\/team/.test(location.hash)) return;
   renderTeam(root, true);
 }
 
