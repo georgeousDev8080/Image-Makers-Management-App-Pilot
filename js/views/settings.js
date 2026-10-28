@@ -1,7 +1,7 @@
 // =====================================================================
 //  Ρυθμίσεις
 // =====================================================================
-import { L, LANG, esc, icon, setLang, getThemePref, setThemePref, segmented, initSegmented, toast, toastErr, confirmBox, infoBox, busy, isIOS, isStandalone, colorFor, initials, lbl, ROLES, timeAgo } from '../core.js';
+import { safeColor, L, LANG, esc, icon, setLang, getThemePref, setThemePref, segmented, initSegmented, toast, toastErr, confirmBox, infoBox, busy, isIOS, isStandalone, colorFor, initials, lbl, ROLES, timeAgo } from '../core.js';
 import { sb, S, isAdmin, profileName, saveSetting, business, reload, friendlyError, emit } from '../data.js';
 import { pageHead } from '../layout.js';
 import { pushState, enablePush, disablePushHere, sendTest, setupServerPush, serverStatus, checkFunction, deviceName } from '../push.js';
@@ -20,7 +20,7 @@ export function renderSettings(root) {
   const b = business();
   const cr = S.settings.crew_reminder || { enabled: true, days_before: 1, hour: 18 };
   let html = pageHead(L('Ρυθμίσεις', 'Settings'));
-  html += `<div class="list"><div class="row"><span class="avatar lg" style="--c:${p.color || colorFor(p.id)}">${esc(initials(profileName(p)))}</span><div class="main-col"><div class="t" style="font-size:19px">${esc(profileName(p))}</div><div class="s">@${esc(p.username)} · ${esc(p.email)}</div><div class="s">${esc(lbl(ROLES, p.role))}</div></div></div></div>`;
+  html += `<div class="list"><div class="row"><span class="avatar lg" style="--c:${safeColor(p.color, p.id)}">${esc(initials(profileName(p)))}</span><div class="main-col"><div class="t" style="font-size:19px">${esc(profileName(p))}</div><div class="s">@${esc(p.username)} · ${esc(p.email)}</div><div class="s">${esc(lbl(ROLES, p.role))}</div></div></div></div>`;
 
   html += `<div class="group-label">${esc(L('Προφίλ', 'Profile'))}</div><div class="card pad"><div class="form-grid">
     <div class="field"><label>${esc(L('Ονοματεπώνυμο', 'Full name'))}</label><input class="input" id="pf_name" value="${esc(p.full_name)}"></div>
@@ -73,7 +73,7 @@ export function renderSettings(root) {
   root.innerHTML = html;
 
   // προφίλ
-  let color = p.color || colorFor(p.id);
+  let color = safeColor(p.color, p.id);
   root.querySelectorAll('[data-color]').forEach((c) => c.addEventListener('click', () => { color = c.dataset.color; root.querySelectorAll('[data-color]').forEach((x) => { x.style.boxShadow = x === c ? `0 0 0 3px var(--bg),0 0 0 5px ${color}` : ''; }); }));
   root.querySelector('#pf_save').addEventListener('click', async (e) => { const _btn = e.currentTarget;
     busy(_btn, true);
