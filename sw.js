@@ -1,5 +1,5 @@
 /* Image Makers · Service Worker — offline λειτουργία & ειδοποιήσεις push */
-const CACHE = 'im-v12';
+const CACHE = 'im-v13';
 const SHELL = [
   './', 'index.html', 'legal.html', 'config.js', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/core.js', 'js/data.js', 'js/layout.js', 'js/components.js', 'js/push.js', 'js/offer.js', 'js/grid.js', 'js/backup.js', 'js/charts.js',
@@ -89,9 +89,34 @@ self.addEventListener('notificationclick', (event) => {
   })());
 });
 
+// Ο browser άλλαξε τη συνδρομή (π.χ. λήξη κλειδιών). Ανανεώνεται εδώ, ακόμη κι αν η εφαρμογή είναι κλειστή.
+async function imConfig() {
+  try {
+    const res = await fetch('config.js', { cache: 'no-cache' }).catch(() => null) || await caches.match('config.js');
+    const t = await res.text();
+    const url = (t.match(/SUPABASE_URL\s*:\s*['"]([^'"]+)['"]/) || [])[1];
+    const key = (t.match(/SUPABASE_ANON_KEY\s*:\s*['"]([^'"]+)['"]/) || [])[1];
+    return url && key ? { url: url.replace(/\/$/, ''), key } : null;
+  } catch { return null; }
+}
 self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil((async () => {
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     clients.forEach((c) => c.postMessage({ type: 'resubscribe' }));
+    try {
+      const old = event.oldSubscription;
+      let sub = event.newSubscription;
+      if (!sub && old && old.options && old.options.applicationServerKey) {
+        sub = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: old.options.applicationServerKey });
+      }
+      const cfg = await imConfig();
+      if (!sub || !old || !cfg) return;
+      const j = sub.toJSON();
+      await fetch(cfg.url + '/rest/v1/rpc/push_rotate', {
+        method: 'POST',
+        headers: { apikey: cfg.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_old: old.endpoint, p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth }),
+      });
+    } catch (e) { /* θα διορθωθεί στο επόμενο άνοιγμα της εφαρμογής */ }
   })());
 });

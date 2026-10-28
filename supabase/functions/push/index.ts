@@ -137,19 +137,26 @@ Deno.serve(async (req) => {
     let sent = 0;
     await Promise.all((subs || []).map(async (s: any) => {
       try {
-        const body = await encryptPayload(payload, s.p256dh, s.auth);
-        const res = await fetch(s.endpoint, {
+        const send = async () => fetch(s.endpoint, {
           method: "POST",
           headers: {
             Authorization: await vapidAuthHeader(s.endpoint, jwk, cfg.vapid_public, cfg.subject),
             "Content-Encoding": "aes128gcm",
             "Content-Type": "application/octet-stream",
-            TTL: "86400",
+            TTL: "259200", // 3 ημέρες: αν το κινητό είναι σβηστό, η ειδοποίηση έρχεται μόλις ανοίξει
             Urgency: "high",
           },
-          body,
+          body: await encryptPayload(payload, s.p256dh, s.auth),
         });
-        if (res.status === 404 || res.status === 410 || res.status === 403) {
+        // έως 3 προσπάθειες σε προσωρινό σφάλμα του παρόχου (429 / 5xx / δίκτυο)
+        let res: Response | null = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try { res = await send(); } catch (_) { res = null; }
+          if ((res && res.status !== 429 && res.status < 500) || attempt === 2) break;
+          await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
+        }
+        if (!res) throw new Error("push network error");
+        if (res.status === 404 || res.status === 410) { // η συνδρομή δεν υπάρχει πια (403 = προσωρινό πρόβλημα κλειδιού, δεν σβήνουμε)
           await rest(`push_subscriptions?id=eq.${s.id}`, { method: "DELETE" });
         } else if (res.ok) {
           sent++;

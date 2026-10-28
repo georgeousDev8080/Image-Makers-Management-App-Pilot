@@ -62,6 +62,9 @@ const u8ToB64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).repl
 
 async function saveSub(sub) {
   const j = sub.toJSON();
+  // η συσκευή περνά στον λογαριασμό που είναι συνδεδεμένος τώρα (τελευταίος συνδεδεμένος)
+  const { error: e1 } = await sb.rpc('push_claim', { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_device: deviceName() });
+  if (!e1) return true;
   const row = { user_id: S.profile.id, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, device: deviceName() };
   const { error } = await sb.from('push_subscriptions').upsert(row, { onConflict: 'endpoint' });
   return !error;
