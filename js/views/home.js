@@ -59,6 +59,10 @@ export function renderHome(root) {
     const pa = pendingAppointments().length - sa; if (pa > 0) todo.push({ h: '#/appointments', i: 'handshake', c: 'var(--blue)', t: L(`${pa} προσφορές σε αναμονή απάντησης`, `${pa} offers waiting for an answer`) });
     const wl = all.filter((v) => wfLevel(v.e, today).level === 'late').length; if (wl) todo.push({ h: '#/workflow', i: 'flow', c: 'var(--red)', t: L(`${wl} εργασίες με μεγάλη καθυστέρηση (φωτογραφίες)`, `${wl} jobs with a long delay (photos)`) });
     const pm = pendingMessages().length; if (pm) todo.push({ h: '#/outbox', i: 'message', c: 'var(--accent)', t: L(`${pm} μηνύματα προς πελάτες για αποστολή`, `${pm} client messages to send`) });
+    // υπενθύμιση αντιγράφου ασφαλείας (το δωρεάν Supabase δεν κρατά αντίγραφα)
+    const lb = S.settings.last_backup?.at ? new Date(S.settings.last_backup.at) : null;
+    const lbDays = lb ? Math.floor((Date.now() - lb.getTime()) / 864e5) : null;
+    if ((S.events.size || S.payments.length || S.appointments.length) && (lbDays === null || lbDays >= 30)) todo.push({ h: '#/settings', i: 'archive', c: 'var(--blue)', t: lbDays === null ? L('Κατεβάστε το πρώτο πλήρες αντίγραφο ασφαλείας (Ρυθμίσεις)', 'Download your first full backup (Settings)') : L(`Τελευταίο αντίγραφο ασφαλείας πριν από ${lbDays} ημέρες · κατεβάστε νέο`, `Last backup ${lbDays} days ago · download a new one`) });
     const pu = pendingUsers().length; if (pu) todo.push({ h: '#/team', i: 'shield', c: 'var(--purple)', t: L(`${pu} νέοι λογαριασμοί περιμένουν ρόλο`, `${pu} new accounts need a role`) });
     if (isVideoAdmin()) {
       const sos = all.filter((v) => ['lab', 'ready', 'delivered'].includes(v.e.photo_status) && v.e.editing_status !== 'done').length;

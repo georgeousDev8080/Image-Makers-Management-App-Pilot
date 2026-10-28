@@ -58,6 +58,7 @@ export function friendlyError(err) {
   if (/last_admin/.test(m)) return L('Πρέπει να μείνει τουλάχιστον ένας διαχειριστής.', 'At least one admin must remain.');
   if (/cannot_disable_self/.test(m)) return L('Δεν μπορείτε να απενεργοποιήσετε τον εαυτό σας.', 'You cannot disable yourself.');
   if (/violates foreign key.*customers|events_customer_id_fkey/i.test(m)) return L('Ο πελάτης έχει εκδηλώσεις. Διαγράψτε πρώτα τις εκδηλώσεις του.', 'This customer has events. Delete the events first.');
+  if (/event_has_payments/.test(m)) return L('Η εκδήλωση έχει πληρωμές και δεν διαγράφεται. Ακυρώστε την ή διαγράψτε πρώτα τις πληρωμές της.', 'This event has payments and cannot be deleted. Cancel it or delete its payments first.');
   if (/duplicate key/i.test(m)) return L('Υπάρχει ήδη εγγραφή με αυτά τα στοιχεία.', 'This entry already exists.');
   if (/JWT|session/i.test(m)) return L('Η σύνδεση έληξε. Συνδεθείτε ξανά.', 'Your session expired. Please sign in again.');
   if (/Password should be at least/i.test(m)) return L('Το PIN πρέπει να έχει 6 ψηφία.', 'The PIN must have 6 digits.');
@@ -268,6 +269,22 @@ export async function saveCustomer(c) {
   S.customers.set(data.id, data); emit('customers');
   return data;
 }
+/** Αλλαγή μόνο συγκεκριμένων πεδίων (χωρίς να ξαναγράφονται τα υπόλοιπα με παλιές τιμές) */
+export async function patchCustomer(id, patch) {
+  const data = await q(sb.from('customers').update(patch).eq('id', id).select().single());
+  S.customers.set(data.id, data); emit('customers');
+  return data;
+}
+export async function patchPayment(id, patch) {
+  const data = await q(sb.from('payments').update(patch).eq('id', id).select().single());
+  S.payments = [...S.payments.filter((x) => x.id !== data.id), data]; emit('payments');
+  return data;
+}
+export async function patchExpense(id, patch) {
+  const data = await q(sb.from('expenses').update(patch).eq('id', id).select().single());
+  S.expenses = [...S.expenses.filter((x) => x.id !== data.id), data]; emit('expenses');
+  return data;
+}
 export async function deleteCustomer(id) {
   await q(sb.from('customers').delete().eq('id', id));
   S.customers.delete(id); emit('customers');
@@ -278,9 +295,12 @@ export async function saveEvent(ev) {
   const row = {};
   EVENT_FIELDS.forEach((k) => { if (k in ev) row[k] = ev[k] === '' ? null : ev[k]; });
   let data;
+  const prevPath = ev.id ? S.events.get(ev.id)?.offer_path : null;
   if (ev.id && S.events.has(ev.id)) data = await q(sb.from('events').update(row).eq('id', ev.id).select().single());
   else data = await q(sb.from('events').insert({ ...(ev.id ? { id: ev.id } : {}), ...row, created_by: S.profile.id }).select().single());
   S.events.set(data.id, data); emit('events');
+  // το παλιό PDF σβήνεται μόνο αφού η εκδήλωση δείχνει πλέον στο νέο
+  if (prevPath && 'offer_path' in row && row.offer_path !== prevPath && !pathInUse(prevPath)) sb.storage.from('offers').remove([prevPath]).catch(() => {});
   return data;
 }
 export async function patchEvent(id, patch) {
@@ -351,9 +371,7 @@ export async function uploadOffer(eventId, blob) {
   const path = `${eventId}/offer-${Date.now()}.pdf`;
   const { error } = await sb.storage.from('offers').upload(path, blob, { contentType: 'application/pdf', upsert: true });
   if (error) { toastErr(L('Το PDF δεν ανέβηκε', 'PDF upload failed'), friendlyError(error)); throw error; }
-  const old = S.events.get(eventId)?.offer_path;
-  if (old && old !== path && !pathInUse(old, { exceptEvent: eventId })) sb.storage.from('offers').remove([old]).catch(() => {});
-  return path;
+  return path; // το παλιό αρχείο σβήνεται από το saveEvent, αφού αποθηκευτεί η νέα διαδρομή
 }
 export async function offerUrl(path) {
   const { data, error } = await sb.storage.from('offers').createSignedUrl(path, 60 * 60);
@@ -443,9 +461,11 @@ export async function saveAppointment(a) {
   const row = {};
   APPT_FIELDS.forEach((k) => { if (k in a) row[k] = a[k] === '' ? null : a[k]; });
   let data;
+  const prevPath = a.id ? S.appointments.find((x) => x.id === a.id)?.offer_path : null;
   if (a.id && S.appointments.some((x) => x.id === a.id)) data = await q(sb.from('appointments').update(row).eq('id', a.id).select().single());
   else data = await q(sb.from('appointments').insert({ ...(a.id ? { id: a.id } : {}), ...row, created_by: S.profile.id }).select().single());
   S.appointments = [data, ...S.appointments.filter((x) => x.id !== data.id)]; emit('appointments');
+  if (prevPath && 'offer_path' in row && row.offer_path !== prevPath && !pathInUse(prevPath)) sb.storage.from('offers').remove([prevPath]).catch(() => {});
   return data;
 }
 export async function deleteAppointment(id) {
@@ -458,9 +478,7 @@ export async function uploadAppointmentOffer(apptId, blob) {
   const path = `appointments/${apptId}/offer-${Date.now()}.pdf`;
   const { error } = await sb.storage.from('offers').upload(path, blob, { contentType: 'application/pdf', upsert: true });
   if (error) { toastErr(L('Το PDF δεν ανέβηκε', 'PDF upload failed'), friendlyError(error)); throw error; }
-  const old = S.appointments.find((x) => x.id === apptId)?.offer_path;
-  if (old && old !== path && !pathInUse(old, { exceptAppt: apptId })) sb.storage.from('offers').remove([old]).catch(() => {});
-  return path;
+  return path; // το παλιό αρχείο σβήνεται από το saveAppointment, αφού αποθηκευτεί η νέα διαδρομή
 }
 /** Αντιγραφή του PDF ενός ραντεβού στην εκδήλωση που δημιουργήθηκε */
 export async function copyOfferToEvent(fromPath, eventId) {

@@ -178,7 +178,7 @@ export function renderEventDetail(root, { id }) {
     html += `<div class="group-label">${esc(L('Ενέργειες', 'Actions'))}</div><div class="list">
       <a class="row" href="#/event/${id}/edit"><span class="row-icon">${icon('edit')}</span><div class="main-col"><div class="t">${esc(L('Επεξεργασία στοιχείων', 'Edit details'))}</div></div>${icon('chevR', 'chev')}</a>
       <button class="row" data-act="cancel"><span class="row-icon" style="background:var(--orange)">${icon(e.status === 'cancelled' ? 'refresh' : 'x')}</span><div class="main-col"><div class="t">${esc(e.status === 'cancelled' ? L('Επαναφορά εκδήλωσης', 'Restore event') : L('Ακύρωση εκδήλωσης', 'Cancel event'))}</div><div class="s">${esc(L('Μένει στο ιστορικό, ενημερώνεται το συνεργείο', 'Kept in history, crew is notified'))}</div></div></button>
-      <button class="row" data-act="delete"><span class="row-icon" style="background:var(--red)">${icon('trash')}</span><div class="main-col"><div class="t neg">${esc(L('Οριστική διαγραφή', 'Delete permanently'))}</div><div class="s">${esc(L('Διαγράφονται και οι πληρωμές της', 'Its payments are deleted too'))}</div></div></button>
+      <button class="row" data-act="delete"><span class="row-icon" style="background:var(--red)">${icon('trash')}</span><div class="main-col"><div class="t neg">${esc(L('Οριστική διαγραφή', 'Delete permanently'))}</div><div class="s">${esc(v.pays.length ? L('Δεν επιτρέπεται: έχει πληρωμές (χρησιμοποιήστε την ακύρωση)', 'Not allowed: it has payments (use cancel)') : L('Μόνο για εκδηλώσεις χωρίς πληρωμές', 'Only for events without payments'))}</div></div></button>
     </div>`;
   }
 
@@ -217,8 +217,15 @@ export function renderEventDetail(root, { id }) {
     toast(cancel ? L('Η εκδήλωση ακυρώθηκε', 'Event cancelled') : L('Η εκδήλωση επανήλθε', 'Event restored'));
   });
   root.querySelector('[data-act="delete"]')?.addEventListener('click', async () => {
-    if (!await confirmBox(L('Οριστική διαγραφή;', 'Delete permanently?'), L(`Θα διαγραφούν η εκδήλωση «${v.title}», οι πληρωμές της και το PDF. Δεν γίνεται αναίρεση.`, `The event “${v.title}”, its payments and PDF will be deleted. This cannot be undone.`), { ok: L('Διαγραφή', 'Delete'), destructive: true })) return;
-    await deleteEvent(id);
+    if (v.pays.length) {
+      // προστασία οικονομικών στοιχείων: εκδήλωση με πληρωμές δεν σβήνεται
+      if (await confirmBox(L('Η εκδήλωση έχει πληρωμές', 'This event has payments'), L(`Υπάρχουν ${v.pays.length} πληρωμές (${money(v.paid)}). Για να μη χαθούν οικονομικά στοιχεία, η εκδήλωση δεν διαγράφεται.\nΑν δεν θα γίνει, πατήστε «Ακύρωση εκδήλωσης»: μένει στο ιστορικό μαζί με τις πληρωμές.`, `There are ${v.pays.length} payments (${money(v.paid)}). To protect financial records the event cannot be deleted.\nIf it will not happen, use “Cancel event”: it stays in history with its payments.`), { ok: e.status === 'cancelled' ? L('Εντάξει', 'OK') : L('Ακύρωση εκδήλωσης', 'Cancel event'), cancel: L('Κλείσιμο', 'Close') }) && e.status !== 'cancelled') {
+        await patchEvent(id, { status: 'cancelled' }).catch(() => {}); toast(L('Η εκδήλωση ακυρώθηκε', 'Event cancelled'));
+      }
+      return;
+    }
+    if (!await confirmBox(L('Οριστική διαγραφή;', 'Delete permanently?'), L(`Θα διαγραφούν η εκδήλωση «${v.title}» και το PDF της. Δεν γίνεται αναίρεση.`, `The event “${v.title}” and its PDF will be deleted. This cannot be undone.`), { ok: L('Διαγραφή', 'Delete'), destructive: true })) return;
+    try { await deleteEvent(id); } catch { return; }
     toast(L('Η εκδήλωση διαγράφηκε', 'Event deleted'));
     go('#/events');
   });

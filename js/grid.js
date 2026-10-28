@@ -2,7 +2,7 @@
 //  Πίνακας τύπου Excel: επεξεργασία κελιών, πλοήγηση με πλήκτρα,
 //  σταθερή πρώτη στήλη & επικεφαλίδες, ομάδες στηλών
 // =====================================================================
-import { L, esc, money, fmtDate, parseMoney, opt, sheet, toastErr, haptic, latinName } from './core.js';
+import { L, esc, money, fmtDate, parseMoney, opt, sheet, toast, toastErr, haptic, latinName } from './core.js';
 
 const memory = {}; // id → { scrollLeft, scrollTop, sel: {rk, ck} }
 const coarse = () => window.matchMedia('(pointer: coarse)').matches;
@@ -91,6 +91,10 @@ export function renderGrid(container, cols, opts) {
       await onEdit(r, c, value);
       td.classList.remove('saving');
       td.classList.add('flash'); setTimeout(() => td.classList.remove('flash'), 1200);
+      // κελί που άδειασε: δυνατότητα αναίρεσης (π.χ. κατά λάθος Delete)
+      if ((value === null || value === '') && old !== null && old !== undefined && old !== '' && c.type !== 'bool') {
+        toast(L('Το κελί άδειασε', 'Cell cleared'), { type: 'info', body: L('Πατήστε εδώ για αναίρεση', 'Tap here to undo'), ms: 7000, onClick: () => { onEdit(r, c, old).then(() => toast(L('Αναιρέθηκε', 'Undone'), { ms: 1500 })).catch(() => {}); } });
+      }
     } catch (e) {
       td.classList.remove('saving');
       td.querySelector('.c').innerHTML = show(c, r);

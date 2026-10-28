@@ -2,7 +2,10 @@
 //  Αντίγραφα ασφαλείας (Excel / ZIP), επαναφορά, εισαγωγή παλιού Sheet
 // =====================================================================
 import { L, esc, icon, loadScript, download, norm, lbl, opt, APPT_MODES, APPT_STATUS, REJECT_REASONS, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, ROLES, TRIGGERS, sheet, toast, toastErr, confirmBox, busy, money, fmtDate, pad2 } from './core.js';
-import { sb, S, coupleName, profileName, loadAll, offerBlob, friendlyError } from './data.js';
+import { sb, S, coupleName, profileName, loadAll, offerBlob, friendlyError, saveSetting } from './data.js';
+
+/** Καταγραφή του τελευταίου αντιγράφου (για την υπενθύμιση στην Αρχική) */
+const markBackup = (kind) => saveSetting('last_backup', { at: new Date().toISOString(), by: S.profile?.id || null, kind }).catch(() => {});
 
 const XL = () => loadScript('vendor/xlsx.full.min.js');
 const ZIP = () => loadScript('vendor/jszip.min.js');
@@ -86,6 +89,7 @@ function buildWorkbook() {
 export async function exportAllXlsx() {
   await XL();
   window.XLSX.writeFile(buildWorkbook(), `ImageMakers_Antigrafo_${stamp()}.xlsx`);
+  markBackup('xlsx');
   toast(L('Το αρχείο Excel κατέβηκε', 'Excel file downloaded'));
 }
 
@@ -106,10 +110,20 @@ export async function exportFullZip() {
         folder.file(name, b); n++;
       } catch (err) { console.warn('pdf', e.id, err); }
     }
-    zip.file('README_DIAVASTE.txt', `Image Makers · Πλήρες αντίγραφο ασφαλείας\nΗμερομηνία: ${new Date().toLocaleString('el-GR')}\n\n- ImageMakers_dedomena.xlsx: όλα τα δεδομένα (ανοίγει σε Excel / Numbers / Google Sheets)\n- prosfores_pdf/: ${n} PDF προσφορών (το όνομα ξεκινά με το ID της εκδήλωσης)\n\nΕπαναφορά: Εφαρμογή → Ρυθμίσεις → Επαναφορά από αντίγραφο → επιλέξτε αυτό το .zip\n`);
+    // και τα PDF των ραντεβού/προσφορών
+    const af = zip.folder('rantevou_pdf'); let na = 0;
+    for (const a of S.appointments) {
+      if (!a.offer_path) continue;
+      try {
+        const b = await offerBlob(a.offer_path);
+        af.file(`${a.id}__appt__${(a.appt_date || '')}_${[a.name1, a.name2].filter(Boolean).join('_').replace(/[^\p{L}\p{N}]+/gu, '_').slice(0, 50)}.pdf`, b); na++;
+      } catch (err) { console.warn('pdf appt', a.id, err); }
+    }
+    zip.file('README_DIAVASTE.txt', `Image Makers · Πλήρες αντίγραφο ασφαλείας\nΗμερομηνία: ${new Date().toLocaleString('el-GR')}\n\n- ImageMakers_dedomena.xlsx: όλα τα δεδομένα (ανοίγει σε Excel / Numbers / Google Sheets)\n- prosfores_pdf/: ${n} PDF προσφορών εκδηλώσεων (το όνομα ξεκινά με το ID της εκδήλωσης)\n- rantevou_pdf/: ${na} PDF προσφορών ραντεβού\n\nΕπαναφορά: Εφαρμογή → Ρυθμίσεις → Επαναφορά από αντίγραφο → επιλέξτε αυτό το .zip\n`);
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
     download(blob, `ImageMakers_Pliris_Antigrafo_${stamp()}.zip`);
-    t(); toast(L('Το πλήρες αντίγραφο κατέβηκε', 'Full backup downloaded'), { body: L(`${n} PDF προσφορών μέσα στο αρχείο.`, `${n} offer PDFs included.`) });
+    markBackup('zip');
+    t(); toast(L('Το πλήρες αντίγραφο κατέβηκε', 'Full backup downloaded'), { body: L(`${n + na} PDF προσφορών μέσα στο αρχείο.`, `${n + na} offer PDFs included.`) });
   } catch (e) { t(); throw e; }
 }
 
@@ -145,41 +159,56 @@ export async function importBackup() {
     const x = Object.values(zip.files).find((f) => /\.xlsx$/i.test(f.name));
     if (!x) throw new Error(L('Το zip δεν περιέχει αρχείο Excel', 'The zip has no Excel file'));
     wbData = await x.async('arraybuffer');
-    for (const f of Object.values(zip.files)) { const m = f.name.match(/([0-9a-f-]{36})__.*\.pdf$/i); if (m) pdfs.push({ id: m[1], file: f }); }
+    for (const f of Object.values(zip.files)) { const m = f.name.match(/([0-9a-f-]{36})__(appt__)?.*\.pdf$/i); if (m) pdfs.push({ id: m[1], appt: !!m[2], file: f }); }
   } else wbData = await file.arrayBuffer();
   const wb = window.XLSX.read(wbData, { type: 'array' });
   const rows = (n) => (wb.Sheets[n] ? window.XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: '' }) : []);
   const C = rows('Πελάτες'), E = rows('Εκδηλώσεις'), P = rows('Πληρωμές'), X = rows('Έξοδα'), K = rows('Συνεργείο'), T = rows('Πρότυπα μηνυμάτων');
   if (!C.length && !E.length && !P.length && !X.length) { toastErr(L('Δεν αναγνωρίστηκε το αρχείο', 'File not recognized'), L('Επιλέξτε αντίγραφο που κατεβάσατε από αυτή την εφαρμογή. Για το παλιό Google Sheet χρησιμοποιήστε την «Εισαγωγή από το παλιό Google Sheet».', 'Choose a backup downloaded from this app. For the old Google Sheet use “Import from the old Google Sheet”.')); return; }
-  if (!await confirmBox(L('Επαναφορά δεδομένων;', 'Restore data?'), L(`Βρέθηκαν: ${C.length} πελάτες, ${E.length} εκδηλώσεις, ${P.length} πληρωμές, ${X.length} έξοδα, ${pdfs.length} PDF.\nΌσα υπάρχουν ήδη θα ενημερωθούν, τα υπόλοιπα θα προστεθούν. Δεν σβήνεται τίποτα.`, `Found: ${C.length} customers, ${E.length} events, ${P.length} payments, ${X.length} expenses, ${pdfs.length} PDFs.\nExisting records are updated, others added. Nothing is deleted.`), { ok: L('Επαναφορά', 'Restore') })) return;
+  // Ασφαλής επαναφορά: προστίθενται ΜΟΝΟ όσα λείπουν· ό,τι υπάρχει ήδη στην εφαρμογή δεν αλλάζει ποτέ
+  await loadAll();
+  const have = { c: new Set(S.customers.keys()), e: new Set(S.events.keys()), p: new Set(S.payments.map((x) => x.id)), x: new Set(S.expenses.map((x) => x.id)), a: new Set(S.appointments.map((x) => x.id)), t: new Set(S.templates.map((x) => x.id)) };
+  const fresh = (list, set) => list.filter((r) => r.ID && !set.has(String(r.ID)));
+  const nC = fresh(C, have.c), nE = fresh(E, have.e), nP = fresh(P, have.p), nX = fresh(X, have.x);
+  if (!nC.length && !nE.length && !nP.length && !nX.length && !fresh(rows('Ραντεβού'), have.a).length && !pdfs.length) { toast(L('Δεν χρειάζεται επαναφορά', 'Nothing to restore'), { body: L('Όλα τα στοιχεία του αντιγράφου υπάρχουν ήδη στην εφαρμογή.', 'Everything in the backup already exists in the app.') }); return; }
+  if (!await confirmBox(L('Επαναφορά δεδομένων;', 'Restore data?'), L(`Θα προστεθούν όσα λείπουν από την εφαρμογή: ${nC.length} πελάτες, ${nE.length} εκδηλώσεις, ${nP.length} πληρωμές, ${nX.length} έξοδα.\nΌ,τι υπάρχει ήδη ΔΕΝ αλλάζει και δεν σβήνεται τίποτα.`, `Missing records will be added: ${nC.length} customers, ${nE.length} events, ${nP.length} payments, ${nX.length} expenses.\nExisting records are NOT changed and nothing is deleted.`), { ok: L('Επαναφορά', 'Restore') })) return;
   const t = toast(L('Γίνεται επαναφορά…', 'Restoring…'), { type: 'info', ms: 120000 });
   try {
     const old = new Date(Date.now() - 30 * 864e5).toISOString();
-    await chunked('customers', C.filter((r) => r.ID).map((r) => ({ id: r.ID, name1: r['Ονοματεπώνυμο 1'] || '—', name2: r['Ονοματεπώνυμο 2'] || null, phone1: String(r['Κινητό 1'] || '') || null, phone2: String(r['Κινητό 2'] || '') || null, email1: r['Email 1'] || null, email2: r['Email 2'] || null, notes: r['Σημειώσεις'] || null })));
-    const evRows = E.filter((r) => r.ID && toISODate(r['Ημερομηνία']));
+    await chunked('customers', nC.map((r) => ({ id: r.ID, name1: r['Ονοματεπώνυμο 1'] || '—', name2: r['Ονοματεπώνυμο 2'] || null, phone1: String(r['Κινητό 1'] || '') || null, phone2: String(r['Κινητό 2'] || '') || null, email1: r['Email 1'] || null, email2: r['Email 2'] || null, notes: r['Σημειώσεις'] || null })));
+    const evRows = nE.filter((r) => toISODate(r['Ημερομηνία']));
+    // σύνδεσμοι μόνο προς εγγραφές που υπάρχουν (αλλιώς η βάση απορρίπτει όλη την επαναφορά)
+    const custOk = new Set([...have.c, ...nC.map((r) => String(r.ID))]);
+    const evOk = new Set([...have.e, ...evRows.map((r) => String(r.ID))]);
     await chunked('events', evRows.map((r) => {
       let od = null; try { od = r['Προσφορά (δεδομένα)'] ? JSON.parse(r['Προσφορά (δεδομένα)']) : null; } catch {}
-      return { id: r.ID, customer_id: r['Πελάτης ID'] || null, category: back(CATEGORIES, r['Κατηγορία']) || 'wedding', event_date: toISODate(r['Ημερομηνία']), event_time: toTime(r['Ώρα']), church_location: r['Εκκλησία / Τοποθεσία'] || null, house_location: r['Σπίτι'] || null, reception_location: r['Δεξίωση'] || null, resolution: back(RESOLUTIONS, r['Ανάλυση']), notes: r['Σημειώσεις'] || null, extra_crew: r['Εξωτερικοί συνεργάτες'] || null, photo_status: back(PHOTO_STATUS, r['Κατάσταση φωτογραφιών']) || 'samples_todo', editing_status: back(EDIT_STATUS, r['Κατάσταση editing']) || 'none', editing_pc: back(PCS, r['Υπολογιστής μοντάζ']), video_notes: r['Σχόλια βίντεο'] || null, status: yes(r['Ακυρωμένη']) ? 'cancelled' : 'booked', offer_path: r['Αρχείο PDF'] || null, offer_data: od, created_at: r['Δημιουργήθηκε'] || old };
+      return { id: r.ID, customer_id: custOk.has(String(r['Πελάτης ID'])) ? r['Πελάτης ID'] : null, category: back(CATEGORIES, r['Κατηγορία']) || 'wedding', event_date: toISODate(r['Ημερομηνία']), event_time: toTime(r['Ώρα']), church_location: r['Εκκλησία / Τοποθεσία'] || null, house_location: r['Σπίτι'] || null, reception_location: r['Δεξίωση'] || null, resolution: back(RESOLUTIONS, r['Ανάλυση']), notes: r['Σημειώσεις'] || null, extra_crew: r['Εξωτερικοί συνεργάτες'] || null, photo_status: back(PHOTO_STATUS, r['Κατάσταση φωτογραφιών']) || 'samples_todo', editing_status: back(EDIT_STATUS, r['Κατάσταση editing']) || 'none', editing_pc: back(PCS, r['Υπολογιστής μοντάζ']), video_notes: r['Σχόλια βίντεο'] || null, status: yes(r['Ακυρωμένη']) ? 'cancelled' : 'booked', offer_path: r['Αρχείο PDF'] || null, offer_data: od, created_at: r['Δημιουργήθηκε'] || old };
     }));
     await chunked('event_finance', evRows.map((r) => ({ event_id: r.ID, package_price: num(r['Αξία πακέτου']), package_name: r['Όνομα πακέτου'] || null, second_crew: yes(r['2ο συνεργείο']), office_notes: r['Σημειώσεις γραφείου'] || null })));
-    await chunked('payments', P.filter((r) => r.ID && num(r['Ποσό'])).map((r) => ({ id: r.ID, event_id: r['Εκδήλωση ID'] || null, category: back(CATEGORIES, r['Κατηγορία']) || 'other', kind: r['Είδος'] === 'Προκαταβολή' ? 'deposit' : r['Είδος'] === 'Άλλο' ? 'other' : 'installment', label: r['Τύπος πληρωμής'] || null, amount: num(r['Ποσό']), paid_on: toISODate(r['Ημερομηνία είσπραξης']), method: back(METHODS, r['Τρόπος πληρωμής']), description: r['Περιγραφή'] || null, notes: r['Σημειώσεις'] || null, created_at: r['Δημιουργήθηκε'] || old })));
+    await chunked('payments', nP.filter((r) => num(r['Ποσό'])).map((r) => ({ id: r.ID, event_id: evOk.has(String(r['Εκδήλωση ID'])) ? r['Εκδήλωση ID'] : null, category: back(CATEGORIES, r['Κατηγορία']) || 'other', kind: r['Είδος'] === 'Προκαταβολή' ? 'deposit' : r['Είδος'] === 'Άλλο' ? 'other' : 'installment', label: r['Τύπος πληρωμής'] || null, amount: num(r['Ποσό']), paid_on: toISODate(r['Ημερομηνία είσπραξης']), method: back(METHODS, r['Τρόπος πληρωμής']), description: r['Περιγραφή'] || null, notes: r['Σημειώσεις'] || null, created_at: r['Δημιουργήθηκε'] || old })));
     const profIds = new Set(S.profiles.map((p) => p.id));
-    await chunked('expenses', X.filter((r) => r.ID && num(r['Ποσό'])).map((r) => {
+    await chunked('expenses', nX.filter((r) => num(r['Ποσό'])).map((r) => {
       const kind = back(EXPENSE_KINDS, r['Τύπος']) || 'other';
       return { id: r.ID, kind, subcategory: kind === 'shop' ? back(SHOP_SUBS, r['Υποκατηγορία']) : kind === 'other' ? back(OTHER_SUBS, r['Υποκατηγορία']) || 'misc' : (r['Υποκατηγορία'] || null), crew_id: profIds.has(r['Μέλος ID']) ? r['Μέλος ID'] : null, crew_name: r['Μέλος / Συνεργάτης'] || null, for_month: r['Για μήνα'] ? String(r['Για μήνα']).slice(0, 7) + '-01' : null, paid_until: toISODate(r['Πληρωμένος έως']), days: num(r['Ημέρες']), amount: num(r['Ποσό']), paid_on: toISODate(r['Ημερομηνία']) || new Date().toISOString().slice(0, 10), method: back(METHODS, r['Τρόπος πληρωμής']), supplier: r['Πληρώθηκε σε / Προμηθευτής'] || null, description: r['Περιγραφή'] || null, notes: r['Σημειώσεις'] || null };
     }));
     const crewRows = K.filter((r) => profIds.has(r['Μέλος ID']) && evRows.some((e) => e.ID === r['Εκδήλωση ID'])).map((r) => ({ event_id: r['Εκδήλωση ID'], user_id: r['Μέλος ID'], duty: r['Αρμοδιότητα'] === 'Βίντεο' ? 'video' : 'photo' }));
     if (crewRows.length) await chunked('event_crew', crewRows, { onConflict: 'event_id,user_id', ignoreDuplicates: true });
-    if (T.length) await chunked('message_templates', T.filter((r) => r.ID && r['Κείμενο']).map((r) => ({ id: r.ID, key: r['Κλειδί'] || null, name: r['Όνομα'], trigger_type: back(TRIGGERS, r['Πότε']) || 'before_event', offset_days: Number(r['Ημέρες']) || 0, send_hour: Number(r['Ώρα']) || 11, threshold_pct: num(r['Ποσοστό %']), categories: String(r['Κατηγορίες'] || '').split(',').map((s) => back(CATEGORIES, s)).filter(Boolean), channels: String(r['Τρόποι'] || 'sms,email').split(',').map((s) => s.trim()).filter(Boolean), subject: r['Θέμα'] || null, body: r['Κείμενο'], enabled: yes(r['Ενεργό']) })));
+    if (T.length) await chunked('message_templates', fresh(T, have.t).filter((r) => r['Κείμενο']).map((r) => ({ id: r.ID, key: r['Κλειδί'] || null, name: r['Όνομα'], trigger_type: back(TRIGGERS, r['Πότε']) || 'before_event', offset_days: Number(r['Ημέρες']) || 0, send_hour: Number(r['Ώρα']) || 11, threshold_pct: num(r['Ποσοστό %']), categories: String(r['Κατηγορίες'] || '').split(',').map((s) => back(CATEGORIES, s)).filter(Boolean), channels: String(r['Τρόποι'] || 'sms,email').split(',').map((s) => s.trim()).filter(Boolean), subject: r['Θέμα'] || null, body: r['Κείμενο'], enabled: yes(r['Ενεργό']) })));
     const A = rows('Ραντεβού');
     const evIds = new Set([...S.events.keys(), ...evRows.map((r) => r.ID)]);
     const js = (v) => { try { return v ? JSON.parse(v) : null; } catch { return null; } };
-    if (A.length) await chunked('appointments', A.filter((r) => r.ID && toISODate(r['Ημερομηνία ραντεβού'])).map((r) => ({ id: r.ID, mode: back(APPT_MODES, r['Τύπος']) || 'store', appt_date: toISODate(r['Ημερομηνία ραντεβού']), category: back(CATEGORIES, r['Κατηγορία']) || 'wedding', name1: r['Ονοματεπώνυμο 1'] || null, name2: r['Ονοματεπώνυμο 2'] || null, phone: String(r['Κινητό'] || '') || null, email: r.Email || null, event_date: toISODate(r['Ημερομηνία εκδήλωσης']), church: r['Εκκλησία'] || null, church_time: r['Ώρα εκκλησίας'] || null, reception: r['Δεξίωση'] || null, total: num(r['Αξία προσφοράς']), status: back(APPT_STATUS, r['Κατάσταση']) || 'pending', status_at: r['Ημερομηνία κατάστασης'] || new Date().toISOString(), reason: back(REJECT_REASONS, r['Λόγος']), comments: r['Σχόλια'] || null, notes: r['Σημειώσεις'] || null, event_id: evIds.has(r['Εκδήλωση ID']) ? r['Εκδήλωση ID'] : null, offer_path: r['Αρχείο PDF'] || null, offer_data: js(r['Προσφορά (δεδομένα)']), selections: js(r['Επιλογές πελάτη']) })));
+    if (A.length) await chunked('appointments', fresh(A, have.a).filter((r) => toISODate(r['Ημερομηνία ραντεβού'])).map((r) => ({ id: r.ID, mode: back(APPT_MODES, r['Τύπος']) || 'store', appt_date: toISODate(r['Ημερομηνία ραντεβού']), category: back(CATEGORIES, r['Κατηγορία']) || 'wedding', name1: r['Ονοματεπώνυμο 1'] || null, name2: r['Ονοματεπώνυμο 2'] || null, phone: String(r['Κινητό'] || '') || null, email: r.Email || null, event_date: toISODate(r['Ημερομηνία εκδήλωσης']), church: r['Εκκλησία'] || null, church_time: r['Ώρα εκκλησίας'] || null, reception: r['Δεξίωση'] || null, total: num(r['Αξία προσφοράς']), status: back(APPT_STATUS, r['Κατάσταση']) || 'pending', status_at: r['Ημερομηνία κατάστασης'] || new Date().toISOString(), reason: back(REJECT_REASONS, r['Λόγος']), comments: r['Σχόλια'] || null, notes: r['Σημειώσεις'] || null, event_id: evIds.has(r['Εκδήλωση ID']) ? r['Εκδήλωση ID'] : null, offer_path: r['Αρχείο PDF'] || null, offer_data: js(r['Προσφορά (δεδομένα)']), selections: js(r['Επιλογές πελάτη']) })));
+    // PDF: μόνο όπου λείπει (νέα εγγραφή ή χωρίς αρχείο)· δεν αντικαθίσταται υπάρχον PDF
+    const newEv = new Set(evRows.map((r) => String(r.ID)));
+    const newAp = new Set(fresh(A, have.a).map((r) => String(r.ID)));
     for (const p of pdfs) {
+      const ownerNew = p.appt ? newAp.has(p.id) : newEv.has(p.id);
+      const cur = p.appt ? S.appointments.find((a) => a.id === p.id) : S.events.get(p.id);
+      if (!ownerNew && (!cur || cur.offer_path)) continue;
       const blob = new Blob([await p.file.async('arraybuffer')], { type: 'application/pdf' });
-      const path = `${p.id}/offer-restored-${Date.now()}.pdf`;
-      const { error } = await sb.storage.from('offers').upload(path, blob, { contentType: 'application/pdf', upsert: true });
-      if (!error) await sb.from('events').update({ offer_path: path }).eq('id', p.id);
+      const path = `${p.appt ? 'appointments/' : ''}${p.id}/offer-restored-${Date.now()}.pdf`;
+      const { error } = await sb.storage.from('offers').upload(path, blob, { contentType: 'application/pdf', upsert: false });
+      if (!error) await sb.from(p.appt ? 'appointments' : 'events').update({ offer_path: path }).eq('id', p.id);
     }
     await loadAll();
     t(); toast(L('Η επαναφορά ολοκληρώθηκε', 'Restore complete'));
