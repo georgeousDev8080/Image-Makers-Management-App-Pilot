@@ -915,3 +915,9 @@ details.faq .a { padding: 0 16px 16px; color: var(--label-2); white-space: pre-l
 .hero-item h3 { font-family: var(--serif); font-weight: 500; font-size: 21px; line-height: 1.15; }
 .hero-item .meta { margin-top: 4px; font-size: 13.5px; gap: 12px; }
 @media (min-width: 900px) { .hero-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); } .hero-day { grid-column: 1 / -1; } }
+
+/* κουμπιά μέσα σε πλέγμα: αναδιπλώνονται αντί να ξεχειλίζουν (μικρά κινητά) */
+.grid > .btn { min-width: 0; white-space: normal; text-align: center; line-height: 1.25; }
+.card { min-width: 0; }
+/* καρτέλες φύλλων: σε μεγάλες οθόνες φαίνονται όλες (χωρίς κρυφό scroll) */
+@media (min-width: 900px) { .sheet-tabs { flex-wrap: wrap; row-gap: 4px; } }

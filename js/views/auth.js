@@ -7,7 +7,7 @@ import { enablePush, pushState } from '../push.js';
 
 const PIN_LEN = 6;
 // Διακόπτης όρων χρήσης: false = χωρίς οθόνη αποδοχής και χωρίς συνδέσμους (προσωρινά, μέχρι την παράδοση).
-export const TERMS_ENABLED = false;
+export const TERMS_ENABLED = true;
 export const TERMS_VERSION = '1.0';
 export const legalLinks = () => !TERMS_ENABLED ? '' : `<a href="legal.html#terms" target="_blank" rel="noopener">${esc(L('Όροι χρήσης', 'Terms of use'))}</a> · <a href="legal.html#privacy" target="_blank" rel="noopener">${esc(L('Απόρρητο', 'Privacy'))}</a>`;
 const credit = `<div class="credit center" style="margin-top:28px">${TERMS_ENABLED ? `<div style="margin-bottom:6px">${esc(L('Με τη χρήση της εφαρμογής αποδέχεστε τους', 'By using the app you accept the'))} ${legalLinks()}.</div>` : ''}made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>`;
