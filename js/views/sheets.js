@@ -3,7 +3,7 @@
 //  Έξοδα, Σύνοψη, Dashboard, Έλεγχος δεδομένων, Mitsos
 // =====================================================================
 import { L, esc, icon, money, fmtDate, todayISO, daysBetween, sum, matches, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, MONTHS_EL_UP, monthName, monthShort, toast, confirmBox, actionSheet, segmented, initSegmented } from '../core.js';
-import { S, isAdmin, isVideoAdmin, allEventViews, eventView, saveCustomer, patchEvent, saveFinance, savePayment, deletePayment, saveExpense, deleteExpense, openOffer, yearsAvailable, profileName, profileById } from '../data.js';
+import { S, isAdmin, isVideoAdmin, allEventViews, eventView, saveCustomer, patchCustomer, patchPayment, patchExpense, patchEvent, saveFinance, savePayment, deletePayment, saveExpense, deleteExpense, openOffer, yearsAvailable, profileName, profileById } from '../data.js';
 import { pageHead, setTopActions } from '../layout.js';
 import { renderGrid, exportGrid } from '../grid.js';
 import { openIncomeForm, openExpenseForm, expenseTitle, paymentActions, expenseActions } from './money.js';
@@ -103,7 +103,7 @@ function eventsSheet(body, tab, redraw) {
     && matches(st.q, v.title, v.c?.phone1, v.c?.phone2, v.c?.email1, v.c?.email2, v.e.church_location, v.f.package_name, fmtDate(v.e.event_date), v.f.office_notes));
   const maxPays = Math.max(4, ...views.map((v) => v.pays.filter((p) => p.amount > 0).length - 1));
 
-  const updCust = async (v, field, val) => { if (!v.c) return; if (field === 'name1' && !val) throw new Error('required'); await saveCustomer({ ...v.c, [field]: val }); };
+  const updCust = async (v, field, val) => { if (!v.c) return; if (field === 'name1' && !val) throw new Error('required'); await patchCustomer(v.c.id, { [field]: val || null }); };
   const cols = [];
   const add = (g, c) => { if (visible.has(g)) cols.push({ group: g, ...c }); };
   add('basic', { key: 'month', label: L('Μήνας', 'Month'), w: 104, get: (v) => monthUp(v.e.event_date) });
@@ -220,11 +220,11 @@ function registerSheet(body, tab, redraw) {
     { key: 'loc', label: L('Τοποθεσία', 'Location'), w: 200, get: (r) => r.v?.e.church_location || '' },
     { key: 'client', label: L('Πελάτης / Λεπτομέρειες', 'Client / Details'), w: 220, get: (r) => r.v ? r.v.title : r.p.description, display: (r) => r.v ? `<a href="#/event/${r.v.e.id}">${esc(r.v.title)}</a>` : esc(r.p.description || '') },
     { key: 'cat', label: L('Κατηγορία', 'Category'), w: 120, type: 'select', options: CATEGORIES, get: (r) => r.p.category },
-    { key: 'label', label: L('Τύπος Πληρωμής', 'Payment type'), w: 120, editable: true, get: (r) => r.p.label, set: (r, val) => savePayment({ ...r.p, label: val }) },
-    { key: 'amount', label: L('Ποσό', 'Amount'), w: 104, type: 'money', editable: true, required: true, sum: true, get: (r) => r.p.amount, set: (r, val) => { if (!val) throw new Error('amount'); return savePayment({ ...r.p, amount: val }); } },
-    { key: 'paid_on', label: L('Ημερομηνία Είσπραξης', 'Date received'), w: 100, type: 'date', editable: true, get: (r) => r.p.paid_on, set: (r, val) => savePayment({ ...r.p, paid_on: val }) },
-    { key: 'method', label: L('Τρόπος Πληρωμής', 'Payment method'), w: 140, type: 'select', options: METHODS, editable: true, get: (r) => r.p.method, set: (r, val) => savePayment({ ...r.p, method: val }) },
-    { key: 'notes', label: L('Σημειώσεις', 'Notes'), w: 240, editable: true, get: (r) => r.p.notes, set: (r, val) => savePayment({ ...r.p, notes: val }) },
+    { key: 'label', label: L('Τύπος Πληρωμής', 'Payment type'), w: 120, editable: true, get: (r) => r.p.label, set: (r, val) => patchPayment(r.p.id, { label: val }) },
+    { key: 'amount', label: L('Ποσό', 'Amount'), w: 104, type: 'money', editable: true, required: true, sum: true, get: (r) => r.p.amount, set: (r, val) => { if (!val) throw new Error('amount'); return patchPayment(r.p.id, { amount: val }); } },
+    { key: 'paid_on', label: L('Ημερομηνία Είσπραξης', 'Date received'), w: 100, type: 'date', editable: true, get: (r) => r.p.paid_on, set: (r, val) => patchPayment(r.p.id, { paid_on: val }) },
+    { key: 'method', label: L('Τρόπος Πληρωμής', 'Payment method'), w: 140, type: 'select', options: METHODS, editable: true, get: (r) => r.p.method, set: (r, val) => patchPayment(r.p.id, { method: val }) },
+    { key: 'notes', label: L('Σημειώσεις', 'Notes'), w: 240, editable: true, get: (r) => r.p.notes, set: (r, val) => patchPayment(r.p.id, { notes: val }) },
     { key: 'act', label: '', w: 56, align: 'center', get: () => '', display: (r) => `<button class="pdf-btn" data-pact="${r.p.id}" style="color:var(--label-2)" aria-label="${esc(L('Ενέργειες', 'Actions'))}">${icon('more')}</button>`, exportValue: () => '' },
   ];
   body.innerHTML = `<div class="banner">${icon('sparkles')}<div><b>${esc(L('Ενημερώνεται αυτόματα', 'Updates automatically'))}</b><span>${esc(L('Κάθε έσοδο από το «Έσοδα & Έξοδα» ή από το κουμπί «+ Δόση» μπαίνει εδώ μόνο του.', 'Every income from “Income & Expenses” or the “+ Pay” button appears here by itself.'))}</span></div></div>`
@@ -246,14 +246,14 @@ function expensesSheet(body, tab, redraw) {
   rows = rows.filter((x) => (!st.month || x.paid_on.slice(5, 7) === st.month) && (!st.cat || x.kind === st.cat) && matches(st.q, expenseTitle(x), x.supplier, x.description, x.notes, x.crew_name));
   rows.sort((a, b) => a.paid_on.localeCompare(b.paid_on) || a.created_at.localeCompare(b.created_at));
   const cols = [
-    { key: 'date', label: L('Ημερομηνία', 'Date'), w: 100, type: 'date', sticky: true, editable: true, required: true, get: (x) => x.paid_on, set: (x, v) => v && saveExpense({ ...x, paid_on: v }) },
+    { key: 'date', label: L('Ημερομηνία', 'Date'), w: 100, type: 'date', sticky: true, editable: true, required: true, get: (x) => x.paid_on, set: (x, v) => v && patchExpense(x.id, { paid_on: v }) },
     { key: 'month', label: L('Μήνας', 'Month'), w: 110, get: (x) => monthUp(x.paid_on) },
     { key: 'kind', label: L('Κατηγορία Εξόδου', 'Expense category'), w: 220, get: (x) => expenseTitle(x) },
-    { key: 'sup', label: L('Πληρώθηκε σε / Προμηθευτής', 'Paid to / Supplier'), w: 190, editable: (x) => !x.crew_id, get: (x) => x.supplier || x.crew_name || profileName(profileById(x.crew_id)) || '', set: (x, v) => saveExpense({ ...x, supplier: v }) },
-    { key: 'desc', label: L('Περιγραφή', 'Description'), w: 220, editable: true, get: (x) => x.description || (x.kind === 'payroll' && x.for_month ? L(`Μισθός ${monthName(Number(x.for_month.slice(5, 7)) - 1)}`, `Salary ${monthName(Number(x.for_month.slice(5, 7)) - 1)}`) : x.kind === 'daily_wage' && x.paid_until ? L(`Πληρωμένος έως ${fmtDate(x.paid_until)}`, `Paid until ${fmtDate(x.paid_until)}`) : ''), set: (x, v) => saveExpense({ ...x, description: v }) },
-    { key: 'amount', label: L('Ποσό', 'Amount'), w: 104, type: 'money', editable: true, required: true, sum: true, get: (x) => x.amount, set: (x, v) => { if (!v) throw new Error('amount'); return saveExpense({ ...x, amount: v }); } },
-    { key: 'method', label: L('Τρόπος Πληρωμής', 'Payment method'), w: 140, type: 'select', options: METHODS, editable: true, get: (x) => x.method, set: (x, v) => saveExpense({ ...x, method: v }) },
-    { key: 'notes', label: L('Σημειώσεις', 'Notes'), w: 240, editable: true, get: (x) => x.notes, set: (x, v) => saveExpense({ ...x, notes: v }) },
+    { key: 'sup', label: L('Πληρώθηκε σε / Προμηθευτής', 'Paid to / Supplier'), w: 190, editable: (x) => !x.crew_id, get: (x) => x.supplier || x.crew_name || profileName(profileById(x.crew_id)) || '', set: (x, v) => patchExpense(x.id, { supplier: v }) },
+    { key: 'desc', label: L('Περιγραφή', 'Description'), w: 220, editable: true, get: (x) => x.description || (x.kind === 'payroll' && x.for_month ? L(`Μισθός ${monthName(Number(x.for_month.slice(5, 7)) - 1)}`, `Salary ${monthName(Number(x.for_month.slice(5, 7)) - 1)}`) : x.kind === 'daily_wage' && x.paid_until ? L(`Πληρωμένος έως ${fmtDate(x.paid_until)}`, `Paid until ${fmtDate(x.paid_until)}`) : ''), set: (x, v) => patchExpense(x.id, { description: v }) },
+    { key: 'amount', label: L('Ποσό', 'Amount'), w: 104, type: 'money', editable: true, required: true, sum: true, get: (x) => x.amount, set: (x, v) => { if (!v) throw new Error('amount'); return patchExpense(x.id, { amount: v }); } },
+    { key: 'method', label: L('Τρόπος Πληρωμής', 'Payment method'), w: 140, type: 'select', options: METHODS, editable: true, get: (x) => x.method, set: (x, v) => patchExpense(x.id, { method: v }) },
+    { key: 'notes', label: L('Σημειώσεις', 'Notes'), w: 240, editable: true, get: (x) => x.notes, set: (x, v) => patchExpense(x.id, { notes: v }) },
     { key: 'act', label: '', w: 56, align: 'center', get: () => '', display: (x) => `<button class="pdf-btn" data-xact="${x.id}" style="color:var(--label-2)">${icon('more')}</button>`, exportValue: () => '' },
   ];
   body.innerHTML = toolbar({ cats: false, extra: `<select class="select" id="sk" style="width:auto;min-height:40px"><option value="">${esc(L('Όλοι οι τύποι', 'All types'))}</option>${kindOptions().map((k) => `<option value="${k.v}" ${st.cat === k.v ? 'selected' : ''}>${esc(L(k.el, k.en))}</option>`).join('')}</select><button class="btn small primary" id="newx">${icon('plus')} ${esc(L('Έξοδο', 'Expense'))}</button>` }) + '<div id="grid"></div>';
