@@ -152,7 +152,7 @@ export async function ensurePdf(a, btn) {
   try {
     const res = await generateOfferPdf(offerPrefill(a));
     const path = await uploadAppointmentOffer(a.id, new File([res.pdf], 'offer.pdf', { type: 'application/pdf' }));
-    await saveAppointment({ id: a.id, offer_path: path, offer_data: res.state, total: a.total ?? res.total });
+    await saveAppointment({ id: a.id, offer_path: path, offer_data: res.state, total: res.total ?? a.total });
     toast(L('Το PDF δημιουργήθηκε', 'PDF created'));
     if (w) w.location.href = await offerUrl(path);
   } catch (e) {
@@ -182,7 +182,7 @@ export async function confirmAppt(a) {
     try {
       const res = await generateOfferPdf(offerPrefill(a));
       const path = await uploadAppointmentOffer(a.id, new File([res.pdf], 'offer.pdf', { type: 'application/pdf' }));
-      await saveAppointment({ id: a.id, offer_path: path, offer_data: res.state, total: a.total ?? res.total });
+      await saveAppointment({ id: a.id, offer_path: path, offer_data: res.state, total: res.total ?? a.total });
     } catch (e) { console.warn(e); }
   }
   toast('Confirmed ✓', { body: L('Συμπληρώστε τα υπόλοιπα στοιχεία της εκδήλωσης.', 'Fill in the remaining event details.') });

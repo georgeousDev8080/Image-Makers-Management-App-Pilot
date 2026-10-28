@@ -1,7 +1,7 @@
 // =====================================================================
 //  Κοινά κομμάτια UI (κάρτες εκδηλώσεων, πακέτο προσφοράς κ.λπ.)
 // =====================================================================
-import { L, esc, icon, fmtTime, parseISO, monthShort, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, money, initials, colorFor, relDays, daysBetween, todayISO, LANG } from './core.js';
+import { safeColor, L, esc, icon, fmtTime, parseISO, monthShort, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, money, initials, colorFor, relDays, daysBetween, todayISO, LANG } from './core.js';
 import { isAdmin, profileName } from './data.js';
 
 export const catPill = (cat) => `<span class="pill cat-pill cat-${esc(cat)}">${esc(lbl(CATEGORIES, cat))}</span>`;
@@ -15,7 +15,7 @@ export function dateTile(iso, cat) {
 
 export function avatar(p, cls = '') {
   if (!p) return '';
-  return `<span class="avatar ${cls}" style="--c:${p.color || colorFor(p.id)}" title="${esc(profileName(p))}">${esc(initials(profileName(p)))}</span>`;
+  return `<span class="avatar ${cls}" style="--c:${safeColor(p.color, p.id)}" title="${esc(profileName(p))}">${esc(initials(profileName(p)))}</span>`;
 }
 
 export function photoStatusPill(v) {

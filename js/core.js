@@ -115,9 +115,12 @@ export function colorFor(str) {
 }
 
 // ---------- Σύνδεσμοι ----------
+/** Χρώμα μόνο σε μορφή #hex (προστασία από κακόβουλες τιμές μέσα σε style="") */
+export const safeColor = (c, id) => (/^#[0-9a-f]{3,8}$/i.test(String(c || '')) ? c : colorFor(id));
 export function mapsUrl(loc) {
   const s = String(loc || '').trim();
-  if (/^https?:\/\//i.test(s)) return s;
+  // σύνδεσμος χάρτη: μόνο http(s) και πάντα «καθαρισμένος» (όχι εισαγωγή κώδικα μέσα στο href)
+  if (/^https?:\/\//i.test(s)) { try { const u = new URL(s); if (/^https?:$/.test(u.protocol)) return u.href.replace(/"/g, '%22').replace(/'/g, '%27').replace(/</g, '%3C').replace(/>/g, '%3E'); } catch {} }
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s)}`;
 }
 export function cleanPhone(p) {

@@ -2,7 +2,7 @@
 //  IMAGE MAKERS · Studio Manager — εκκίνηση, πλοήγηση, διάταξη
 //  made by georgeousDev software solutions · gkararizosg@gmail.com
 // =====================================================================
-import { L, esc, icon, $, $$, on, applyTheme, toast, hasLayer, closeAllLayers, debounce, initials, colorFor, lbl, ROLES, setLang, LANG } from './core.js';
+import { safeColor, L, esc, icon, $, $$, on, applyTheme, toast, hasLayer, closeAllLayers, debounce, initials, colorFor, lbl, ROLES, setLang, LANG } from './core.js';
 import { sb, S, configured, loadProfile, loadAll, startRealtime, stopRealtime, subscribe, isAdmin, isVideoAdmin, hasRole, setNotificationHandler, unreadCount, pendingMessages, newRequests, pendingUsers, pendingAppointments, staleAppointments, markRead, updateBadge, profileName, emit } from './data.js';
 import { UI, go } from './layout.js';
 import { registerSW, onSWMessage, ensureSubscription } from './push.js';
@@ -122,7 +122,7 @@ function shellHTML() {
       <nav class="nav" id="nav"></nav>
       <div class="sidebar-foot">
         <a class="me-chip" href="#/settings">
-          <span class="avatar" style="--c:${p.color || colorFor(p.id)}">${esc(initials(profileName(p)))}</span>
+          <span class="avatar" style="--c:${safeColor(p.color, p.id)}">${esc(initials(profileName(p)))}</span>
           <span class="who"><b>${esc(profileName(p))}</b><small>${esc(lbl(ROLES, p.role))}</small></span>
         </a>
         <div class="credit">${legalLinks() ? `<div>${legalLinks()}</div>` : ''}made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>
@@ -271,6 +271,8 @@ async function enterApp() {
     return;
   }
   if (needsTerms()) { hideBoot(); await renderTermsGate(root); }
+  // αρχικό PIN (π.χ. 123456 που έδωσε ο διαχειριστής): υποχρεωτική αλλαγή πριν από οτιδήποτε άλλο
+  if (S.profile.must_change_pin && S.profile.active) { hideBoot(); await showNewPin({ forced: true }); }
   if (!hasRole()) {
     hideBoot();
     startRealtime();

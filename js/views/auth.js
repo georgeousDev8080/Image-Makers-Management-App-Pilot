@@ -1,7 +1,7 @@
 // =====================================================================
 //  Σύνδεση, εγγραφή, PIN, κλείδωμα, καλωσόρισμα νέου μέλους
 // =====================================================================
-import { L, vocative, esc, icon, $, toast, toastErr, setLang, LANG, setThemePref, getThemePref, busy, initials, colorFor, debounce, infoBox, sleep, haptic } from '../core.js';
+import { safeColor, L, vocative, esc, icon, $, toast, toastErr, setLang, LANG, setThemePref, getThemePref, busy, initials, colorFor, debounce, infoBox, sleep, haptic } from '../core.js';
 import { sb, S, friendlyError, loadProfile, reload, profileName } from '../data.js';
 import { enablePush, pushState } from '../push.js';
 
@@ -251,7 +251,7 @@ export function showLock() {
     const name = S.profile ? profileName(S.profile) : '';
     const elx = document.createElement('div');
     elx.className = 'lockscreen';
-    elx.innerHTML = `<span class="avatar lg" style="--c:${S.profile?.color || colorFor(uid)}">${esc(initials(name))}</span>
+    elx.innerHTML = `<span class="avatar lg" style="--c:${safeColor(S.profile?.color, uid)}">${esc(initials(name))}</span>
       <h2>${esc(L('Εισαγάγετε το PIN σας', 'Enter your PIN'))}</h2>
       <div class="muted small">${esc(name)}</div>
       <div id="lpad"></div>
@@ -279,7 +279,7 @@ export function showLock() {
 }
 
 // ---------- Νέο PIN (ανάκτηση ή αλλαγή) ----------
-export function showNewPin({ recovery = false } = {}) {
+export function showNewPin({ recovery = false, forced = false } = {}) {
   return new Promise((resolve) => {
     const elx = document.createElement('div');
     elx.className = 'lockscreen';
@@ -287,7 +287,8 @@ export function showNewPin({ recovery = false } = {}) {
     const draw = () => {
       elx.innerHTML = `<div class="brand-badge" style="width:64px;height:64px;border-radius:18px"><img src="icons/logo-white.png" style="width:48px" alt=""></div>
         <h2>${esc(first ? L('Ξαναγράψτε το νέο PIN', 'Repeat the new PIN') : L('Ορίστε νέο 6ψήφιο PIN', 'Set a new 6-digit PIN'))}</h2>
-        <div id="npad"></div>${recovery ? '' : `<button class="btn plain mt" data-cancel>${esc(L('Ακύρωση', 'Cancel'))}</button>`}`;
+        ${forced && !first ? `<p style="max-width:320px;text-align:center;opacity:.8;margin-top:-6px">${esc(L('Για την ασφάλειά σας, αλλάξτε το αρχικό PIN με ένα δικό σας. Μην το λέτε σε κανέναν.', 'For your security, replace the initial PIN with your own. Do not share it.'))}</p>` : ''}
+        <div id="npad"></div>${recovery || forced ? '' : `<button class="btn plain mt" data-cancel>${esc(L('Ακύρωση', 'Cancel'))}</button>`}`;
       const pad = pinPad(elx.querySelector('#npad'), {
         onComplete: async (pin) => {
           if (!first) {
@@ -298,6 +299,8 @@ export function showNewPin({ recovery = false } = {}) {
           const { data, error } = await sb.auth.updateUser({ password: pin });
           if (error) { toastErr(L('Δεν άλλαξε το PIN', 'PIN not changed'), friendlyError(error)); return false; }
           await setPinHash(data.user.id, pin);
+          await sb.rpc('pin_changed').catch(() => {});
+          if (S.profile) S.profile.must_change_pin = false;
           markUnlocked();
           toast(L('Το νέο PIN αποθηκεύτηκε', 'New PIN saved'));
           pad.destroy(); elx.remove(); resolve(true); return true;
