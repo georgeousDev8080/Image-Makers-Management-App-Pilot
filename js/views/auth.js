@@ -299,7 +299,8 @@ export function showNewPin({ recovery = false, forced = false } = {}) {
           const { data, error } = await sb.auth.updateUser({ password: pin });
           if (error) { toastErr(L('Δεν άλλαξε το PIN', 'PIN not changed'), friendlyError(error)); return false; }
           await setPinHash(data.user.id, pin);
-          await sb.rpc('pin_changed').catch(() => {});
+          // (το rpc του Supabase δεν έχει .catch — χρειάζεται try/await)
+          try { await sb.rpc('pin_changed'); } catch (e) { console.warn('pin_changed', e); }
           if (S.profile) S.profile.must_change_pin = false;
           markUnlocked();
           toast(L('Το νέο PIN αποθηκεύτηκε', 'New PIN saved'));
