@@ -4,7 +4,7 @@
 import { needsOffer, L, esc, icon, money, fmtDate, fmtDateLong, fmtTime, todayISO, daysBetween, matches, mapsUrl, telUrl, smsUrl, mailUrl, lbl, CATEGORIES, RESOLUTIONS, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, options, segmented, initSegmented, segValue, sheet, confirmBox, promptBox, toastErr, actionSheet, toast, download, icsFor, busy, monthName } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, coupleName, profileName, patchEvent, deleteEvent, setCrew, openOffer, deletePayment, myEventIds } from '../data.js';
 import { pageHead, setTopActions, emptyState, go, backBtn, UI } from '../layout.js';
-import { eventRow, catPill, offerSummaryHTML, crewBriefHTML, crewChips, avatar, photoStatusPill, editStatusPill } from '../components.js';
+import { eventHasDrone, eventRow, catPill, offerSummaryHTML, crewBriefHTML, crewChips, avatar, photoStatusPill, editStatusPill } from '../components.js';
 import { openIncomeForm } from './money.js';
 import { pickLocation, geoUrl } from '../mappicker.js';
 import { editOfferForEvent, uploadPdfForEvent } from '../offer.js';
@@ -83,7 +83,7 @@ export function renderEventDetail(root, { id }) {
   let html = backBtn('#/events');
   html += `<div class="ev-hero cat-${e.category}" style="--c:var(--cat-${e.category})">
     ${days >= 0 ? `<div class="countdown"><b>${days}</b><small>${esc(days === 1 ? L('ημέρα', 'day') : L('ημέρες', 'days'))}</small></div>` : ''}
-    <div class="hstack">${catPill(e.category)}${e.status === 'cancelled' ? `<span class="pill red">${esc(L('Ακυρωμένη', 'Cancelled'))}</span>` : ''}${e.resolution ? `<span class="pill blue">${esc(e.resolution === '4k' ? '4K' : 'Full HD')}</span>` : ''}</div>
+    <div class="hstack">${catPill(e.category)}${e.status === 'cancelled' ? `<span class="pill red">${esc(L('Ακυρωμένη', 'Cancelled'))}</span>` : ''}${e.resolution ? `<span class="pill blue">${esc(e.resolution === '4k' ? '4K' : 'Full HD')}</span>` : ''}${eventHasDrone(e, v.crew) ? '<span class="pill purple">🚁 Drone</span>' : ''}</div>
     <h1 style="margin-top:10px">${esc(v.title)}</h1>
     <div class="when"><span>${icon('calendar')} ${esc(fmtDateLong(e.event_date))}</span>${e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(e.event_time))}</span>` : ''}</div>
     <div class="quick-actions">
@@ -141,8 +141,7 @@ export function renderEventDetail(root, { id }) {
         </div>
         ${e.offer_path ? `<button class="btn small primary" data-act="pdf">${icon('doc')} ${esc(L('Άνοιγμα', 'Open'))}</button>` : ''}
       </div>
-      <button class="row" data-act="offer-edit"><span class="row-icon" style="background:var(--accent)">${icon('wand')}</span><div class="main-col"><div class="t">${esc(e.offer_data ? L('Επεξεργασία προσφοράς', 'Edit offer') : L('Δημιουργία προσφοράς', 'Create offer'))}</div><div class="s">${esc(L('Ανοίγει ο Οδηγός προσφοράς με τα στοιχεία της εκδήλωσης', 'Opens the offer builder with this event’s details'))}</div></div>${icon('chevR', 'chev')}</button>
-      <button class="row" data-act="offer-upload"><span class="row-icon" style="background:var(--blue)">${icon('upload')}</span><div class="main-col"><div class="t">${esc(L('Ανέβασμα έτοιμου PDF', 'Upload a ready PDF'))}</div></div>${icon('chevR', 'chev')}</button>
+      <button class="row" data-act="offer-edit"><span class="row-icon" style="background:var(--accent)">${icon('wand')}</span><div class="main-col"><div class="t">${esc(e.offer_data ? L('Επεξεργασία της συγκεκριμένης προσφοράς', 'Edit this offer') : L('Δημιουργία προσφοράς', 'Create offer'))}</div></div>${icon('chevR', 'chev')}</button>
     </div>`;
     if (e.offer_data) html += `<div class="card pad mt-s">${offerSummaryHTML(e.offer_data)}</div>`;
   } else {

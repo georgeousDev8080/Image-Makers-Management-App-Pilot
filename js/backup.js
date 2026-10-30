@@ -5,7 +5,7 @@ import { L, esc, icon, loadScript, download, norm, lbl, opt, APPT_MODES, APPT_ST
 import { sb, S, coupleName, profileName, loadAll, offerBlob, friendlyError, saveSetting } from './data.js';
 
 /** Καταγραφή του τελευταίου αντιγράφου (για την υπενθύμιση στην Αρχική) */
-const markBackup = (kind) => saveSetting('last_backup', { at: new Date().toISOString(), by: S.profile?.id || null, kind }).catch(() => {});
+const markBackup = (kind) => saveSetting('last_backup', { at: new Date().toISOString(), by: S.profile?.id || null, kind }).catch((e) => { console.warn('last_backup', e); });
 
 const XL = () => loadScript('vendor/xlsx.full.min.js');
 const ZIP = () => loadScript('vendor/jszip.min.js');
@@ -90,7 +90,7 @@ function buildWorkbook() {
 export async function exportAllXlsx() {
   await XL();
   window.XLSX.writeFile(buildWorkbook(), `ImageMakers_Antigrafo_${stamp()}.xlsx`);
-  markBackup('xlsx');
+  await markBackup('xlsx');
   toast(L('Το αρχείο Excel κατέβηκε', 'Excel file downloaded'));
 }
 
@@ -123,7 +123,7 @@ export async function exportFullZip() {
     zip.file('README_DIAVASTE.txt', `Image Makers · Πλήρες αντίγραφο ασφαλείας\nΗμερομηνία: ${new Date().toLocaleString('el-GR')}\n\n- ImageMakers_dedomena.xlsx: όλα τα δεδομένα (ανοίγει σε Excel / Numbers / Google Sheets)\n- prosfores_pdf/: ${n} PDF προσφορών εκδηλώσεων (το όνομα ξεκινά με το ID της εκδήλωσης)\n- rantevou_pdf/: ${na} PDF προσφορών ραντεβού\n\nΕπαναφορά: Εφαρμογή → Ρυθμίσεις → Επαναφορά από αντίγραφο → επιλέξτε αυτό το .zip\n`);
     const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
     download(blob, `ImageMakers_Pliris_Antigrafo_${stamp()}.zip`);
-    markBackup('zip');
+    await markBackup('zip');
     t(); toast(L('Το πλήρες αντίγραφο κατέβηκε', 'Full backup downloaded'), { body: L(`${n + na} PDF προσφορών μέσα στο αρχείο.`, `${n + na} offer PDFs included.`) });
   } catch (e) { t(); throw e; }
 }

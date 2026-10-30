@@ -21,6 +21,7 @@ import { renderTeam } from './views/team.js';
 import { renderSettings } from './views/settings.js';
 import { renderHelp, maybeShowTour } from './views/help.js';
 import { renderWhatsNew, maybeShowWhatsNew } from './whatsnew.js';
+import { backupDue, showBackupGate, watchBackupGate } from './backupgate.js';
 import { renderNotifications } from './views/notifications.js';
 
 applyTheme();
@@ -287,7 +288,10 @@ async function enterApp() {
   try { await loadAll(); } catch (e) { console.error(e); toast(L('Πρόβλημα φόρτωσης δεδομένων', 'Could not load data'), { type: 'err', body: e.message }); }
   startRealtime();
   ensureSubscription().catch(() => {});
+  // 1η του μήνα: υποχρεωτικό αντίγραφο ασφαλείας για τους διαχειριστές
+  if (backupDue()) { document.querySelectorAll('.boot').forEach((b) => b.remove()); await showBackupGate(); }
   await startApp();
+  watchBackupGate();
 }
 
 // νέες ειδοποιήσεις όσο η εφαρμογή είναι ανοιχτή

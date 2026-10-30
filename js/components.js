@@ -70,6 +70,15 @@ const BAPTISM_INCLUDED = () => [
   L('Όλο το φωτογραφικό αρχείο σε πλήρη ανάλυση', 'All photos in full resolution'),
 ];
 export const isBaptismOffer = (od) => od?.kind === 'baptism';
+/** Έχει drone η εκδήλωση; (μέλος συνεργείου με Drone ή drone μέσα στο πακέτο της προσφοράς) */
+export function eventHasDrone(e, crew = []) {
+  if (crew.some((c) => c.duty === 'drone')) return true;
+  const od = e?.offer_data;
+  if (!od || e.category === 'promo' || e.category === 'other') return false;
+  if (isBaptismOffer(od)) return (od.adds || []).includes('Drone στην εκκλησία');
+  const rm = od.removes || [];
+  return !rm.includes('Drone εκκλησίας') || !rm.includes('Drone next day');
+}
 export function offerSummary(od) {
   if (!od) return null;
   if (isBaptismOffer(od)) {
