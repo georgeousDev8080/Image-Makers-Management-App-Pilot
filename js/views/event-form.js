@@ -237,22 +237,26 @@ function stepCustomer(body, root, params) {
 // ---------- Βήμα 2: Εκδήλωση ----------
 function stepEvent(body, root, params) {
   const sameDay = W.ev.event_date ? [...S.events.values()].filter((e) => e.event_date === W.ev.event_date && e.id !== params.id && e.status !== 'cancelled') : [];
+  const cat = W.ev.category;
+  const wed = cat === 'wedding' || cat === 'wedding_baptism'; // σπίτι νύφης/γαμπρού μόνο σε γάμο & γαμοβάπτιση
+  const simple = cat === 'promo' || cat === 'other';           // διαφημιστικό/άλλο: μόνο τοποθεσία + σχόλια
   body.innerHTML = `<div class="card pad"><div class="form-grid">
       <div class="field full"><label>${esc(L('Κατηγορία εκδήλωσης', 'Event category'))} <span class="req">*</span></label>
         <div class="chips">${CATEGORIES.map((c) => `<button type="button" class="chip ${W.ev.category === c.v ? 'on' : ''}" data-cat="${c.v}"><span class="cat-dot cat-${c.v}"></span>${esc(L(c.el, c.en))}</button>`).join('')}</div></div>
       ${fld('event_date', L('Ημερομηνία', 'Date'), W.ev.event_date, { req: true, type: 'date' })}
-      ${fld('event_time', L('Ώρα μυστηρίου / έναρξης', 'Ceremony / start time'), W.ev.event_time, { req: true, type: 'time' })}
+      ${fld('event_time', simple ? L('Ώρα έναρξης', 'Start time') : L('Ώρα μυστηρίου / έναρξης', 'Ceremony / start time'), W.ev.event_time, { req: true, type: 'time' })}
       <div class="field full" id="sameDay"></div>
       <div class="field full"><label>${esc(L('Ανάλυση video', 'Video resolution'))} <span class="req">*</span></label>${segmented('res', RESOLUTIONS.map((r) => ({ v: r.v, label: L(r.el, r.en) })), W.ev.resolution, { block: true })}</div>
-      ${locFld('church_location', 'church_geo', L('Εκκλησία / τοποθεσία μυστηρίου', 'Church / ceremony location'), { req: true, ph: L('π.χ. Ι.Ν. Αγίου Αχιλλείου, Λάρισα', 'e.g. St. Achilleios Church, Larissa') })}
-      ${locFld('bride_house', 'bride_geo', L('Σπίτι νύφης', 'Bride’s home'), { ph: L('Διεύθυνση, περιοχή', 'Address, area') })}
-      ${locFld('groom_house', 'groom_geo', L('Σπίτι γαμπρού', 'Groom’s home'), { ph: L('Διεύθυνση, περιοχή', 'Address, area') })}
-      ${locFld('reception_location', 'reception_geo', L('Χώρος δεξίωσης', 'Reception venue'), { ph: L('π.χ. Κτήμα …, Λάρισα', 'e.g. Estate …, Larissa') })}
-      <div class="field full help" style="margin-top:-4px">${icon('pin')} ${esc(L('Πατήστε το κουμπί 📍 δίπλα σε κάθε τοποθεσία για να βάλετε pin στον χάρτη. Το συνεργείο πατά «Χάρτης» και πηγαίνει ακριβώς εκεί.', 'Tap 📍 next to each location to drop a pin on the map. The crew taps “Map” and goes exactly there.'))}</div>
-      <div class="field full"><label>${esc(L('Σημειώσεις εκδήλωσης', 'Event notes'))}</label><textarea class="textarea" name="notes" placeholder="${esc(L('Ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Anything the crew should know (they can see this)'))}">${esc(W.ev.notes)}</textarea></div>
+      ${simple ? locFld('church_location', 'church_geo', L('Τοποθεσία', 'Location'), { req: true, ph: L('π.χ. Κεντρική πλατεία, Λάρισα', 'e.g. Central square, Larissa') })
+        : locFld('church_location', 'church_geo', L('Εκκλησία / τοποθεσία μυστηρίου', 'Church / ceremony location'), { req: true, ph: L('π.χ. Ι.Ν. Αγίου Αχιλλείου, Λάρισα', 'e.g. St. Achilleios Church, Larissa') })}
+      ${wed ? locFld('bride_house', 'bride_geo', L('Σπίτι νύφης', 'Bride’s home'), { ph: L('Διεύθυνση, περιοχή', 'Address, area') }) : ''}
+      ${wed ? locFld('groom_house', 'groom_geo', L('Σπίτι γαμπρού', 'Groom’s home'), { ph: L('Διεύθυνση, περιοχή', 'Address, area') }) : ''}
+      ${simple ? '' : locFld('reception_location', 'reception_geo', L('Χώρος δεξίωσης', 'Reception venue'), { ph: L('π.χ. Κτήμα …, Λάρισα', 'e.g. Estate …, Larissa') })}
+      <div class="field full help" style="margin-top:-4px">${icon('pin')} ${esc(simple ? L('Πατήστε το κουμπί 📍 για να βάλετε pin στον χάρτη. Το συνεργείο πατά «Χάρτης» και πηγαίνει ακριβώς εκεί.', 'Tap 📍 to drop a pin on the map. The crew taps “Map” and goes exactly there.') : L('Πατήστε το κουμπί 📍 δίπλα σε κάθε τοποθεσία για να βάλετε pin στον χάρτη. Το συνεργείο πατά «Χάρτης» και πηγαίνει ακριβώς εκεί.', 'Tap 📍 next to each location to drop a pin on the map. The crew taps “Map” and goes exactly there.'))}</div>
+      <div class="field full"><label>${esc(simple ? L('Σχόλια', 'Comments') : L('Σημειώσεις εκδήλωσης', 'Event notes'))}</label><textarea class="textarea" name="notes" placeholder="${esc(simple ? L('Περιγραφή, λεπτομέρειες, ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Description, details, anything the crew should know (they can see this)') : L('Ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Anything the crew should know (they can see this)'))}">${esc(W.ev.notes)}</textarea></div>
     </div></div>`;
   bindInputs(body, W.ev);
-  body.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { W.ev.category = b.dataset.cat; body.querySelectorAll('[data-cat]').forEach((x) => x.classList.toggle('on', x === b)); }));
+  body.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { if (W.ev.category === b.dataset.cat) return; W.ev.category = b.dataset.cat; stepEvent(body, root, params); }));
   initSegmented(body, (_, v) => { W.ev.resolution = v; });
   body.querySelectorAll('[data-pin]').forEach((b) => b.addEventListener('click', async () => {
     const key = b.dataset.pin; const field = b.dataset.field;
@@ -372,6 +376,9 @@ async function save(root, params, btn) {
     if (W.mode === 'edit') evRow.id = params.id;
     else if (W.savedId) evRow.id = W.savedId; // νέα προσπάθεια μετά από σφάλμα: όχι δεύτερη εκδήλωση
     if (W.offer.data) evRow.offer_data = W.offer.data;
+    // πεδία που δεν υπάρχουν στην κατηγορία: σπίτια μόνο σε γάμο/γαμοβάπτιση, δεξίωση όχι σε διαφημιστικό/άλλο
+    if (!['wedding', 'wedding_baptism'].includes(evRow.category)) Object.assign(evRow, { bride_house: null, groom_house: null, bride_geo: null, groom_geo: null, house_location: null });
+    if (['promo', 'other'].includes(evRow.category)) Object.assign(evRow, { reception_location: null, reception_geo: null });
     const ev = await saveEvent(evRow);
     W.savedId = ev.id;
     if (W.offer.pdf) {
