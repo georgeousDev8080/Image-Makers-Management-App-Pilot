@@ -104,7 +104,7 @@ export function renderEventDetail(root, { id }) {
       ${url ? `<a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">${icon('map')} ${esc(L('Χάρτης', 'Map'))}</a>` : ''}${admin && geoKey ? `<button class="btn small pin-btn ${url ? 'on' : ''}" data-setpin="${geoKey}" data-label="${esc(val || '')}" title="${esc(url ? L('Αλλαγή pin', 'Change pin') : L('Βάλτε pin στον χάρτη', 'Drop a pin'))}">${icon('pin')}${url ? '' : ` ${esc(L('Pin', 'Pin'))}`}</button>` : ''}</div>`;
   };
   html += `<div class="group-label">${esc(L('Τοποθεσίες', 'Locations'))}</div><div class="list">
-    ${locRow('var(--red)', L('Εκκλησία / Μυστήριο', 'Church / Ceremony'), e.church_location, 'church_geo', e.event_time ? ` · ${esc(fmtTime(e.event_time))}` : '')}
+    ${locRow('var(--red)', ['promo', 'other'].includes(e.category) ? L('Τοποθεσία', 'Location') : L('Εκκλησία / Μυστήριο', 'Church / Ceremony'), e.church_location, 'church_geo', e.event_time ? ` · ${esc(fmtTime(e.event_time))}` : '')}
     ${locRow('var(--accent)', L('Σπίτι νύφης', 'Bride’s home'), e.bride_house, 'bride_geo')}
     ${locRow('var(--blue)', L('Σπίτι γαμπρού', 'Groom’s home'), e.groom_house, 'groom_geo')}
     ${legacyHouse ? locRow('var(--accent)', L('Σπίτι νύφης / γαμπρού', 'Bride / groom home'), legacyHouse, null) : ''}
@@ -158,7 +158,7 @@ export function renderEventDetail(root, { id }) {
     </div><div class="help mt-s">${esc(L('Όταν οι φωτογραφίες γίνουν «Αλλαγές», το editing γίνεται αυτόματα «Να γίνει».', 'When photos become “Changes”, editing automatically becomes “To do”.'))}</div></div>`;
   }
 
-  if (e.notes) html += `<div class="group-label">${esc(L('Σημειώσεις', 'Notes'))}</div><div class="card pad" style="white-space:pre-wrap">${esc(e.notes)}</div>`;
+  if (e.notes) html += `<div class="group-label">${esc(['promo', 'other'].includes(e.category) ? L('Σχόλια', 'Comments') : L('Σημειώσεις', 'Notes'))}</div><div class="card pad" style="white-space:pre-wrap">${esc(e.notes)}</div>`;
 
   // Οικονομικά
   if (admin) {

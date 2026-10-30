@@ -8,6 +8,13 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.1.3', date: '30/10/2026',
+    items: [
+      ['🏠', 'Νέα εκδήλωση: τα πεδία «Σπίτι νύφης» και «Σπίτι γαμπρού» εμφανίζονται μόνο σε Γάμο και Γαμοβάπτιση.', 'New event: “Bride’s home” and “Groom’s home” appear only for Wedding and Wedding & Baptism.'],
+      ['📍', 'Διαφημιστικό και Άλλο: απλή φόρμα με «Τοποθεσία» και «Σχόλια», χωρίς εκκλησία και δεξίωση.', 'Promo and Other: a simple form with “Location” and “Comments”, without church and reception.'],
+    ],
+  },
+  {
     v: '1.1.2', date: '30/10/2026',
     items: [
       ['📋', 'Κατάσταση Εργασιών: στο «Σε εξέλιξη» εμφανίζονται όλες οι κλεισμένες εκδηλώσεις, όποια χρονιά κι αν είναι (και του 2027), μέχρι να παραδοθούν. Η επιλογή χρονιάς εμφανίζεται στα «Παραδόθηκαν» και «Όλες».', 'Work status: “In progress” shows every booked event, whatever the year (2027 too), until delivered. The year picker appears under “Delivered” and “All”.'],
