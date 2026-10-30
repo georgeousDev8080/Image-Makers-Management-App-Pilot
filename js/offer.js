@@ -52,25 +52,30 @@ export function pickPdfFile() {
 }
 
 const SYNC_KEYS = ['partner1', 'partner2', 'phone1', 'eventDate', 'church', 'reception'];
+/** Ποιος Οδηγός προσφοράς: βάπτιση → offer/baptism.html, αλλιώς ο Οδηγός γάμου */
+export const offerKindFor = (category) => (category === 'baptism' ? 'baptism' : 'wedding');
+export const offerKindOf = (state) => (state?.kind === 'baptism' ? 'baptism' : 'wedding');
+const builderUrl = (kind) => (kind === 'baptism' ? 'offer/baptism.html?embed=1' : 'offer/builder.html?embed=1');
 const norm = (v) => String(v ?? '').trim().replace(/\s+/g, ' ');
 /** Τα στοιχεία της φόρμας διαφέρουν από αυτά που τυπώθηκαν στο PDF; */
 export function offerIsStale(state, fields) {
   if (!state) return false;
-  return SYNC_KEYS.some((k) => k in fields && norm(state[k]) !== norm(fields[k]));
+  const keys = offerKindOf(state) === 'baptism' ? SYNC_KEYS.filter((k) => k !== 'reception') : SYNC_KEYS;
+  return keys.some((k) => k in fields && norm(state[k]) !== norm(fields[k]));
 }
 /** Ξαναφτιάχνει το PDF με τα διορθωμένα στοιχεία, κρατώντας πακέτο και τιμή */
 export async function refreshOfferPdf(state, fields) {
-  const res = await generateOfferPdf({ ...state, ...fields, finalPrice: state.finalPrice ?? undefined });
+  const res = await generateOfferPdf({ ...state, ...fields, finalPrice: state.finalPrice ?? undefined }, offerKindOf(state));
   const safe = [fields.partner1, fields.partner2].filter(Boolean).join('_').replace(/[^\p{L}\p{N}_-]+/gu, '_').slice(0, 60) || 'offer';
   const fileName = `Image_Makers_Prosfora_${safe}_${fields.eventDate || ''}.pdf`;
   return { pdf: new File([res.pdf], fileName, { type: 'application/pdf' }), fileName, state: res.state, total: res.total };
 }
 
 /** Δημιουργία PDF χωρίς να φανεί ο Οδηγός (π.χ. για ηλεκτρονικές προσφορές πελατών) */
-export function generateOfferPdf(prefill) {
+export function generateOfferPdf(prefill, kind = 'wedding') {
   return new Promise((resolve, reject) => {
     const frame = document.createElement('iframe');
-    frame.src = 'offer/builder.html?embed=1';
+    frame.src = builderUrl(kind);
     frame.setAttribute('aria-hidden', 'true');
     frame.style.cssText = 'position:fixed;left:-12000px;top:0;width:1200px;height:900px;border:0;opacity:0;pointer-events:none';
     document.body.appendChild(frame);
@@ -93,16 +98,16 @@ export function generateOfferPdf(prefill) {
 }
 
 /** Ανοίγει τον Οδηγό προσφοράς πάνω από την εφαρμογή. Επιστρέφει {pdf, fileName, state, total} ή null */
-export function openOfferBuilder({ prefill = {}, saveLabel = null } = {}) {
+export function openOfferBuilder({ prefill = {}, saveLabel = null, kind = 'wedding' } = {}) {
   return new Promise((resolve) => {
     const layer = document.createElement('div');
     layer.className = 'offer-layer';
     layer.innerHTML = `<div class="offer-bar">
         <button class="btn" data-x>${icon('x')} <span class="hide-mobile">${esc(L('Ακύρωση', 'Cancel'))}</span></button>
-        <b>${esc(L('Οδηγός προσφοράς', 'Offer builder'))}</b>
+        <b>${esc(kind === 'baptism' ? L('Οδηγός προσφοράς βάπτισης', 'Baptism offer builder') : L('Οδηγός προσφοράς', 'Offer builder'))}</b>
         <button class="btn primary" data-save>${icon('check')} ${esc(saveLabel || L('Αποθήκευση στην εκδήλωση', 'Save to event'))}</button>
       </div>
-      <iframe title="${esc(L('Οδηγός προσφοράς', 'Offer builder'))}" src="offer/builder.html?embed=1"></iframe>
+      <iframe title="${esc(L('Οδηγός προσφοράς', 'Offer builder'))}" src="${builderUrl(kind)}"></iframe>
       <div class="offer-busy"><div class="center"><div class="spinner"></div>${esc(L('Φόρτωση…', 'Loading…'))}</div></div>`;
     document.body.appendChild(layer);
     document.body.style.overflow = 'hidden';
@@ -123,7 +128,7 @@ export function openOfferBuilder({ prefill = {}, saveLabel = null } = {}) {
     layer.querySelector('[data-save]').addEventListener('click', async () => {
       if (!api) return;
       const state = api.getState();
-      if (!state.partner1 && !state.partner2) { toastErr(L('Λείπουν τα ονόματα', 'Names missing'), L('Συμπληρώστε τουλάχιστον ένα ονοματεπώνυμο.', 'Fill in at least one name.')); return; }
+      if (!state.partner1 && !state.partner2) { toastErr(L('Λείπουν τα ονόματα', 'Names missing'), kind === 'baptism' ? L('Συμπληρώστε τουλάχιστον ένα ονοματεπώνυμο γονέα.', 'Fill in at least one parent name.') : L('Συμπληρώστε τουλάχιστον ένα ονοματεπώνυμο.', 'Fill in at least one name.')); return; }
       busyEl.hidden = false;
       busyEl.innerHTML = `<div class="center"><div class="spinner"></div>${esc(L('Δημιουργία PDF… (λίγα δευτερόλεπτα)', 'Creating PDF… (a few seconds)'))}</div>`;
       try {
@@ -131,7 +136,7 @@ export function openOfferBuilder({ prefill = {}, saveLabel = null } = {}) {
         const safe = [state.partner1, state.partner2].filter(Boolean).join('_').replace(/[^\p{L}\p{N}_-]+/gu, '_').slice(0, 60) || 'offer';
         const fileName = `Image_Makers_Prosfora_${safe}_${state.eventDate || ''}.pdf`;
         const file = new File([blob], fileName, { type: 'application/pdf' });
-        done({ pdf: file, fileName, state, total: state.total });
+        done({ pdf: file, fileName, state: kind === 'baptism' ? { ...state, kind: 'baptism' } : state, total: state.total });
       } catch (e) {
         console.error(e);
         busyEl.hidden = true;
@@ -146,14 +151,18 @@ export async function editOfferForEvent(id) {
   const v = eventView(id);
   if (!v) return;
   const { e, c, f } = v;
+  const kind = offerKindFor(e.category);
+  // παλιά προσφορά άλλου τύπου (π.χ. γάμου σε βάπτιση): ξεκινά καθαρός ο σωστός Οδηγός
+  const prev = e.offer_data && offerKindOf(e.offer_data) === kind ? e.offer_data : {};
   const prefill = {
-    ...(e.offer_data || {}),
+    ...prev,
     partner1: c?.name1 || '', partner2: c?.name2 || '', phone1: c?.phone1 || '', phone2: c?.phone2 || '',
     eventDate: e.event_date, church: [e.church_location, (e.event_time || '').slice(0, 5)].filter(Boolean).join(' · '),
     reception: e.reception_location || '',
-    finalPrice: e.offer_data?.finalPrice ?? (f.package_price && !e.offer_data ? f.package_price : undefined),
+    finalPrice: prev.finalPrice ?? (f.package_price && !e.offer_data ? f.package_price : undefined),
   };
-  const res = await openOfferBuilder({ prefill });
+  if (kind === 'baptism') prefill.reception = '';
+  const res = await openOfferBuilder({ prefill, kind });
   if (!res) return;
   await applyOfferResult(id, res);
 }

@@ -8,6 +8,14 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.2', date: '30/10/2026',
+    items: [
+      ['👶', 'Νέος Οδηγός προσφοράς βάπτισης: στη δημιουργία εκδήλωσης βάπτισης η προσφορά γίνεται με το πακέτο βάπτισης 2027 (βασικό πακέτο, αναβαθμίσεις, album, εκτυπώσεις, τελική τιμή) και το PDF επισυνάπτεται αυτόματα.', 'New baptism offer builder: when creating a baptism event, the offer uses the 2027 baptism package (base package, upgrades, album, prints, final price) and the PDF is attached automatically.'],
+      ['✅', 'Η προσφορά βάπτισης είναι υποχρεωτική για να αποθηκευτεί η εκδήλωση, όπως και στους γάμους.', 'The baptism offer is required to save the event, just like for weddings.'],
+      ['📋', 'Το συνεργείο βλέπει στη βάπτιση τι περιλαμβάνει η κάλυψη (π.χ. drone, φωτογράφηση πριν), χωρίς τιμές.', 'For baptisms the crew sees what the coverage includes (e.g. drone, pre-baptism shoot), without prices.'],
+    ],
+  },
+  {
     v: '1.1.4', date: '30/10/2026',
     items: [
       ['📄', 'Διαφημιστικό και Άλλο: η εκδήλωση δημιουργείται χωρίς PDF προσφοράς. Στο τελευταίο βήμα συμπληρώνετε μόνο την αξία και τα στοιχεία του πακέτου.', 'Promo and Other: the event is created without an offer PDF. In the last step you only fill in the value and package details.'],
