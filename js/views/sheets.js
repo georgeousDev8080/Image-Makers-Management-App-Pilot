@@ -54,10 +54,10 @@ export function renderSheets(root, params = {}) {
   }
   const tabs = TABS();
   // Το Mitsos είναι ξεχωριστή σελίδα (μενού), χωρίς τις καρτέλες των υπόλοιπων φύλλων
-  const cur = tab === 'mitsos' ? { v: 'mitsos', t: 'Mitsos' } : (tabs.find((t) => t.v === tab) || tabs[0]);
+  const cur = tab === 'mitsos' ? { v: 'mitsos', t: 'Dimitris' } : (tabs.find((t) => t.v === tab) || tabs[0]);
   const yearSel = `<select class="select" id="yr" style="min-height:36px;padding:6px 34px 6px 12px;width:auto;font-weight:650">${years.map((y) => `<option ${y === st.year ? 'selected' : ''}>${y}</option>`).join('')}</select>`;
   setTopActions(yearSel);
-  let html = pageHead(cur.v === 'mitsos' ? 'Mitsos · Editing βίντεο' : `${cur.t} ${st.year}`, { sub: '' });
+  let html = pageHead(cur.v === 'mitsos' ? 'Dimitris · Editing Workflow' : `${cur.t} ${st.year}`, { sub: '' });
   if (cur.v !== 'mitsos') html += `<div class="sheet-tabs" style="position:static;margin:-8px 0 12px">${tabs.map((t) => `<a href="#/sheets/${t.v}" class="${t.v === cur.v ? 'active' : ''} ${t.cls || ''}">${esc(t.t)}</a>`).join('')}</div>`;
   html += `<div id="sheetBody"></div>`;
   root.innerHTML = html;
@@ -198,12 +198,12 @@ function mitsosSheet(body, tab, redraw) {
     { key: 'pc', label: L('Υπολογιστής μοντάζ', 'Editing computer'), w: 130, type: 'select', options: PCS, group: 'video', editable: true, get: (v) => v.e.editing_pc, set: (v, val) => patchEvent(v.e.id, { editing_pc: val }) },
     { key: 'vn', label: L('Σχόλια βίντεο', 'Video notes'), w: 260, group: 'video', editable: true, get: (v) => v.e.video_notes, set: (v, val) => patchEvent(v.e.id, { video_notes: val }) },
   ];
-  body.innerHTML = `<div class="banner">${icon('film')}<div><b>${esc(L('Πώς δουλεύει το Mitsos', 'How Mitsos works'))}</b><span>${esc(L('Όταν οι φωτογραφίες γίνουν «Αλλαγές», το editing γίνεται αυτόματα «Να γίνει». Όταν το album πάει «Εκτύπωση στο εργαστήριο», η γραμμή γίνεται κόκκινη SOS μέχρι να ολοκληρωθεί το editing.', 'When photos become “Changes”, editing becomes “To do”. When the album goes to the lab, the row turns red SOS until editing is done.'))}</span></div></div>`
+  body.innerHTML = `<div class="banner">${icon('film')}<div><b>${esc(L('Πώς δουλεύει το Editing Workflow', 'How the Editing Workflow works'))}</b><span>${esc(L('Όταν οι φωτογραφίες γίνουν «Αλλαγές», το editing γίνεται αυτόματα «Να γίνει». Όταν το album πάει «Εκτύπωση στο εργαστήριο», η γραμμή γίνεται κόκκινη SOS μέχρι να ολοκληρωθεί το editing.', 'When photos become “Changes”, editing becomes “To do”. When the album goes to the lab, the row turns red SOS until editing is done.'))}</span></div></div>`
     + toolbar({ months: false, cats: false, extra: segmented('mf', [{ v: 'all', label: L('Όλα', 'All') }, { v: 'open', label: L(`Εκκρεμή`, 'Pending') }, { v: 'sos', label: `SOS (${counts.sos})` }], st.mitsosFilter) }) + '<div id="grid"></div>';
   bindToolbar(body, redraw);
   initSegmented(body, (_, v) => { st.mitsosFilter = v; redraw(); });
   renderGrid(body.querySelector('#grid'), cols, { id: 'mitsos', rows: views, rowKey: (v) => v.e.id, groups: GROUPS(), rowClass: (v) => (isSOS(v.e) ? 'sos' : v.e.editing_status === 'done' ? 'paid' : ''), onEdit: (v, c, val) => c.set(v, val), empty: L('Δεν υπάρχουν εκκρεμότητες 🎉', 'Nothing pending 🎉') });
-  body.querySelector('#sx').addEventListener('click', () => exportGrid(`Mitsos ${st.year}`, cols, views));
+  body.querySelector('#sx').addEventListener('click', () => exportGrid(`Dimitris ${st.year}`, cols, views));
 }
 
 // ---------------------------------------------------------------------

@@ -8,6 +8,12 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.1.1', date: '30/10/2026',
+    items: [
+      ['📑', 'Η καρτέλα «Mitsos» μετονομάστηκε σε «Dimitris» και η σελίδα μοντάζ σε «Editing Workflow».', 'The “Mitsos” tab is now called “Dimitris” and the editing page “Editing Workflow”.'],
+    ],
+  },
+  {
     v: '1.1', date: '30/10/2026',
     items: [
       ['🗓️', 'Νέο ημερολόγιο με προβολές Ημέρα, Εβδομάδα, Μήνας και Πρόγραμμα. Πατήστε σε κενή ώρα για να δημιουργήσετε εκδήλωση εκείνη την ώρα.', 'New calendar with Day, Week, Month and Schedule views. Tap an empty time slot to create an event at that time.'],
@@ -20,7 +26,7 @@ export const RELEASES = [
       ['📋', 'Κατάσταση Εργασιών: κάθε εκδήλωση εμφανίζεται από τη στιγμή που κλείνεται.', 'Work status: every event appears from the moment it is booked.'],
       ['💶', 'Έσοδα & Έξοδα ανά έτος, με σύνολα για κάθε μήνα.', 'Income & Expenses by year, with totals for each month.'],
       ['➕', 'Προσθήκη δόσης από το Excel: η εκδήλωση και η κατηγορία είναι ήδη επιλεγμένες, για να μη γίνονται λάθη.', 'Adding an installment from the Excel: the event and category are already set, to avoid mistakes.'],
-      ['📑', 'Mitsos: ανοίγει κατευθείαν στο δικό του φύλλο, με προεπιλογή «Όλα» και χωρίς τη στήλη Βιντεογράφος.', 'Mitsos: opens straight to its own sheet, defaulting to “All”, without the Videographer column.'],
+      ['📑', 'Dimitris: ανοίγει κατευθείαν στο δικό του φύλλο, με προεπιλογή «Όλα» και χωρίς τη στήλη Βιντεογράφος.', 'Dimitris: opens straight to its own sheet, defaulting to “All”, without the Videographer column.'],
       ['🏡', 'Αρχική: οι επόμενες εκδηλώσεις δείχνουν αν είναι μονό ή διπλό συνεργείο.', 'Home: upcoming events show whether it is a single or double crew.'],
     ],
   },
