@@ -2,7 +2,7 @@
 //  Πίνακας τύπου Excel: επεξεργασία κελιών, πλοήγηση με πλήκτρα,
 //  σταθερή πρώτη στήλη & επικεφαλίδες, ομάδες στηλών
 // =====================================================================
-import { L, esc, money, fmtDate, parseMoney, opt, sheet, toast, toastErr, haptic, latinName } from './core.js';
+import { L, esc, money, fmtDate, parseMoney, normTime, opt, sheet, toast, toastErr, haptic, latinName } from './core.js';
 
 const memory = {}; // id → { scrollLeft, scrollTop, sel: {rk, ck} }
 const coarse = () => window.matchMedia('(pointer: coarse)').matches;
@@ -104,6 +104,7 @@ export function renderGrid(container, cols, opts) {
   function parse(c, v) {
     if (c.type === 'money' || c.type === 'number') { if (v === '' || v === null) return null; const n = parseMoney(v); if (n === null) { toastErr(L('Μη έγκυρος αριθμός', 'Invalid number')); return undefined; } return n; }
     if (c.type === 'bool') return v === 'true' || v === true;
+    if (c.type === 'time') { const t = normTime(v); if (t === null) { toastErr(L('Γράψτε την ώρα ως ΩΩ:ΛΛ', 'Enter the time as HH:MM')); return undefined; } return t || null; }
     return v === '' ? null : v;
   }
 
@@ -122,7 +123,8 @@ export function renderGrid(container, cols, opts) {
       input.innerHTML = (c.blank !== false ? `<option value="">—</option>` : '') + list.map((o) => `<option value="${esc(o.v)}" ${o.v === v ? 'selected' : ''}>${esc(L(o.el, o.en))}</option>`).join('');
     } else {
       input = document.createElement('input');
-      input.type = c.type === 'date' ? 'date' : c.type === 'time' ? 'time' : 'text';
+      input.type = c.type === 'date' ? 'date' : 'text';
+      if (c.type === 'time') { input.inputMode = 'numeric'; input.maxLength = 5; input.placeholder = 'ΩΩ:ΛΛ'; input.dataset.time = '1'; }
       if (c.type === 'money' || c.type === 'number') input.inputMode = 'decimal';
       input.value = initial !== undefined ? initial : (v == null ? '' : c.type === 'money' ? String(v).replace('.', ',') : c.type === 'time' ? String(v).slice(0, 5) : String(v));
     }
@@ -166,9 +168,9 @@ export function renderGrid(container, cols, opts) {
       const list = typeof c.options === 'function' ? c.options(r) : c.options;
       inner = `<div class="list">${(c.blank !== false ? [{ v: '', el: '—', en: '—' }] : []).concat(list).map((o) => `<button class="row" data-v="${esc(o.v)}"><div class="main-col"><div class="t">${esc(L(o.el, o.en))}</div></div>${(o.v || null) === (v || null) ? '<span class="pos">✓</span>' : ''}</button>`).join('')}</div>`;
     } else {
-      const type = c.type === 'date' ? 'date' : c.type === 'time' ? 'time' : 'text';
+      const type = c.type === 'date' ? 'date' : 'text';
       const val = v == null ? '' : c.type === 'money' ? String(v).replace('.', ',') : c.type === 'time' ? String(v).slice(0, 5) : String(v);
-      inner = `<div class="form"><input class="input" type="${type}" ${['money', 'number'].includes(c.type) ? 'inputmode="decimal"' : ''} value="${esc(val)}"><button class="btn primary large block" data-ok>${esc(L('Αποθήκευση', 'Save'))}</button></div>`;
+      inner = `<div class="form"><input class="input" type="${type}" ${c.type === 'time' ? 'inputmode="numeric" maxlength="5" placeholder="ΩΩ:ΛΛ" data-time' : ''} ${['money', 'number'].includes(c.type) ? 'inputmode="decimal"' : ''} value="${esc(val)}"><button class="btn primary large block" data-ok>${esc(L('Αποθήκευση', 'Save'))}</button></div>`;
     }
     const s = sheet({ title: c.label, body: inner });
     s.body.querySelectorAll('[data-v]').forEach((b) => b.addEventListener('click', () => { s.close(); commit(td, b.dataset.v || null); }));

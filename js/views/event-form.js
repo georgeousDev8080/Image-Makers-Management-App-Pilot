@@ -1,10 +1,11 @@
 // =====================================================================
 //  Νέα εκδήλωση / επεξεργασία (οδηγός σε 4 βήματα)
 // =====================================================================
-import { L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, initSegmented, toast, toastErr, busy, mapsUrl, money, parseMoney } from '../core.js';
+import { normTime, timeInputAttrs, fmtTime, L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, initSegmented, toast, toastErr, busy, mapsUrl, money, parseMoney } from '../core.js';
 import { S, coupleName, profileName, saveCustomer, saveEvent, saveFinance, setCrew, uploadOffer, eventView, updateRequest, saveAppointment, copyOfferToEvent } from '../data.js';
 import { pageHead, go, backBtn } from '../layout.js';
 import { avatar, packageNameFrom, offerSummaryHTML } from '../components.js';
+import { pickLocation } from '../mappicker.js';
 import { openOfferBuilder, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf } from '../offer.js';
 
 let W = null;
@@ -15,7 +16,7 @@ function freshState(params) {
     step: 0, mode: params.id ? 'edit' : 'new',
     custMode: 'existing', customerId: null, cq: '',
     cust: { name1: '', name2: '', phone1: '', phone2: '', email1: '', email2: '' },
-    ev: { category: 'wedding', event_date: params.date || '', event_time: '', resolution: '1080', church_location: '', house_location: '', reception_location: '', notes: '', extra_crew: '' },
+    ev: { category: 'wedding', event_date: params.date || '', event_time: normTime(params.time) || '', resolution: '1080', church_location: '', bride_house: '', groom_house: '', reception_location: '', church_geo: '', bride_geo: '', groom_geo: '', reception_geo: '', notes: '', extra_crew: '' },
     fin: { package_price: '', package_name: '', second_crew: false, office_notes: '' },
     crew: [],
     offer: { pdf: null, pdfName: '', data: null, existingPath: null },
@@ -145,7 +146,8 @@ function validate(root, step) {
   if (step === 1) {
     let ok = true;
     ok = showErr(root, 'event_date', W.ev.event_date ? '' : req) && ok;
-    ok = showErr(root, 'event_time', W.ev.event_time ? '' : req) && ok;
+    ok = showErr(root, 'event_time', !W.ev.event_time ? req : normTime(W.ev.event_time) === null ? L('Γράψτε την ώρα ως ΩΩ:ΛΛ, π.χ. 18:00', 'Enter the time as HH:MM, e.g. 18:00') : '') && ok;
+    if (normTime(W.ev.event_time)) W.ev.event_time = normTime(W.ev.event_time);
     ok = showErr(root, 'church_location', W.ev.church_location ? '' : req) && ok;
     if (!W.ev.category || !W.ev.resolution) ok = false;
     if (!ok) toastErr(L('Συμπληρώστε τα υποχρεωτικά πεδία', 'Fill in the required fields'));
@@ -179,7 +181,10 @@ function bindInputs(container, obj) {
   });
 }
 const fld = (name, label, val, { req = false, type = 'text', ph = '', full = false, inputmode = '', help = '', extra = '' } = {}) =>
-  `<div class="field ${full ? 'full' : ''}"><label>${esc(label)}${req ? ' <span class="req">*</span>' : ''}</label><div class="input-wrap"><input class="input" name="${name}" type="${type}" ${inputmode ? `inputmode="${inputmode}"` : ''} value="${esc(val ?? '')}" placeholder="${esc(ph)}" autocomplete="off">${extra}</div>${help ? `<div class="help">${help}</div>` : ''}<div class="err" hidden></div></div>`;
+  `<div class="field ${full ? 'full' : ''}"><label>${esc(label)}${req ? ' <span class="req">*</span>' : ''}</label><div class="input-wrap">${type === 'time' ? `<input class="input" name="${name}" ${timeInputAttrs} value="${esc(fmtTime(val))}">` : `<input class="input" name="${name}" type="${type}" ${inputmode ? `inputmode="${inputmode}"` : ''} value="${esc(val ?? '')}" placeholder="${esc(ph)}" autocomplete="off">`}${extra}</div>${help ? `<div class="help">${help}</div>` : ''}<div class="err" hidden></div></div>`;
+
+const locFld = (name, geoKey, label, { req = false, ph = '' } = {}) =>
+  `<div class="field full"><label>${esc(label)}${req ? ' <span class="req">*</span>' : ''} <span class="loc-pin" data-pintag="${geoKey}" ${W.ev[geoKey] ? '' : 'hidden'}>· 📍 ${esc(L('pin στον χάρτη', 'pinned'))}</span></label><div class="input-wrap"><input class="input" name="${name}" type="text" value="${esc(W.ev[name] ?? '')}" placeholder="${esc(ph)}" autocomplete="off"><button type="button" class="btn small act pin-btn ${W.ev[geoKey] ? 'on' : ''}" data-pin="${geoKey}" data-field="${name}" title="${esc(L('Pin στον χάρτη', 'Pin on the map'))}">${icon('pin')}</button></div><div class="err" hidden></div></div>`;
 
 // ---------- Βήμα 1: Πελάτης ----------
 function stepCustomer(body, root, params) {
@@ -239,18 +244,24 @@ function stepEvent(body, root, params) {
       ${fld('event_time', L('Ώρα μυστηρίου / έναρξης', 'Ceremony / start time'), W.ev.event_time, { req: true, type: 'time' })}
       <div class="field full" id="sameDay"></div>
       <div class="field full"><label>${esc(L('Ανάλυση video', 'Video resolution'))} <span class="req">*</span></label>${segmented('res', RESOLUTIONS.map((r) => ({ v: r.v, label: L(r.el, r.en) })), W.ev.resolution, { block: true })}</div>
-      ${fld('church_location', L('Εκκλησία / τοποθεσία μυστηρίου', 'Church / ceremony location'), W.ev.church_location, { req: true, full: true, ph: L('π.χ. Ι.Ν. Αγίου Αχιλλείου, Λάρισα — ή επικόλληση συνδέσμου Google Maps', 'e.g. St. Achilleios Church, Larissa — or paste a Google Maps link'), extra: `<a class="btn small act" data-map="church_location" target="_blank" rel="noopener">${icon('map')}</a>` })}
-      ${fld('house_location', L('Σπίτι νύφης ή/και γαμπρού', 'Bride and/or groom home'), W.ev.house_location, { full: true, ph: L('Διεύθυνση ή σύνδεσμος χάρτη', 'Address or map link'), extra: `<a class="btn small act" data-map="house_location" target="_blank" rel="noopener">${icon('map')}</a>` })}
-      ${fld('reception_location', L('Χώρος δεξίωσης', 'Reception venue'), W.ev.reception_location, { full: true, ph: L('π.χ. Κτήμα …, Λάρισα', 'e.g. Estate …, Larissa'), extra: `<a class="btn small act" data-map="reception_location" target="_blank" rel="noopener">${icon('map')}</a>` })}
+      ${locFld('church_location', 'church_geo', L('Εκκλησία / τοποθεσία μυστηρίου', 'Church / ceremony location'), { req: true, ph: L('π.χ. Ι.Ν. Αγίου Αχιλλείου, Λάρισα', 'e.g. St. Achilleios Church, Larissa') })}
+      ${locFld('bride_house', 'bride_geo', L('Σπίτι νύφης', 'Bride’s home'), { ph: L('Διεύθυνση, περιοχή', 'Address, area') })}
+      ${locFld('groom_house', 'groom_geo', L('Σπίτι γαμπρού', 'Groom’s home'), { ph: L('Διεύθυνση, περιοχή', 'Address, area') })}
+      ${locFld('reception_location', 'reception_geo', L('Χώρος δεξίωσης', 'Reception venue'), { ph: L('π.χ. Κτήμα …, Λάρισα', 'e.g. Estate …, Larissa') })}
+      <div class="field full help" style="margin-top:-4px">${icon('pin')} ${esc(L('Πατήστε το κουμπί 📍 δίπλα σε κάθε τοποθεσία για να βάλετε pin στον χάρτη. Το συνεργείο πατά «Χάρτης» και πηγαίνει ακριβώς εκεί.', 'Tap 📍 next to each location to drop a pin on the map. The crew taps “Map” and goes exactly there.'))}</div>
       <div class="field full"><label>${esc(L('Σημειώσεις εκδήλωσης', 'Event notes'))}</label><textarea class="textarea" name="notes" placeholder="${esc(L('Ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Anything the crew should know (they can see this)'))}">${esc(W.ev.notes)}</textarea></div>
     </div></div>`;
   bindInputs(body, W.ev);
   body.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { W.ev.category = b.dataset.cat; body.querySelectorAll('[data-cat]').forEach((x) => x.classList.toggle('on', x === b)); }));
   initSegmented(body, (_, v) => { W.ev.resolution = v; });
-  body.querySelectorAll('[data-map]').forEach((a) => a.addEventListener('click', (e) => {
-    const v = W.ev[a.dataset.map];
-    if (!v) { e.preventDefault(); toast(L('Γράψτε πρώτα την τοποθεσία', 'Type the location first'), { type: 'info' }); return; }
-    a.href = mapsUrl(v);
+  body.querySelectorAll('[data-pin]').forEach((b) => b.addEventListener('click', async () => {
+    const key = b.dataset.pin; const field = b.dataset.field;
+    const near = W.ev.church_geo || W.ev.reception_geo || W.ev.bride_geo || W.ev.groom_geo || null;
+    const v = await pickLocation({ title: L('Pin στον χάρτη', 'Pin on the map'), geo: W.ev[key] || null, label: W.ev[field] || '', near });
+    if (v === undefined) return;
+    W.ev[key] = v;
+    b.classList.toggle('on', !!v);
+    const tag = body.querySelector(`[data-pintag="${key}"]`); if (tag) tag.hidden = !v;
   }));
   const sd = body.querySelector('#sameDay');
   const paintSame = () => {
@@ -273,7 +284,7 @@ function stepCrew(body) {
       <div class="list mt-s">${team.map((p) => {
         const on = sel.has(p.id);
         return `<div class="row"><label class="hstack" style="flex:1;cursor:pointer;flex-wrap:nowrap"><input type="checkbox" data-u="${p.id}" ${on ? 'checked' : ''} style="width:22px;height:22px;accent-color:var(--accent)">${avatar(p)}<div class="main-col"><div class="t">${esc(profileName(p))}</div></div></label>
-          ${on ? segmented('d_' + p.id, [{ v: 'photo', label: L('Φωτογραφία', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }], sel.get(p.id)) : ''}</div>`;
+          ${on ? segmented('d_' + p.id, [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }, { v: 'drone', label: 'Drone' }], sel.get(p.id)) : ''}</div>`;
       }).join('') || `<div class="row muted">${esc(L('Δεν υπάρχουν ακόμα μέλη ομάδας με ρόλο.', 'No team members with a role yet.'))}</div>`}</div>
       <div class="card pad mt"><div class="field"><label>${esc(L('Εξωτερικοί συνεργάτες (προαιρετικό)', 'External crew (optional)'))}</label><input class="input" name="extra_crew" value="${esc(W.ev.extra_crew || '')}" placeholder="${esc(L('π.χ. Νίκος (drone)', 'e.g. Nick (drone)'))}"></div></div>`;
     body.querySelectorAll('[data-u]').forEach((cb) => cb.addEventListener('change', () => {

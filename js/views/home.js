@@ -111,7 +111,7 @@ export function renderHome(root) {
 
   const list = upcoming.slice(0, admin ? 8 : 20);
   html += `<div class="section-title"><h2>${esc(admin ? L('Επόμενες εκδηλώσεις', 'Upcoming events') : L('Οι επόμενες εκδηλώσεις μου', 'My upcoming events'))}</h2><a href="#/calendar" class="small">${esc(L('Ημερολόγιο', 'Calendar'))} ${icon('chevR')}</a></div>`;
-  html += list.length ? `<div class="list">${list.map((v) => eventRow(v)).join('')}</div>` : `<div class="card pad muted center">${esc(L('Καμία επερχόμενη εκδήλωση.', 'No upcoming events.'))}</div>`;
+  html += list.length ? `<div class="list">${list.map((v) => eventRow(v, { money: false, crewType: true })).join('')}</div>` : `<div class="card pad muted center">${esc(L('Καμία επερχόμενη εκδήλωση.', 'No upcoming events.'))}</div>`;
 
   root.innerHTML = html;
   root.querySelector('[data-act="appt"]')?.addEventListener('click', () => newAppointmentChooser());

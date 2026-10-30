@@ -6,7 +6,7 @@ import { S, isAdmin, eventView, allEventViews, coupleName, profileName, profileB
 import { pageHead, setTopActions } from '../layout.js';
 import { catPill } from '../components.js';
 
-const st = { kind: 'all', ym: todayISO().slice(0, 7), q: '' };
+const st = { kind: 'all', y: new Date().getFullYear(), q: '' };
 
 export function expenseTitle(x) {
   const k = opt(EXPENSE_KINDS, x.kind);
@@ -32,15 +32,15 @@ export function wageLine(w) {
 }
 
 export function renderMoney(root) {
-  const [y, m] = st.ym.split('-').map(Number);
-  const incomes = S.payments.filter((p) => (p.paid_on || '').startsWith(st.ym));
-  const expenses = S.expenses.filter((x) => (x.paid_on || '').startsWith(st.ym));
+  const y = st.y, yp = String(y) + '-';
+  const incomes = S.payments.filter((p) => (p.paid_on || '').startsWith(yp));
+  const expenses = S.expenses.filter((x) => (x.paid_on || '').startsWith(yp));
   const inSum = sum(incomes, (p) => p.amount), outSum = sum(expenses, (x) => x.amount);
 
   setTopActions(`<button class="btn primary small hide-mobile" data-new>${icon('plus')} ${esc(L('Νέα κίνηση', 'New entry'))}</button>`);
   let html = pageHead(L('Έσοδα & Έξοδα', 'Income & Expenses'), { sub: esc(L('Κάθε καταχώρηση ενημερώνει αυτόματα τα φύλλα Excel.', 'Every entry updates the Excel sheets automatically.')) });
 
-  html += `<div class="cal-head"><button class="icon-btn filled" data-m="-1">${icon('chevL')}</button><div class="cal-title" style="min-width:0;text-align:center;flex:1">${esc(monthName(m - 1))} ${y}</div><button class="icon-btn filled" data-m="1">${icon('chevR')}</button></div>
+  html += `<div class="cal-head"><button class="icon-btn filled" data-m="-1">${icon('chevL')}</button><div class="cal-title" style="min-width:0;text-align:center;flex:1">${y}</div><button class="icon-btn filled" data-m="1">${icon('chevR')}</button></div>
     <div class="grid cols-3" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
       <div class="kpi"><div class="k-label">${icon('incoming')} ${esc(L('Έσοδα', 'Income'))}</div><div class="k-value pos">${esc(money(inSum, { dec: 0 }))}</div><div class="k-sub">${incomes.length} ${esc(L('κινήσεις', 'entries'))}</div></div>
       <div class="kpi"><div class="k-label">${icon('outgoing')} ${esc(L('Έξοδα', 'Expenses'))}</div><div class="k-value neg">${esc(money(outSum, { dec: 0 }))}</div><div class="k-sub">${expenses.length} ${esc(L('κινήσεις', 'entries'))}</div></div>
@@ -58,17 +58,21 @@ export function renderMoney(root) {
   if (st.kind !== 'in') expenses.forEach((x) => rows.push({ t: 'out', id: x.id, date: x.paid_on, created: x.created_at, amount: Number(x.amount), title: expenseTitle(x), sub: expenseSub(x) }));
   const filtered = rows.filter((r) => matches(st.q, r.title, r.sub, fmtDate(r.date), String(r.amount))).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created || '').localeCompare(a.created || ''));
 
-  html += `<div class="section-title"><h2>${esc(L('Κινήσεις μήνα', 'This month’s entries'))}</h2><span class="hint">${filtered.length}</span></div>`;
-  if (!filtered.length) html += `<div class="card pad center muted">${esc(L('Καμία κίνηση αυτόν τον μήνα. Πατήστε + για νέα.', 'No entries this month. Tap + to add one.'))}</div>`;
+  html += `<div class="section-title"><h2>${esc(L(`Κινήσεις ${y}`, `Entries ${y}`))}</h2><span class="hint">${filtered.length}</span></div>`;
+  if (!filtered.length) html += `<div class="card pad center muted">${esc(L('Καμία κίνηση αυτή τη χρονιά. Πατήστε + για νέα.', 'No entries this year. Tap + to add one.'))}</div>`;
   else {
-    let lastD = ''; let open = false;
+    let lastM = null; let open = false;
     filtered.forEach((r) => {
-      if (r.date !== lastD) {
+      const mo = Number((r.date || '').slice(5, 7)) || 0;
+      if (mo !== lastM) {
         if (open) html += '</div>';
-        const n = daysBetween(r.date, todayISO());
-        html += `<div class="agenda-day">${esc(n === 0 ? L('Σήμερα', 'Today') : n === 1 ? L('Χθες', 'Yesterday') : fmtDate(r.date))}</div><div class="list">`;
-        lastD = r.date; open = true;
+        const mIn = sum(filtered.filter((x) => x.t === 'in' && Number((x.date || '').slice(5, 7)) === mo), (x) => x.amount);
+        const mOut = sum(filtered.filter((x) => x.t === 'out' && Number((x.date || '').slice(5, 7)) === mo), (x) => x.amount);
+        html += `<div class="agenda-day spread"><span>${esc(mo ? monthName(mo - 1) : '—')}</span><span class="small" style="font-weight:600">${mIn ? `<span class="pos">+${esc(money(mIn, { dec: 0 }))}</span>` : ''}${mIn && mOut ? ' · ' : ''}${mOut ? `<span class="neg">−${esc(money(mOut, { dec: 0 }))}</span>` : ''}</span></div><div class="list">`;
+        lastM = mo; open = true;
       }
+      const dn = daysBetween(r.date, todayISO());
+      r.sub = [dn === 0 ? L('Σήμερα', 'Today') : dn === 1 ? L('Χθες', 'Yesterday') : fmtDate(r.date), r.sub].filter(Boolean).join(' · ');
       html += `<button class="row has-icon" data-${r.t}="${r.id}"><span class="row-icon" style="background:${r.t === 'in' ? 'var(--green)' : 'var(--red)'}">${icon(r.t === 'in' ? 'incoming' : 'outgoing')}</span>
         <div class="main-col"><div class="t">${esc(r.title)}</div><div class="s">${esc(r.sub || '—')}</div></div>
         <div class="v money ${r.t === 'in' ? 'pos' : 'neg'}" style="font-weight:650">${r.t === 'in' ? '+' : '−'}${esc(money(Math.abs(r.amount)).replace('−', ''))}</div></button>`;
@@ -83,7 +87,7 @@ export function renderMoney(root) {
     : `<div class="card pad muted small">${esc(L('Δεν έχουν καταχωρηθεί μεροκάματα.', 'No daily wages recorded yet.'))}</div>`;
 
   // Μισθοδοσία φέτος
-  const yr = String(new Date().getFullYear());
+  const yr = String(y);
   const pay = S.expenses.filter((x) => x.kind === 'payroll' && (x.paid_on || '').startsWith(yr));
   if (pay.length) {
     const by = {};
@@ -96,7 +100,7 @@ export function renderMoney(root) {
   root.innerHTML = html;
 
   initSegmented(root, (_, v) => { st.kind = v; renderMoney(root); });
-  root.querySelectorAll('[data-m]').forEach((b) => b.addEventListener('click', () => { const d = new Date(y, m - 1 + Number(b.dataset.m), 1); st.ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; renderMoney(root); }));
+  root.querySelectorAll('[data-m]').forEach((b) => b.addEventListener('click', () => { st.y += Number(b.dataset.m); renderMoney(root); }));
   const mq = root.querySelector('#mq');
   mq.addEventListener('input', () => { st.q = mq.value; const p = mq.selectionStart; renderMoney(root); const n = root.querySelector('#mq'); n.focus(); n.setSelectionRange(p, p); });
   document.querySelectorAll('[data-new]').forEach((b) => b.addEventListener('click', newEntry));
@@ -127,7 +131,7 @@ export async function expenseActions(x) {
 // ---------------------------------------------------------------------
 //  Φόρμα εσόδου
 // ---------------------------------------------------------------------
-export function openIncomeForm({ eventId = null, payment = null, category = null } = {}) {
+export function openIncomeForm({ eventId = null, payment = null, category = null, lock = false } = {}) {
   if (!isAdmin()) return;
   const f = {
     id: payment?.id || null,
@@ -144,15 +148,16 @@ export function openIncomeForm({ eventId = null, payment = null, category = null
   const draw = () => {
     const v = f.event_id ? eventView(f.event_id) : null;
     const canNoEvent = ['promo', 'other'].includes(f.category);
+    const locked = lock && !!f.event_id; // από το Excel: η εκδήλωση και η κατηγορία είναι ήδη γνωστές
     let html = `<div class="form">
-      <div class="field"><label>${esc(L('Κατηγορία εσόδου', 'Income category'))}</label>
-        <div class="chips">${CATEGORIES.map((c) => `<button type="button" class="chip ${f.category === c.v ? 'on' : ''}" data-cat="${c.v}"><span class="cat-dot cat-${c.v}"></span>${esc(L(c.el, c.en).replace(' (Promotional)', ' / Promo'))}</button>`).join('')}</div></div>`;
-    if (canNoEvent) html += `<label class="check-row"><span class="switch"><input type="checkbox" id="noev" ${f.noEvent ? 'checked' : ''}><span></span></span><span>${esc(L('Χωρίς συγκεκριμένη εκδήλωση', 'Not linked to an event'))}</span></label>`;
+      ${locked ? '' : `<div class="field"><label>${esc(L('Κατηγορία εσόδου', 'Income category'))}</label>
+        <div class="chips">${CATEGORIES.map((c) => `<button type="button" class="chip ${f.category === c.v ? 'on' : ''}" data-cat="${c.v}"><span class="cat-dot cat-${c.v}"></span>${esc(L(c.el, c.en).replace(' (Promotional)', ' / Promo'))}</button>`).join('')}</div></div>`}`;
+    if (canNoEvent && !locked) html += `<label class="check-row"><span class="switch"><input type="checkbox" id="noev" ${f.noEvent ? 'checked' : ''}><span></span></span><span>${esc(L('Χωρίς συγκεκριμένη εκδήλωση', 'Not linked to an event'))}</span></label>`;
     if (f.noEvent && canNoEvent) {
       html += `<div class="field"><label>${esc(L('Περιγραφή', 'Description'))} <span class="req">*</span></label><input class="input" name="description" value="${esc(f.description)}" placeholder="${esc(L('π.χ. Εκτυπώσεις φωτογραφιών', 'e.g. Photo prints'))}"><div class="err" hidden></div></div>`;
     } else if (v) {
       const pct = v.price ? Math.min(100, Math.round((v.paid / v.price) * 100)) : 0;
-      html += `<div class="card" style="background:var(--fill-2);box-shadow:none"><div class="row"><div class="main-col"><div class="t">${esc(v.title)}</div><div class="s">${esc(fmtDate(v.e.event_date))} · ${esc(v.e.church_location || '')}</div></div>${f.id ? '' : `<button type="button" class="btn small" data-change>${esc(L('Αλλαγή', 'Change'))}</button>`}</div>
+      html += `<div class="card" style="background:var(--fill-2);box-shadow:none"><div class="row"><div class="main-col"><div class="t">${esc(v.title)}</div><div class="s">${esc(fmtDate(v.e.event_date))} · ${esc(v.e.church_location || '')}</div></div>${f.id || locked ? '' : `<button type="button" class="btn small" data-change>${esc(L('Αλλαγή', 'Change'))}</button>`}</div>
         <div class="row"><div class="main-col"><div class="progress ${v.fullyPaid ? 'green' : ''}"><i style="width:${pct}%"></i></div><div class="s mt-s">${esc(L('Αξία', 'Value'))} ${esc(money(v.price))} · ${esc(L('Πληρώθηκαν', 'Paid'))} ${esc(money(v.paid))} · <b>${esc(L('Υπόλοιπο', 'Balance'))} ${esc(money(v.balance))}</b></div></div></div>
         ${v.pays.length ? `<div class="row"><div class="main-col s">${v.pays.map((p) => `${esc(p.label || '')}: ${esc(money(p.amount))} (${esc(fmtDate(p.paid_on))})`).join('<br>')}</div></div>` : ''}</div>`;
     } else {

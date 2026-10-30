@@ -66,7 +66,41 @@ export function todayISO() { const d = new Date(); return `${d.getFullYear()}-${
 export function toISO(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
 export function parseISO(s) { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d); }
 export function fmtDate(s, blank = '—') { if (!s) return blank; const [y, m, d] = String(s).slice(0, 10).split('-'); return `${d}/${m}/${y}`; }
+/** Αρμοδιότητες συνεργείου */
+export const DUTIES = [{ v: 'photo', el: 'Φωτογραφία', en: 'Photo', e: '📷' }, { v: 'video', el: 'Βίντεο', en: 'Video', e: '🎥' }, { v: 'drone', el: 'Drone', en: 'Drone', e: '🚁' }];
+export const dutyLabel = (d) => { const o = DUTIES.find((x) => x.v === d) || DUTIES[0]; return L(o.el, o.en); };
+export const dutyEmoji = (d) => (DUTIES.find((x) => x.v === d) || DUTIES[0]).e;
 export function fmtTime(s) { return s ? String(s).slice(0, 5) : ''; }
+/** Ώρα πάντα σε 24ωρη μορφή ΩΩ:ΛΛ (π.χ. «930» → «09:30», «18» → «18:00»). null αν δεν είναι έγκυρη. */
+export function normTime(v) {
+  const t = String(v ?? '').trim().replace(/[:.,]$/, '');
+  if (!t) return '';
+  let h, m;
+  const mm = t.match(/^(\d{1,2})\s*[:.,]\s*(\d{1,2})$/);
+  if (mm) { h = +mm[1]; m = +mm[2]; }
+  else if (/^\d{1,4}$/.test(t)) { if (t.length <= 2) { h = +t; m = 0; } else { h = +t.slice(0, t.length - 2); m = +t.slice(-2); } }
+  else return null;
+  if (h > 23 || m > 59) return null;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+/** Πεδίο ώρας 24ωρης μορφής (αντί του <input type=time> που σε κάποια κινητά δείχνει ΠΜ/ΜΜ) */
+export const timeInputAttrs = 'type="text" inputmode="numeric" maxlength="5" placeholder="ΩΩ:ΛΛ" data-time autocomplete="off"';
+if (typeof document !== 'undefined' && !window.__imTimeBound) {
+  window.__imTimeBound = true;
+  document.addEventListener('input', (e) => {
+    const i = e.target; if (!i?.matches?.('input[data-time]')) return;
+    const d = i.value.replace(/[^\d:]/g, '');
+    if (e.inputType && e.inputType.startsWith('delete')) { i.value = d; return; }
+    i.value = /^\d{3,4}$/.test(d) ? d.slice(0, d.length - 2).padStart(2, '0') + ':' + d.slice(-2) : (/^\d{2}$/.test(d) && +d <= 23 ? d + ':' : d).slice(0, 5);
+  }, true);
+  document.addEventListener('blur', (e) => {
+    const i = e.target; if (!i?.matches?.('input[data-time]')) return;
+    const n = normTime(i.value);
+    if (n === null) { i.classList.add('invalid'); return; }
+    i.classList.remove('invalid');
+    if (n !== i.value) { i.value = n; i.dispatchEvent(new Event('input', { bubbles: true })); }
+  }, true);
+}
 export function daysBetween(a, b) { return Math.round((parseISO(b) - parseISO(a)) / 864e5); }
 export function addDays(iso, n) { const d = parseISO(iso); d.setDate(d.getDate() + n); return toISO(d); }
 export const MONTHS_EL = ['Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος', 'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος'];

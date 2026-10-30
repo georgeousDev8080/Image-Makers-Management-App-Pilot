@@ -20,6 +20,7 @@ import { renderOutbox } from './views/outbox.js';
 import { renderTeam } from './views/team.js';
 import { renderSettings } from './views/settings.js';
 import { renderHelp, maybeShowTour } from './views/help.js';
+import { renderWhatsNew, maybeShowWhatsNew } from './whatsnew.js';
 import { renderNotifications } from './views/notifications.js';
 
 applyTheme();
@@ -49,6 +50,7 @@ const ROUTES = [
   { p: 'help', v: renderHelp },
   { p: 'help/:sec', v: renderHelp },
   { p: 'notifications', v: renderNotifications },
+  { p: 'whatsnew', v: renderWhatsNew },
 ];
 
 function matchRoute(hash) {
@@ -253,6 +255,7 @@ async function startApp() {
   renderRoute();
   hideBoot();
   maybeShowTour();
+  if (!location.hash.startsWith('#/whatsnew')) maybeShowWhatsNew();
 }
 
 async function enterApp() {
