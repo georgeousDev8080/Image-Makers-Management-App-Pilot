@@ -8,6 +8,12 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.2.1', date: '30/10/2026',
+    items: [
+      ['👶', 'Ενημερωμένος Οδηγός προσφοράς βάπτισης: τα μικρά album 47×20 επιλέγονται πλέον σε όση ποσότητα χρειάζεται (+70€ το καθένα).', 'Updated baptism offer builder: small 47×20 albums can now be added in any quantity (+70€ each).'],
+    ],
+  },
+  {
     v: '1.2', date: '30/10/2026',
     items: [
       ['👶', 'Νέος Οδηγός προσφοράς βάπτισης: στη δημιουργία εκδήλωσης βάπτισης η προσφορά γίνεται με το πακέτο βάπτισης 2027 (βασικό πακέτο, αναβαθμίσεις, album, εκτυπώσεις, τελική τιμή) και το PDF επισυνάπτεται αυτόματα.', 'New baptism offer builder: when creating a baptism event, the offer uses the 2027 baptism package (base package, upgrades, album, prints, final price) and the PDF is attached automatically.'],
