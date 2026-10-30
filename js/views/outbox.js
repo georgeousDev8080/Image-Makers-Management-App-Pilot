@@ -8,7 +8,7 @@ import { pageHead, emptyState, setTopActions, go } from '../layout.js';
 const st = { tab: 'pending' };
 const PH = () => [
   ['{couple}', L('Ζευγάρι (μικρά ονόματα)', 'Couple (first names)')], ['{name1}', L('Όνομα 1', 'Name 1')], ['{name2}', L('Όνομα 2', 'Name 2')],
-  ['{date}', L('Ημερομηνία', 'Date')], ['{time}', L('Ώρα', 'Time')], ['{church}', L('Εκκλησία', 'Church')], ['{reception}', L('Δεξίωση', 'Reception')],
+  ['{date}', L('Ημερομηνία', 'Date')], ['{time}', L('Ώρα', 'Time')], ['{church}', L('Εκκλησία', 'Church')], ['{bride_house}', L('Σπίτι νύφης', 'Bride’s home')], ['{groom_house}', L('Σπίτι γαμπρού', 'Groom’s home')], ['{reception}', L('Δεξίωση', 'Reception')],
   ['{days_left}', L('Ημέρες που μένουν', 'Days left')], ['{package_price}', L('Αξία πακέτου', 'Package value')], ['{paid_total}', L('Σύνολο πληρωμών', 'Total paid')],
   ['{balance}', L('Υπόλοιπο', 'Balance')], ['{due_now}', L('Ποσό προς τακτοποίηση', 'Amount due')], ['{threshold}', L('Ποσοστό %', 'Percent %')],
   ['{amount}', L('Ποσό πληρωμής', 'Payment amount')], ['{payment_label}', L('Τύπος πληρωμής', 'Payment type')], ['{payment_date}', L('Ημ. πληρωμής', 'Payment date')], ['{payment_method}', L('Τρόπος πληρωμής', 'Payment method')],
@@ -23,7 +23,7 @@ export function renderText(text, v, p, threshold) {
   const m = (x) => money(x);
   const map = {
     '{couple}': [first(v.c?.name1), first(v.c?.name2)].filter(Boolean).join(' & '), '{name1}': v.c?.name1 || '', '{name2}': v.c?.name2 || '',
-    '{date}': fmtDate(v.e.event_date), '{time}': fmtTime(v.e.event_time) || '—', '{church}': v.e.church_location || '—', '{house}': v.e.house_location || '—', '{reception}': v.e.reception_location || '—',
+    '{date}': fmtDate(v.e.event_date), '{time}': fmtTime(v.e.event_time) || '—', '{church}': v.e.church_location || '—', '{house}': [v.e.bride_house, v.e.groom_house].filter(Boolean).join(' / ') || v.e.house_location || '—', '{bride_house}': v.e.bride_house || '—', '{groom_house}': v.e.groom_house || '—', '{reception}': v.e.reception_location || '—',
     '{category}': lbl(CATEGORIES, v.e.category), '{package_price}': m(price), '{paid_total}': m(paid), '{balance}': m(Math.max(0, (price || 0) - paid)),
     '{due_now}': m(Math.max(0, (price || 0) * (threshold ?? 80) / 100 - paid)), '{threshold}': String(threshold ?? 80), '{days_left}': String(Math.max(0, daysBetween(todayISO(), v.e.event_date))),
     '{amount}': m(p?.amount ?? 500), '{payment_label}': p?.label || L('1η Δόση', 'Installment 1'), '{payment_date}': fmtDate(p?.paid_on || todayISO()), '{payment_method}': (lbl(METHODS, p?.method || 'cash')).toLowerCase(),

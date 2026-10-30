@@ -32,7 +32,7 @@ export function renderWorkflow(root) {
   const base = allEventViews({ year: st.year, includeCancelled: false });
   const withLvl = base.map((v) => ({ v, ...wfLevel(v.e, today) }));
   const f = {
-    active: (r) => r.v.e.event_date <= today && r.v.e.photo_status !== 'delivered',
+    active: (r) => r.v.e.photo_status !== 'delivered',
     late: (r) => !!r.level,
     done: (r) => r.v.e.photo_status === 'delivered',
     all: () => true,
@@ -46,7 +46,7 @@ export function renderWorkflow(root) {
   html += `<div class="sheet-toolbar"><div class="search">${icon('search')}<input class="input" id="wq" type="search" placeholder="${esc(L('Αναζήτηση…', 'Search…'))}" value="${esc(st.q)}"></div>
     <div class="chips">${[['active', L('Σε εξέλιξη', 'In progress')], ['late', L('Καθυστερήσεις', 'Delays')], ['done', L('Παραδόθηκαν', 'Delivered')], ['all', L('Όλες', 'All')]].map(([k, t]) => `<button class="chip ${st.filter === k ? 'on' : ''}" data-f="${k}">${esc(t)} <b>${count(k)}</b></button>`).join('')}</div>
     <span style="flex:1"></span><button class="btn small" data-tpl>${icon('message')} ${esc(L('Πρότυπα μηνυμάτων', 'Message templates'))}</button></div>`;
-  if (!rows.length) html += emptyState('flow', st.filter === 'late' ? L('Καμία καθυστέρηση 🎉', 'No delays 🎉') : L('Δεν υπάρχουν εκδηλώσεις εδώ', 'No events here'), st.filter === 'active' ? L('Εδώ εμφανίζονται οι εκδηλώσεις που έχουν γίνει και δεν έχουν παραδοθεί ακόμη.', 'Events that took place and are not delivered yet appear here.') : '');
+  if (!rows.length) html += emptyState('flow', st.filter === 'late' ? L('Καμία καθυστέρηση 🎉', 'No delays 🎉') : L('Δεν υπάρχουν εκδηλώσεις εδώ', 'No events here'), st.filter === 'active' ? L('Εδώ εμφανίζεται κάθε εκδήλωση από τη στιγμή που κλείνεται, μέχρι να παραδοθεί.', 'Every event appears here from the moment it is booked until it is delivered.') : '');
   else {
     html += `<div class="wf-table">
       <div class="wf-head"><span>${esc(L('Ημερομηνία', 'Date'))}</span><span>${esc(L('Μήνας', 'Month'))}</span><span>${esc(L('Όνομα', 'Name'))}</span><span>${esc(L('Τοποθεσία', 'Location'))}</span><span>${esc(L('Κατάσταση Φωτογραφιών', 'Photos status'))}</span><span>${esc(L('Κατάσταση Video', 'Video status'))}</span><span></span></div>

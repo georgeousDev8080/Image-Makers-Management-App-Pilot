@@ -1,11 +1,12 @@
 // =====================================================================
 //  Εκδηλώσεις: λίστα & λεπτομέρειες
 // =====================================================================
-import { L, esc, icon, money, fmtDate, fmtDateLong, fmtTime, todayISO, daysBetween, matches, mapsUrl, telUrl, smsUrl, mailUrl, lbl, CATEGORIES, RESOLUTIONS, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, options, segmented, initSegmented, segValue, sheet, confirmBox, actionSheet, toast, download, icsFor, busy, monthName } from '../core.js';
+import { L, esc, icon, money, fmtDate, fmtDateLong, fmtTime, todayISO, daysBetween, matches, mapsUrl, telUrl, smsUrl, mailUrl, lbl, CATEGORIES, RESOLUTIONS, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, options, segmented, initSegmented, segValue, sheet, confirmBox, promptBox, toastErr, actionSheet, toast, download, icsFor, busy, monthName } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, coupleName, profileName, patchEvent, deleteEvent, setCrew, openOffer, deletePayment, myEventIds } from '../data.js';
 import { pageHead, setTopActions, emptyState, go, backBtn, UI } from '../layout.js';
 import { eventRow, catPill, offerSummaryHTML, crewBriefHTML, crewChips, avatar, photoStatusPill, editStatusPill } from '../components.js';
 import { openIncomeForm } from './money.js';
+import { pickLocation, geoUrl } from '../mappicker.js';
 import { editOfferForEvent, uploadPdfForEvent } from '../offer.js';
 
 const st = { q: '', when: 'upcoming', cat: '' };
@@ -21,7 +22,7 @@ export function renderEvents(root, params = {}) {
     if (st.when === 'past' && v.e.event_date >= today) return false;
     if (st.cat && v.e.category !== st.cat) return false;
     if (params.filter === 'nocrew' && v.crew.length) return false;
-    return matches(st.q, v.title, v.c?.phone1, v.c?.phone2, v.c?.email1, v.e.church_location, v.e.reception_location, v.e.house_location, fmtDate(v.e.event_date), v.f?.package_name);
+    return matches(st.q, v.title, v.c?.phone1, v.c?.phone2, v.c?.email1, v.e.church_location, v.e.reception_location, v.e.house_location, v.e.bride_house, v.e.groom_house, fmtDate(v.e.event_date), v.f?.package_name);
   });
   if (st.when === 'past') list.reverse();
 
@@ -88,18 +89,27 @@ export function renderEventDetail(root, { id }) {
     <div class="quick-actions">
       ${phone ? `<a class="qa" href="${telUrl(phone)}">${icon('phone')}${esc(L('Κλήση', 'Call'))}</a>${admin ? `<a class="qa" href="${smsUrl(phone)}">${icon('sms')}SMS</a>` : ''}` : ''}
       ${email && admin ? `<a class="qa" href="${mailUrl(email)}">${icon('mail')}Email</a>` : ''}
-      ${e.church_location ? `<a class="qa" href="${mapsUrl(e.church_location)}" target="_blank" rel="noopener">${icon('map')}${esc(L('Χάρτης', 'Map'))}</a>` : ''}
+      ${geoUrl(e.church_geo) ? `<a class="qa" href="${esc(geoUrl(e.church_geo))}" target="_blank" rel="noopener">${icon('map')}${esc(L('Χάρτης', 'Map'))}</a>` : ''}
       <button class="qa" data-act="ics">${icon('calendar')}${esc(L('Στο κινητό', 'To phone'))}</button>
     </div>
   </div>`;
 
   // Τοποθεσίες
-  const locRow = (ic, t, val, extra = '') => val ? `<div class="row has-icon loc-row"><span class="row-icon" style="background:${ic}">${icon('pin')}</span><div class="main-col"><div class="s">${esc(t)}</div><div class="t" style="white-space:normal">${esc(val)}${extra}</div></div><a class="btn small" href="${mapsUrl(val)}" target="_blank" rel="noopener">${icon('map')} ${esc(L('Χάρτης', 'Map'))}</a></div>` : '';
+  // Τοποθεσίες: «Χάρτης» ανοίγει το ακριβές pin· ο διαχειριστής βάζει/αλλάζει pin από εδώ
+  const legacyHouse = !e.bride_house && !e.groom_house ? e.house_location : null;
+  const locRow = (ic, t, val, geoKey, extra = '') => {
+    const url = geoKey ? geoUrl(e[geoKey]) : null;
+    if (!val && !url) return '';
+    return `<div class="row has-icon loc-row"><span class="row-icon" style="background:${ic}">${icon('pin')}</span><div class="main-col"><div class="s">${esc(t)}${url ? ` <span class="loc-pin">· 📍 pin</span>` : ''}</div><div class="t" style="white-space:normal">${esc(val || L('Σημείο στον χάρτη', 'Point on the map'))}${extra}</div></div>
+      ${url ? `<a class="btn small" href="${esc(url)}" target="_blank" rel="noopener">${icon('map')} ${esc(L('Χάρτης', 'Map'))}</a>` : ''}${admin && geoKey ? `<button class="btn small pin-btn ${url ? 'on' : ''}" data-setpin="${geoKey}" data-label="${esc(val || '')}" title="${esc(url ? L('Αλλαγή pin', 'Change pin') : L('Βάλτε pin στον χάρτη', 'Drop a pin'))}">${icon('pin')}${url ? '' : ` ${esc(L('Pin', 'Pin'))}`}</button>` : ''}</div>`;
+  };
   html += `<div class="group-label">${esc(L('Τοποθεσίες', 'Locations'))}</div><div class="list">
-    ${locRow('var(--red)', L('Εκκλησία / Μυστήριο', 'Church / Ceremony'), e.church_location, e.event_time ? ` · ${esc(fmtTime(e.event_time))}` : '')}
-    ${locRow('var(--accent)', L('Σπίτι νύφης / γαμπρού', 'Bride / groom home'), e.house_location)}
-    ${locRow('var(--purple)', L('Χώρος δεξίωσης', 'Reception venue'), e.reception_location)}
-    ${!e.church_location && !e.house_location && !e.reception_location ? `<div class="row muted">${esc(L('Δεν έχουν οριστεί τοποθεσίες', 'No locations set'))}</div>` : ''}
+    ${locRow('var(--red)', L('Εκκλησία / Μυστήριο', 'Church / Ceremony'), e.church_location, 'church_geo', e.event_time ? ` · ${esc(fmtTime(e.event_time))}` : '')}
+    ${locRow('var(--accent)', L('Σπίτι νύφης', 'Bride’s home'), e.bride_house, 'bride_geo')}
+    ${locRow('var(--blue)', L('Σπίτι γαμπρού', 'Groom’s home'), e.groom_house, 'groom_geo')}
+    ${legacyHouse ? locRow('var(--accent)', L('Σπίτι νύφης / γαμπρού', 'Bride / groom home'), legacyHouse, null) : ''}
+    ${locRow('var(--purple)', L('Χώρος δεξίωσης', 'Reception venue'), e.reception_location, 'reception_geo')}
+    ${!e.church_location && !e.bride_house && !e.groom_house && !legacyHouse && !e.reception_location ? `<div class="row muted">${esc(L('Δεν έχουν οριστεί τοποθεσίες', 'No locations set'))}</div>` : ''}
   </div>`;
 
   // Ζευγάρι
@@ -178,7 +188,7 @@ export function renderEventDetail(root, { id }) {
     html += `<div class="group-label">${esc(L('Ενέργειες', 'Actions'))}</div><div class="list">
       <a class="row" href="#/event/${id}/edit"><span class="row-icon">${icon('edit')}</span><div class="main-col"><div class="t">${esc(L('Επεξεργασία στοιχείων', 'Edit details'))}</div></div>${icon('chevR', 'chev')}</a>
       <button class="row" data-act="cancel"><span class="row-icon" style="background:var(--orange)">${icon(e.status === 'cancelled' ? 'refresh' : 'x')}</span><div class="main-col"><div class="t">${esc(e.status === 'cancelled' ? L('Επαναφορά εκδήλωσης', 'Restore event') : L('Ακύρωση εκδήλωσης', 'Cancel event'))}</div><div class="s">${esc(L('Μένει στο ιστορικό, ενημερώνεται το συνεργείο', 'Kept in history, crew is notified'))}</div></div></button>
-      <button class="row" data-act="delete"><span class="row-icon" style="background:var(--red)">${icon('trash')}</span><div class="main-col"><div class="t neg">${esc(L('Οριστική διαγραφή', 'Delete permanently'))}</div><div class="s">${esc(v.pays.length ? L('Δεν επιτρέπεται: έχει πληρωμές (χρησιμοποιήστε την ακύρωση)', 'Not allowed: it has payments (use cancel)') : L('Μόνο για εκδηλώσεις χωρίς πληρωμές', 'Only for events without payments'))}</div></div></button>
+      <button class="row" data-act="delete"><span class="row-icon" style="background:var(--red)">${icon('trash')}</span><div class="main-col"><div class="t neg">${esc(L('Οριστική διαγραφή', 'Delete permanently'))}</div><div class="s">${esc(v.pays.length ? L('Μαζί με τις πληρωμές της (ζητείται επιβεβαίωση)', 'Together with its payments (asks for confirmation)') : L('Δεν γίνεται αναίρεση', 'Cannot be undone'))}</div></div></button>
     </div>`;
   }
 
@@ -186,14 +196,21 @@ export function renderEventDetail(root, { id }) {
 
   // ---- ενέργειες ----
   root.querySelector('[data-act="ics"]')?.addEventListener('click', () => {
-    const ics = icsFor(e, `${v.title} · ${lbl(CATEGORIES, e.category)}`, e.church_location || '', [e.house_location && `${L('Σπίτι', 'House')}: ${e.house_location}`, e.reception_location && `${L('Δεξίωση', 'Reception')}: ${e.reception_location}`, e.notes].filter(Boolean).join('\n'));
+    const ics = icsFor(e, `${v.title} · ${lbl(CATEGORIES, e.category)}`, e.church_location || '', [e.bride_house && `${L('Σπίτι νύφης', 'Bride’s home')}: ${e.bride_house}`, e.groom_house && `${L('Σπίτι γαμπρού', 'Groom’s home')}: ${e.groom_house}`, !e.bride_house && !e.groom_house && e.house_location && `${L('Σπίτι', 'House')}: ${e.house_location}`, e.reception_location && `${L('Δεξίωση', 'Reception')}: ${e.reception_location}`, geoUrl(e.church_geo) && `${L('Χάρτης εκκλησίας', 'Church map')}: ${geoUrl(e.church_geo)}`, e.notes].filter(Boolean).join('\n'));
     download(new Blob([ics], { type: 'text/calendar' }), `imagemakers-${e.event_date}.ics`);
   });
   root.querySelector('[data-act="crew"]')?.addEventListener('click', () => openCrewSheet(id));
+  root.querySelectorAll('[data-setpin]').forEach((b) => b.addEventListener('click', async () => {
+    const key = b.dataset.setpin;
+    const near = e.church_geo || e.reception_geo || e.bride_geo || e.groom_geo || null;
+    const g = await pickLocation({ geo: e[key] || null, label: b.dataset.label, near });
+    if (g === undefined) return;
+    try { await patchEvent(id, { [key]: g || null }); } catch {}
+  }));
   root.querySelector('[data-act="pdf"]')?.addEventListener('click', () => openOffer(e.offer_path));
   root.querySelector('[data-act="offer-edit"]')?.addEventListener('click', () => editOfferForEvent(id));
   root.querySelector('[data-act="offer-upload"]')?.addEventListener('click', () => uploadPdfForEvent(id));
-  root.querySelector('[data-act="pay"]')?.addEventListener('click', () => openIncomeForm({ eventId: id }));
+  root.querySelector('[data-act="pay"]')?.addEventListener('click', () => openIncomeForm({ eventId: id, lock: true }));
   root.querySelectorAll('[data-pay]').forEach((b) => b.addEventListener('click', async () => {
     const p = S.payments.find((x) => x.id === b.dataset.pay);
     if (!p) return;
@@ -217,18 +234,31 @@ export function renderEventDetail(root, { id }) {
     toast(cancel ? L('Η εκδήλωση ακυρώθηκε', 'Event cancelled') : L('Η εκδήλωση επανήλθε', 'Event restored'));
   });
   root.querySelector('[data-act="delete"]')?.addEventListener('click', async () => {
-    if (v.pays.length) {
-      // προστασία οικονομικών στοιχείων: εκδήλωση με πληρωμές δεν σβήνεται
-      if (await confirmBox(L('Η εκδήλωση έχει πληρωμές', 'This event has payments'), L(`Υπάρχουν ${v.pays.length} πληρωμές (${money(v.paid)}). Για να μη χαθούν οικονομικά στοιχεία, η εκδήλωση δεν διαγράφεται.\nΑν δεν θα γίνει, πατήστε «Ακύρωση εκδήλωσης»: μένει στο ιστορικό μαζί με τις πληρωμές.`, `There are ${v.pays.length} payments (${money(v.paid)}). To protect financial records the event cannot be deleted.\nIf it will not happen, use “Cancel event”: it stays in history with its payments.`), { ok: e.status === 'cancelled' ? L('Εντάξει', 'OK') : L('Ακύρωση εκδήλωσης', 'Cancel event'), cancel: L('Κλείσιμο', 'Close') }) && e.status !== 'cancelled') {
-        await patchEvent(id, { status: 'cancelled' }).catch(() => {}); toast(L('Η εκδήλωση ακυρώθηκε', 'Event cancelled'));
-      }
-      return;
-    }
-    if (!await confirmBox(L('Οριστική διαγραφή;', 'Delete permanently?'), L(`Θα διαγραφούν η εκδήλωση «${v.title}» και το PDF της. Δεν γίνεται αναίρεση.`, `The event “${v.title}” and its PDF will be deleted. This cannot be undone.`), { ok: L('Διαγραφή', 'Delete'), destructive: true })) return;
-    try { await deleteEvent(id); } catch { return; }
-    toast(L('Η εκδήλωση διαγράφηκε', 'Event deleted'));
-    go('#/events');
+    if (await deleteEventFlow(id)) go('#/events');
   });
+}
+
+/** Οριστική διαγραφή εκδήλωσης (από την καρτέλα ή από το Excel). Επιστρέφει true αν διαγράφηκε. */
+export async function deleteEventFlow(id) {
+  const v = eventView(id);
+  if (!v) return false;
+  const e = v.e;
+  if (v.pays.length) {
+    // εκδήλωση με πληρωμές: προτείνεται ακύρωση· η οριστική διαγραφή θέλει ρητή επιβεβαίωση
+    const a = await actionSheet({ title: L(`«${v.title}» έχει ${v.pays.length} πληρωμές (${money(v.paid)})`, `“${v.title}” has ${v.pays.length} payments (${money(v.paid)})`), actions: [
+      ...(e.status !== 'cancelled' ? [{ label: L('Ακύρωση εκδήλωσης (προτείνεται · κρατά τις πληρωμές)', 'Cancel event (recommended · keeps payments)'), value: 'cancel', icon: 'x' }] : []),
+      { label: L('Οριστική διαγραφή μαζί με τις πληρωμές', 'Delete permanently with its payments'), value: 'del', icon: 'trash', destructive: true },
+    ] });
+    if (a === 'cancel') { try { await patchEvent(id, { status: 'cancelled' }); toast(L('Η εκδήλωση ακυρώθηκε', 'Event cancelled')); } catch {} return false; }
+    if (a !== 'del') return false;
+    const word = L('ΔΙΑΓΡΑΦΗ', 'DELETE');
+    const typed = await promptBox(L('Οριστική διαγραφή;', 'Delete permanently?'), L(`Θα διαγραφούν η εκδήλωση, οι ${v.pays.length} πληρωμές της (${money(v.paid)}) και το PDF. Γράψτε ${word} για επιβεβαίωση.`, `The event, its ${v.pays.length} payments (${money(v.paid)}) and PDF will be deleted. Type ${word} to confirm.`), { placeholder: word, ok: L('Διαγραφή', 'Delete') });
+    if (!typed || String(typed).trim().toUpperCase() !== word) { if (typed) toastErr(L('Δεν διαγράφηκε', 'Not deleted'), L(`Πρέπει να γράψετε ${word}.`, `You must type ${word}.`)); return false; }
+    try { for (const p of [...v.pays]) await deletePayment(p.id); } catch { return false; }
+  } else if (!await confirmBox(L('Οριστική διαγραφή;', 'Delete permanently?'), L(`Θα διαγραφούν η εκδήλωση «${v.title}» και το PDF της. Δεν γίνεται αναίρεση.`, `The event “${v.title}” and its PDF will be deleted. This cannot be undone.`), { ok: L('Διαγραφή', 'Delete'), destructive: true })) return false;
+  try { await deleteEvent(id); } catch { return false; }
+  toast(L('Η εκδήλωση διαγράφηκε', 'Event deleted'));
+  return true;
 }
 
 // ---------------------------------------------------------------------
@@ -243,7 +273,7 @@ export function openCrewSheet(eventId, { onSave, initial } = {}) {
       <div class="list">${team.map((p) => {
         const on = sel.has(p.id);
         return `<div class="row"><label class="hstack" style="flex:1;cursor:pointer;flex-wrap:nowrap"><input type="checkbox" data-u="${p.id}" ${on ? 'checked' : ''} style="width:22px;height:22px;accent-color:var(--accent)">${avatar(p)}<div class="main-col"><div class="t">${esc(profileName(p))}</div><div class="s">${esc(lbl([{ v: 'admin_photo', el: 'Διαχειριστής · Φωτογράφος', en: 'Admin · Photographer' }, { v: 'admin_video', el: 'Διαχειριστής · Βιντεογράφος', en: 'Admin · Videographer' }, { v: 'photographer', el: 'Φωτογράφος', en: 'Photographer' }, { v: 'videographer', el: 'Βιντεογράφος', en: 'Videographer' }], p.role))}</div></div></label>
-          ${on ? segmented('d_' + p.id, [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }], sel.get(p.id)) : ''}</div>`;
+          ${on ? segmented('d_' + p.id, [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }, { v: 'drone', label: 'Drone' }], sel.get(p.id)) : ''}</div>`;
       }).join('') || `<div class="row muted">${esc(L('Δεν υπάρχουν μέλη με ρόλο.', 'No team members with a role.'))}</div>`}</div>`;
     body.querySelectorAll('[data-u]').forEach((cb) => cb.addEventListener('change', () => {
       const p = team.find((x) => x.id === cb.dataset.u);

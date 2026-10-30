@@ -2,12 +2,12 @@
 //  Φύλλα (Excel): Κεντρικό, Πελάτες, Πληρωμές, Φωτογραφίες, Μητρώο,
 //  Έξοδα, Σύνοψη, Dashboard, Έλεγχος δεδομένων, Mitsos
 // =====================================================================
-import { L, esc, icon, money, fmtDate, todayISO, daysBetween, sum, matches, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, MONTHS_EL_UP, monthName, monthShort, toast, confirmBox, actionSheet, segmented, initSegmented } from '../core.js';
+import { dutyEmoji, L, esc, icon, money, fmtDate, todayISO, daysBetween, sum, matches, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, MONTHS_EL_UP, monthName, monthShort, toast, confirmBox, actionSheet, segmented, initSegmented } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, saveCustomer, patchCustomer, patchPayment, patchExpense, patchEvent, saveFinance, savePayment, deletePayment, saveExpense, deleteExpense, openOffer, yearsAvailable, profileName, profileById } from '../data.js';
 import { pageHead, setTopActions } from '../layout.js';
 import { renderGrid, exportGrid } from '../grid.js';
 import { openIncomeForm, openExpenseForm, expenseTitle, paymentActions, expenseActions } from './money.js';
-import { openCrewSheet } from './events.js';
+import { openCrewSheet, deleteEventFlow } from './events.js';
 import { uploadPdfForEvent } from '../offer.js';
 import { barPairs, hbars, bindTips } from '../charts.js';
 import { apptSummaryHTML } from './appointments.js';
@@ -22,7 +22,6 @@ const TABS = () => [
   { v: 'summary', t: L('Σύνοψη', 'Summary') },
   { v: 'dashboard', t: 'Dashboard' },
   { v: 'checks', t: L('Έλεγχος δεδομένων', 'Data checks') },
-  ...(isVideoAdmin() ? [{ v: 'mitsos', t: 'Mitsos 🎬', cls: 'mitsos' }] : []),
 ];
 const GROUPS = () => ({
   basic: { label: L('Βασικά στοιχεία', 'Basics'), cls: 'gc-basic' },
@@ -41,7 +40,7 @@ const PRESETS = {
   photos: ['basic', 'photo'],
 };
 
-const st = { year: null, q: '', month: '', cat: '', unpaid: false, groups: null, mitsosFilter: 'open', showCancelled: false };
+const st = { year: null, q: '', month: '', cat: '', unpaid: false, groups: null, mitsosFilter: 'all', showCancelled: false };
 
 export function renderSheets(root, params = {}) {
   if (!isAdmin()) return;
@@ -54,11 +53,12 @@ export function renderSheets(root, params = {}) {
     st.year = counts.find(([y]) => y === cy)?.[1] ? cy : (counts.filter(([, n]) => n).map(([y]) => y).find((y) => y >= cy) || cy);
   }
   const tabs = TABS();
-  const cur = tabs.find((t) => t.v === tab) || tabs[0];
+  // Το Mitsos είναι ξεχωριστή σελίδα (μενού), χωρίς τις καρτέλες των υπόλοιπων φύλλων
+  const cur = tab === 'mitsos' ? { v: 'mitsos', t: 'Mitsos' } : (tabs.find((t) => t.v === tab) || tabs[0]);
   const yearSel = `<select class="select" id="yr" style="min-height:36px;padding:6px 34px 6px 12px;width:auto;font-weight:650">${years.map((y) => `<option ${y === st.year ? 'selected' : ''}>${y}</option>`).join('')}</select>`;
   setTopActions(yearSel);
   let html = pageHead(cur.v === 'mitsos' ? 'Mitsos · Editing βίντεο' : `${cur.t} ${st.year}`, { sub: '' });
-  html += `<div class="sheet-tabs" style="position:static;margin:-8px 0 12px">${tabs.map((t) => `<a href="#/sheets/${t.v}" class="${t.v === cur.v ? 'active' : ''} ${t.cls || ''}">${esc(t.t)}</a>`).join('')}</div>`;
+  if (cur.v !== 'mitsos') html += `<div class="sheet-tabs" style="position:static;margin:-8px 0 12px">${tabs.map((t) => `<a href="#/sheets/${t.v}" class="${t.v === cur.v ? 'active' : ''} ${t.cls || ''}">${esc(t.t)}</a>`).join('')}</div>`;
   html += `<div id="sheetBody"></div>`;
   root.innerHTML = html;
   document.getElementById('yr')?.addEventListener('change', (e) => { st.year = Number(e.target.value); renderSheets(root, params); });
@@ -118,7 +118,7 @@ function eventsSheet(body, tab, redraw) {
   add('cat', { key: 'cat', label: L('Κατηγορία Εκδήλωσης', 'Event category'), w: 130, type: 'select', blank: false, options: CATEGORIES, editable: true, get: (v) => v.e.category, set: (v, val) => patchEvent(v.e.id, { category: val }) });
   add('cat', { key: 'pdf', label: 'PDF', w: 62, align: 'center', get: (v) => (v.e.offer_path ? 'PDF' : ''), display: (v) => v.e.offer_path ? `<button class="pdf-btn" data-pdf="${v.e.id}" title="${esc(L('Άνοιγμα προσφοράς', 'Open offer'))}">${icon('doc')}PDF</button>` : `<button class="pdf-btn" data-upl="${v.e.id}" style="color:var(--label-3)" title="${esc(L('Ανέβασμα PDF', 'Upload PDF'))}">${icon('upload')}</button>` });
   add('cat', { key: 'second', label: L('Δεύτερο Συνεργείο', 'Second crew'), w: 92, type: 'select', blank: false, options: yesNo, editable: true, get: (v) => (v.f.second_crew ? 'true' : 'false'), set: (v, val) => saveFinance(v.e.id, { second_crew: val === 'true' }) });
-  add('cat', { key: 'crew', label: L('Συνεργείο', 'Crew'), w: 170, editable: true, onOpen: (v) => openCrewSheet(v.e.id), get: (v) => v.crew.map((c) => profileName(c.profile)).join(', '), display: (v) => v.crew.length ? esc(v.crew.map((c) => profileName(c.profile).split(' ')[0] + (c.duty === 'video' ? ' 🎥' : ' 📷')).join(', ')) : `<span class="muted">+ ${esc(L('ανάθεση', 'assign'))}</span>` });
+  add('cat', { key: 'crew', label: L('Συνεργείο', 'Crew'), w: 170, editable: true, onOpen: (v) => openCrewSheet(v.e.id), get: (v) => v.crew.map((c) => profileName(c.profile)).join(', '), display: (v) => v.crew.length ? esc(v.crew.map((c) => profileName(c.profile).split(' ')[0] + (' ' + dutyEmoji(c.duty))).join(', ')) : `<span class="muted">+ ${esc(L('ανάθεση', 'assign'))}</span>` });
   add('cat', { key: 'res', label: L('Ανάλυση', 'Resolution'), w: 92, type: 'select', options: RESOLUTIONS, editable: true, get: (v) => v.e.resolution, set: (v, val) => patchEvent(v.e.id, { resolution: val }) });
   add('fin', { key: 'price', label: L('Πακέτο (€)', 'Package (€)'), w: 104, type: 'money', editable: true, sum: true, get: (v) => v.price, set: (v, val) => { if (val != null && val < 0) throw new Error('negative'); return saveFinance(v.e.id, { package_price: val }); } });
   add('fin', { key: 'pname', label: L('Όνομα Πακέτου', 'Package name'), w: 220, editable: true, get: (v) => v.f.package_name, set: (v, val) => saveFinance(v.e.id, { package_name: val }) });
@@ -126,7 +126,7 @@ function eventsSheet(body, tab, redraw) {
     const payCol = (i) => ({
       group: 'fin', key: 'pay' + i, label: i === 0 ? L('Προκαταβολή', 'Deposit') : L(`${i}η Δόση`, `Installment ${i}`), w: 104, type: 'money', sum: (v) => v.pays.filter((p) => p.amount > 0)[i]?.amount || 0,
       editable: true, get: (v) => v.pays.filter((p) => p.amount > 0)[i]?.amount ?? null,
-      onOpen: (v) => { const p = v.pays.filter((x) => x.amount > 0)[i]; if (p) paymentActions(p); else openIncomeForm({ eventId: v.e.id }); },
+      onOpen: (v) => { const p = v.pays.filter((x) => x.amount > 0)[i]; if (p) paymentActions(p); else openIncomeForm({ eventId: v.e.id, lock: true }); },
       display: (v) => { const p = v.pays.filter((x) => x.amount > 0)[i]; return p ? `<div class="pay-cell"><span>${esc(money(p.amount))}</span><small>${esc(fmtDate(p.paid_on))}</small></div>` : '<span class="ph"></span>'; },
       exportValue: (v) => v.pays.filter((p) => p.amount > 0)[i]?.amount ?? '',
     });
@@ -142,6 +142,8 @@ function eventsSheet(body, tab, redraw) {
   add('money', { key: 'bal', label: L('Υπόλοιπο προς Είσπραξη', 'Balance due'), w: 112, type: 'money', sum: (v) => Math.max(0, v.balance || 0), get: (v) => v.balance, cls: (v) => (v.balance > 0 && v.e.event_date < todayISO() ? 'neg' : '') });
   add('money', { key: 'office', label: L('Σημειώσεις Γραφείου', 'Office notes'), w: 220, editable: true, get: (v) => v.f.office_notes, set: (v, val) => saveFinance(v.e.id, { office_notes: val }) });
   add('money', { key: 'enotes', label: L('Σημειώσεις εκδήλωσης', 'Event notes'), w: 220, editable: true, get: (v) => v.e.notes, set: (v, val) => patchEvent(v.e.id, { notes: val }) });
+  // οριστική διαγραφή από το φύλλο (με τους ίδιους ελέγχους ασφαλείας όπως στην καρτέλα της εκδήλωσης)
+  cols.push({ group: cols.length ? cols[cols.length - 1].group : 'basic', key: 'del', label: L('Διαγραφή', 'Delete'), w: 84, align: 'center', get: () => '', exportValue: () => '', display: (v) => `<button class="del-btn" data-delev="${v.e.id}" title="${esc(L('Οριστική διαγραφή εκδήλωσης', 'Delete event permanently'))}">${icon('trash')}</button>` });
   if (cols.length) cols[0].sticky = true;
   // ημερομηνία πρώτη & σταθερή στο κινητό
   const di = cols.findIndex((c) => c.key === 'date');
@@ -167,8 +169,9 @@ function eventsSheet(body, tab, redraw) {
   });
   body.querySelectorAll('[data-pdf]').forEach((b) => b.addEventListener('click', () => openOffer(S.events.get(b.dataset.pdf).offer_path)));
   body.querySelectorAll('[data-upl]').forEach((b) => b.addEventListener('click', () => uploadPdfForEvent(b.dataset.upl)));
-  body.querySelectorAll('[data-addpay]').forEach((b) => b.addEventListener('click', () => openIncomeForm({ eventId: b.dataset.addpay })));
-  body.querySelector('#sx')?.addEventListener('click', () => exportGrid(`${TABS().find((t) => t.v === tab).t} ${st.year}`, cols.filter((c) => !['addpay'].includes(c.key)), views));
+  body.querySelectorAll('[data-addpay]').forEach((b) => b.addEventListener('click', () => openIncomeForm({ eventId: b.dataset.addpay, lock: true })));
+  body.querySelectorAll('[data-delev]').forEach((b) => b.addEventListener('click', () => deleteEventFlow(b.dataset.delev)));
+  body.querySelector('#sx')?.addEventListener('click', () => exportGrid(`${TABS().find((t) => t.v === tab).t} ${st.year}`, cols.filter((c) => !['addpay', 'del'].includes(c.key)), views));
   // διπλό κλικ στη 1η στήλη → άνοιγμα εκδήλωσης (κινητό: παρατεταμένο πάτημα)
   body.querySelectorAll('tbody tr[data-rk] td.sticky').forEach((td) => td.addEventListener('contextmenu', (e) => { e.preventDefault(); location.hash = '#/event/' + td.parentElement.dataset.rk; }));
 }
@@ -194,10 +197,9 @@ function mitsosSheet(body, tab, redraw) {
     { key: 'est', label: L('Κατάσταση Editing', 'Editing status'), w: 140, type: 'select', blank: false, options: EDIT_STATUS, group: 'video', editable: true, get: (v) => v.e.editing_status, set: (v, val) => patchEvent(v.e.id, { editing_status: val }) },
     { key: 'pc', label: L('Υπολογιστής μοντάζ', 'Editing computer'), w: 130, type: 'select', options: PCS, group: 'video', editable: true, get: (v) => v.e.editing_pc, set: (v, val) => patchEvent(v.e.id, { editing_pc: val }) },
     { key: 'vn', label: L('Σχόλια βίντεο', 'Video notes'), w: 260, group: 'video', editable: true, get: (v) => v.e.video_notes, set: (v, val) => patchEvent(v.e.id, { video_notes: val }) },
-    { key: 'crew', label: L('Βιντεογράφος', 'Videographer'), w: 150, group: 'video', get: (v) => v.crew.filter((c) => c.duty === 'video').map((c) => profileName(c.profile)).join(', ') },
   ];
   body.innerHTML = `<div class="banner">${icon('film')}<div><b>${esc(L('Πώς δουλεύει το Mitsos', 'How Mitsos works'))}</b><span>${esc(L('Όταν οι φωτογραφίες γίνουν «Αλλαγές», το editing γίνεται αυτόματα «Να γίνει». Όταν το album πάει «Εκτύπωση στο εργαστήριο», η γραμμή γίνεται κόκκινη SOS μέχρι να ολοκληρωθεί το editing.', 'When photos become “Changes”, editing becomes “To do”. When the album goes to the lab, the row turns red SOS until editing is done.'))}</span></div></div>`
-    + toolbar({ months: false, cats: false, extra: segmented('mf', [{ v: 'open', label: L(`Εκκρεμή`, 'Pending') }, { v: 'sos', label: `SOS (${counts.sos})` }, { v: 'all', label: L('Όλα', 'All') }], st.mitsosFilter) }) + '<div id="grid"></div>';
+    + toolbar({ months: false, cats: false, extra: segmented('mf', [{ v: 'all', label: L('Όλα', 'All') }, { v: 'open', label: L(`Εκκρεμή`, 'Pending') }, { v: 'sos', label: `SOS (${counts.sos})` }], st.mitsosFilter) }) + '<div id="grid"></div>';
   bindToolbar(body, redraw);
   initSegmented(body, (_, v) => { st.mitsosFilter = v; redraw(); });
   renderGrid(body.querySelector('#grid'), cols, { id: 'mitsos', rows: views, rowKey: (v) => v.e.id, groups: GROUPS(), rowClass: (v) => (isSOS(v.e) ? 'sos' : v.e.editing_status === 'done' ? 'paid' : ''), onEdit: (v, c, val) => c.set(v, val), empty: L('Δεν υπάρχουν εκκρεμότητες 🎉', 'Nothing pending 🎉') });

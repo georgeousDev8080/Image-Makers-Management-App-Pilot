@@ -1,7 +1,7 @@
 // =====================================================================
 //  Κοινά κομμάτια UI (κάρτες εκδηλώσεων, πακέτο προσφοράς κ.λπ.)
 // =====================================================================
-import { safeColor, L, esc, icon, fmtTime, parseISO, monthShort, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, money, initials, colorFor, relDays, daysBetween, todayISO, LANG } from './core.js';
+import { dutyLabel, dutyEmoji, safeColor, L, esc, icon, fmtTime, parseISO, monthShort, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, money, initials, colorFor, relDays, daysBetween, todayISO, LANG } from './core.js';
 import { isAdmin, profileName } from './data.js';
 
 export const catPill = (cat) => `<span class="pill cat-pill cat-${esc(cat)}">${esc(lbl(CATEGORIES, cat))}</span>`;
@@ -29,7 +29,7 @@ export function editStatusPill(v) {
 }
 
 /** Γραμμή εκδήλωσης για λίστες */
-export function eventRow(v, { money: showMoney = isAdmin(), compact = false } = {}) {
+export function eventRow(v, { money: showMoney = isAdmin(), compact = false, crewType = false } = {}) {
   const e = v.e;
   const cancelled = e.status === 'cancelled';
   const sub = [fmtTime(e.event_time), e.church_location].filter(Boolean).join(' · ');
@@ -46,7 +46,7 @@ export function eventRow(v, { money: showMoney = isAdmin(), compact = false } = 
     <div class="main-col">
       <div class="t">${esc(v.title)} ${cancelled ? `<span class="pill red">${esc(L('Ακυρώθηκε', 'Cancelled'))}</span>` : ''}</div>
       <div class="s">${esc(sub || '—')}</div>
-      ${compact ? '' : `<div class="hstack" style="margin-top:5px;gap:6px">${catPill(e.category)}${days >= 0 && days <= 30 ? `<span class="pill accent">${esc(relDays(e.event_date))}</span>` : ''}${e.resolution === '4k' ? '<span class="pill blue">4K</span>' : ''}${crew ? `<span class="avatars">${crew}</span>` : ''}</div>`}
+      ${compact ? '' : `<div class="hstack" style="margin-top:5px;gap:6px">${catPill(e.category)}${crewType && v.f ? `<span class="pill ${v.f.second_crew ? 'purple' : ''}">${esc(v.f.second_crew ? L('Διπλό συνεργείο', 'Double crew') : L('Μονό συνεργείο', 'Single crew'))}</span>` : ''}${days >= 0 && days <= 30 ? `<span class="pill accent">${esc(relDays(e.event_date))}</span>` : ''}${e.resolution === '4k' ? '<span class="pill blue">4K</span>' : ''}${crew ? `<span class="avatars">${crew}</span>` : ''}</div>`}
     </div>
     ${right}
     ${icon('chevR', 'chev')}
@@ -95,7 +95,7 @@ export function crewBriefHTML(e, myDuty) {
   const od = e.offer_data || null;
   const removes = od?.removes || [], adds = od?.adds || [];
   const hours = 3 + (Number(od?.extraHours) || 0);
-  const P = 'photo', V = 'video', B = 'both';
+  const P = 'photo', V = 'video', D = 'drone', B = 'both';
   const items = [];
   const add = (who, text) => items.push({ who, text });
   add(B, L('Σπίτι γαμπρού και νύφης', 'Groom and bride homes'));
@@ -103,18 +103,18 @@ export function crewBriefHTML(e, myDuty) {
   add(B, L(`Δεξίωση: έως ${hours} ώρες μετά την είσοδο`, `Reception: up to ${hours} hours after the entrance`));
   add(V, e.resolution === '4k' || adds.includes('Παράδοση video σε 4K') ? L('Λήψη video σε 4K', 'Video in 4K') : L('Λήψη video σε Full HD (1080p)', 'Video in Full HD (1080p)'));
   if (od) {
-    if (!removes.includes('Drone εκκλησίας')) add(V, L('Drone στην εκκλησία', 'Drone at the church'));
+    if (!removes.includes('Drone εκκλησίας')) add(D, L('Drone στην εκκλησία', 'Drone at the church'));
     if (adds.includes('2ο συνεργείο')) add(B, L('Δεύτερο συνεργείο', 'Second crew'));
     if (adds.includes('Pre-wedding photo & video')) add(B, L('Pre-wedding φωτογράφηση & video', 'Pre-wedding photo & video'));
     if (adds.includes('Slide show για τη δεξίωση')) add(B, L('Slide show στη δεξίωση', 'Slide show at the reception'));
     if (!removes.includes('Φωτογράφηση next day')) add(P, L('Φωτογράφηση next day', 'Next-day photo shoot'));
     if (!removes.includes('Video next day')) add(V, L('Video next day', 'Next-day video'));
-    if (!removes.includes('Drone next day')) add(V, L('Drone next day', 'Next-day drone'));
+    if (!removes.includes('Drone next day')) add(D, L('Drone next day', 'Next-day drone'));
   }
-  const tag = (w) => (w === P ? '📷' : w === V ? '🎥' : '📷🎥');
-  const mine = (w) => !myDuty || w === B || w === myDuty;
+  const tag = (w) => (w === P ? '📷' : w === V ? '🎥' : w === D ? '🚁' : '📷🎥');
+  const mine = (w) => !myDuty || w === B || w === myDuty || (w === D && myDuty === V);
   const list = [...items.filter((i) => mine(i.who)), ...items.filter((i) => !mine(i.who))];
-  return `${myDuty ? `<div class="small muted" style="margin-bottom:8px">${esc(L('Η ανάθεσή σου', 'Your assignment'))}: <b style="color:var(--label)">${esc(myDuty === V ? L('Βίντεο', 'Video') : L('Φωτογραφία', 'Photo'))}</b></div>` : ''}
+  return `${myDuty ? `<div class="small muted" style="margin-bottom:8px">${esc(L('Η ανάθεσή σου', 'Your assignment'))}: <b style="color:var(--label)">${esc(dutyLabel(myDuty))}</b></div>` : ''}
     <ul class="pkg-list">${list.map((i) => `<li style="${mine(i.who) ? '' : 'opacity:.55'}">${esc(i.text)} <span class="tiny">${tag(i.who)}</span></li>`).join('')}</ul>
     ${od ? '' : `<div class="small muted mt-s">${esc(L('Δεν υπάρχουν ακόμη λεπτομέρειες πακέτου· ρωτήστε τον διαχειριστή.', 'No package details yet; ask an admin.'))}</div>`}`;
 }
@@ -134,5 +134,5 @@ export function packageNameFrom(od) {
 
 export function crewChips(v) {
   if (!v.crew.length) return `<span class="muted small">${esc(L('Δεν έχει οριστεί συνεργείο', 'No crew assigned'))}</span>`;
-  return v.crew.map((c) => `<span class="chip" style="padding-left:4px">${avatar(c.profile, 'sm')} ${esc(profileName(c.profile))} · ${esc(c.duty === 'video' ? L('Βίντεο', 'Video') : L('Φωτογραφία', 'Photo'))}</span>`).join(' ');
+  return v.crew.map((c) => `<span class="chip" style="padding-left:4px">${avatar(c.profile, 'sm')} ${esc(profileName(c.profile))} · ${esc(dutyEmoji(c.duty))} ${esc(dutyLabel(c.duty))}</span>`).join(' ');
 }

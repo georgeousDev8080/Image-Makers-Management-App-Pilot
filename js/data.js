@@ -290,7 +290,7 @@ export async function deleteCustomer(id) {
   S.customers.delete(id); emit('customers');
 }
 
-const EVENT_FIELDS = ['customer_id', 'category', 'event_date', 'event_time', 'church_location', 'house_location', 'reception_location', 'resolution', 'notes', 'extra_crew', 'offer_path', 'offer_data', 'offer_updated_at', 'photo_status', 'editing_status', 'editing_pc', 'video_notes', 'status'];
+const EVENT_FIELDS = ['customer_id', 'category', 'event_date', 'event_time', 'church_location', 'house_location', 'bride_house', 'groom_house', 'church_geo', 'bride_geo', 'groom_geo', 'reception_geo', 'reception_location', 'resolution', 'notes', 'extra_crew', 'offer_path', 'offer_data', 'offer_updated_at', 'photo_status', 'editing_status', 'editing_pc', 'video_notes', 'status'];
 export async function saveEvent(ev) {
   const row = {};
   EVENT_FIELDS.forEach((k) => { if (k in ev) row[k] = ev[k] === '' ? null : ev[k]; });

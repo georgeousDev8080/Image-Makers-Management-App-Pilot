@@ -8,7 +8,7 @@ import { pushState, enablePush, disablePushHere, sendTest, setupServerPush, serv
 import { verifyPinPrompt, showNewPin, lockAfterMinutes, TERMS_ENABLED } from './auth.js';
 import { exportAllXlsx, exportFullZip, importBackup, importOldSheet } from '../backup.js';
 
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.1.0';
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; });
 
@@ -69,7 +69,7 @@ export function renderSettings(root) {
     <button class="row has-icon" id="reload"><span class="row-icon" style="background:var(--label-2)">${icon('refresh')}</span><div class="main-col"><div class="t">${esc(L('Ανανέωση δεδομένων', 'Refresh data'))}</div></div></button>
     <button class="row has-icon" id="logout"><span class="row-icon" style="background:var(--red)">${icon('logout')}</span><div class="main-col"><div class="t neg">${esc(L('Αποσύνδεση', 'Sign out'))}</div></div></button>
   </div>
-  <div class="center small muted mt" style="padding-bottom:10px">Image Makers · Studio Manager v${APP_VERSION}<br>made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>`;
+  <div class="center small muted mt" style="padding-bottom:10px">Image Makers · Studio Manager v${APP_VERSION} · <a href="#/whatsnew">${esc(L('Τι νέο υπάρχει', 'What’s new'))}</a><br>made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>`;
   root.innerHTML = html;
 
   // προφίλ
