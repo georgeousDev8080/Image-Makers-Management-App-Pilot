@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Διαμόρφωση πακέτου βάπτισης Image Makers.">
+  <meta name="imagemakers-integration-schema" content="baptism-offer/1.0">
   <title>Image Makers · Πακέτο Βάπτισης 2027</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231c1a18'/%3E%3Ccircle cx='32' cy='32' r='21' fill='none' stroke='%23b57a4e' stroke-width='3'/%3E%3Ctext x='32' y='38' text-anchor='middle' font-family='Georgia' font-size='18' font-weight='bold' fill='%23f7f3ed'%3EIM%3C/text%3E%3C/svg%3E">
   <style>
@@ -602,15 +603,19 @@
             <span class="section-hint">Προστίθενται στο σύνολο</span>
           </div>
           <div class="choice-list">
-            <label class="choice"><input class="calc add-option" type="checkbox" data-label="Φωτογράφηση πριν & ψηφιακό album ευχολόγιο" data-price="100"><span class="check-ui">✓</span><span><span class="choice-title">Φωτογράφηση πριν & ψηφιακό album ευχολόγιο</span></span><span class="choice-price">+100€</span></label>
-            <label class="choice"><input class="calc add-option" type="checkbox" data-label="Drone στην εκκλησία" data-price="50"><span class="check-ui">✓</span><span><span class="choice-title">Drone στην εκκλησία</span></span><span class="choice-price">+50€</span></label>
-            <label class="choice"><input class="calc add-option" type="checkbox" data-label="Μικρό album 47×20" data-price="70"><span class="check-ui">✓</span><span><span class="choice-title">Μικρό album 47×20</span><span class="choice-sub">20 σαλόνια / 40 σελίδες</span></span><span class="choice-price">+70€</span></label>
+            <label class="choice"><input class="calc add-option" type="checkbox" data-code="pre_baptism_guestbook" data-label="Φωτογράφηση πριν & ψηφιακό album ευχολόγιο" data-price="100"><span class="check-ui">✓</span><span><span class="choice-title">Φωτογράφηση πριν & ψηφιακό album ευχολόγιο</span></span><span class="choice-price">+100€</span></label>
+            <label class="choice"><input class="calc add-option" type="checkbox" data-code="church_drone" data-label="Drone στην εκκλησία" data-price="50"><span class="check-ui">✓</span><span><span class="choice-title">Drone στην εκκλησία</span></span><span class="choice-price">+50€</span></label>
+          </div>
+          <div class="quantity-row" style="margin-top:10px">
+            <div><div class="quantity-label">Μικρά album 47×20</div><div class="choice-sub">20 σαλόνια / 40 σελίδες το καθένα · χωρίς περιορισμό ποσότητας</div></div>
+            <input class="calc qty" id="smallAlbumQuantity" type="number" min="0" step="1" value="0" data-code="small_album_47x20" data-label="Μικρό album 47×20" data-unit="70" aria-label="Ποσότητα μικρών album 47×20 χωρίς ανώτατο όριο">
+            <div class="quantity-price">+70€/τεμ.</div>
           </div>
           <div hidden aria-hidden="true">
-            <input class="calc add-option" type="checkbox" data-label="Album Platinum series" data-price="40">
-            <input class="calc add-option" type="checkbox" data-label="Platinum album case" data-price="60">
-            <input class="calc add-option" type="checkbox" data-label="Wooden USB case" data-price="50">
-            <input class="calc add-option" type="checkbox" data-label="Παράδοση video σε 4K" data-price="100">
+            <input class="calc add-option" type="checkbox" data-code="album_platinum" data-label="Album Platinum series" data-price="40">
+            <input class="calc add-option" type="checkbox" data-code="platinum_album_case" data-label="Platinum album case" data-price="60">
+            <input class="calc add-option" type="checkbox" data-code="wooden_usb_case" data-label="Wooden USB case" data-price="50">
+            <input class="calc add-option" type="checkbox" data-code="video_4k" data-label="Παράδοση video σε 4K" data-price="100">
           </div>
         </section>
 
@@ -618,12 +623,12 @@
           <div class="section-head"><h2 id="quantityHeading">Πρόσθετες ποσότητες</h2></div>
           <div class="quantity-row">
             <div><div class="quantity-label">Σαλόνια μεγάλου album</div></div>
-            <input class="calc qty" id="largeSpreads" type="number" min="0" max="50" step="1" value="0" data-label="Επιπλέον σαλόνι μεγάλου album" data-unit="10">
+            <input class="calc qty" id="largeSpreads" type="number" min="0" max="50" step="1" value="0" data-code="large_album_extra_spreads" data-label="Επιπλέον σαλόνι μεγάλου album" data-unit="10">
             <div class="quantity-price">+10€/τεμ.</div>
           </div>
           <div class="quantity-row">
             <div><div class="quantity-label">Σαλόνια μικρού album</div></div>
-            <input class="calc qty" id="smallSpreads" type="number" min="0" max="50" step="1" value="0" data-label="Επιπλέον σαλόνι μικρού album" data-unit="5">
+            <input class="calc qty" id="smallSpreads" type="number" min="0" max="50" step="1" value="0" data-code="small_album_extra_spreads" data-label="Επιπλέον σαλόνι μικρού album" data-unit="5">
             <div class="quantity-price">+5€/τεμ.</div>
           </div>
         </section>
@@ -631,9 +636,9 @@
         <section class="section" aria-labelledby="printsHeading">
           <div class="section-head"><h2 id="printsHeading">Σύνθεση εκτυπώσεων</h2><span class="section-hint">Χωρίς αλλαγή τιμής</span></div>
           <div class="radio-grid">
-            <label class="radio-card"><input type="radio" name="prints" value="30 φωτογραφίες 13×18 cm" checked><strong>30 φωτογραφίες</strong><span>13×18 cm</span></label>
-            <label class="radio-card"><input type="radio" name="prints" value="5 φωτογραφίες 30×40 cm"><strong>5 φωτογραφίες</strong><span>30×40 cm</span></label>
-            <label class="radio-card"><input type="radio" name="prints" value="1 καμβάς 50×40 cm"><strong>1 καμβάς</strong><span>50×40 cm</span></label>
+            <label class="radio-card"><input type="radio" name="prints" data-code="prints_30_13x18" value="30 φωτογραφίες 13×18 cm" checked><strong>30 φωτογραφίες</strong><span>13×18 cm</span></label>
+            <label class="radio-card"><input type="radio" name="prints" data-code="prints_5_30x40" value="5 φωτογραφίες 30×40 cm"><strong>5 φωτογραφίες</strong><span>30×40 cm</span></label>
+            <label class="radio-card"><input type="radio" name="prints" data-code="canvas_1_50x40" value="1 καμβάς 50×40 cm"><strong>1 καμβάς</strong><span>50×40 cm</span></label>
           </div>
         </section>
 
@@ -719,7 +724,7 @@
         <p class="slide-lede">Φωτογραφική και κινηματογραφική κάλυψη καθ’ όλη τη διάρκεια του μυστηρίου.</p>
         <div class="slide-content slide-grid">
           <div class="slide-card"><h3>Κάλυψη μυστηρίου</h3><ul><li>Φωτογραφική κάλυψη της βάπτισης.</li><li>Κινηματογράφηση του μυστηρίου.</li><li>Πλήρες φωτογραφικό αρχείο σε υψηλή ανάλυση.</li><li>Ολοκληρωμένη ταινία και σύντομο trailer.</li></ul></div>
-          <div class="slide-card"><h3>Πρόσθετες επιλογές</h3><p>Διαμορφώστε το πακέτο με τις υπηρεσίες που ταιριάζουν στο δικό σας μυστήριο.</p><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"><button class="slide-action" type="button" data-toggle-label="Φωτογράφηση πριν & ψηφιακό album ευχολόγιο">Pre-baptism +100€</button><button class="slide-action" type="button" data-toggle-label="Drone στην εκκλησία">Drone +50€</button><button class="slide-action" type="button" data-toggle-label="Μικρό album 47×20">Μικρό album +70€</button></div></div>
+          <div class="slide-card"><h3>Πρόσθετες επιλογές</h3><p>Διαμορφώστε το πακέτο με τις υπηρεσίες που ταιριάζουν στο δικό σας μυστήριο.</p><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"><button class="slide-action" type="button" data-toggle-label="Φωτογράφηση πριν & ψηφιακό album ευχολόγιο">Pre-baptism +100€</button><button class="slide-action" type="button" data-toggle-label="Drone στην εκκλησία">Drone +50€</button><button class="slide-action" type="button" data-quantity-target="smallAlbumQuantity">Μικρό album +70€/τεμ.</button></div></div>
         </div>
         <div class="slide-total-chip"><span>Τελική αξία πακέτου</span><strong class="live-total">680€</strong></div>
       </article>
@@ -816,7 +821,7 @@
 
       const cleanNumber = (input) => {
         const min = Number(input.min || 0);
-        const max = Number(input.max || 999);
+        const max = input.max === '' ? Number.MAX_SAFE_INTEGER : Number(input.max);
         let value = Math.round(Number(input.value) || 0);
         value = Math.max(min, Math.min(max, value));
         input.value = value;
@@ -878,8 +883,10 @@
 
       function updateLists() {
         const upgrades = $$('.add-option:checked').map((input) => input.dataset.label);
+        const smallAlbumQuantity = cleanNumber($('#smallAlbumQuantity'));
         const largeSpreads = cleanNumber($('#largeSpreads'));
         const smallSpreads = cleanNumber($('#smallSpreads'));
+        if (smallAlbumQuantity) upgrades.push(`${smallAlbumQuantity} ${smallAlbumQuantity === 1 ? 'μικρό album 47×20' : 'μικρά album 47×20'}`);
         if (largeSpreads) upgrades.push(`${largeSpreads} επιπλέον σαλόνια μεγάλου album`);
         if (smallSpreads) upgrades.push(`${smallSpreads} επιπλέον σαλόνια μικρού album`);
 
@@ -904,6 +911,7 @@
           description: upgradeDescriptions[input.dataset.label]
         }));
         [
+          { input: $('#smallAlbumQuantity'), singular: 'Μικρό album 47×20', plural: 'Μικρά album 47×20', description: 'Μικρό ψηφιακό album 47×20 cm με 20 σαλόνια / 40 σελίδες.' },
           { input: $('#largeSpreads'), singular: 'Επιπλέον σαλόνι μεγάλου album', plural: 'Επιπλέον σαλόνια μεγάλου album', description: 'Πρόσθετα σαλόνια στο μεγάλο ψηφιακό album.' },
           { input: $('#smallSpreads'), singular: 'Επιπλέον σαλόνι μικρού album', plural: 'Επιπλέον σαλόνια μικρού album', description: 'Πρόσθετα σαλόνια στο μικρό ψηφιακό album.' }
         ].forEach((item) => {
@@ -988,6 +996,20 @@
             : button.dataset.defaultText;
           button.setAttribute('aria-pressed', String(input.checked));
         });
+        $$('[data-quantity-target]').forEach((button) => {
+          const input = document.getElementById(button.dataset.quantityTarget);
+          if (!input) return;
+          if (!button.dataset.defaultText) button.dataset.defaultText = button.textContent;
+          const quantity = cleanNumber(input);
+          button.classList.toggle('selected', quantity > 0);
+          button.textContent = quantity > 0
+            ? `${quantity === 1 ? 'Μικρό album' : 'Μικρά album'} ×${quantity} · ${formatMoney(quantity * Number(input.dataset.unit))} ✓`
+            : button.dataset.defaultText;
+          button.setAttribute('aria-pressed', String(quantity > 0));
+          button.setAttribute('aria-label', quantity > 0
+            ? `Επιλέχθηκαν ${quantity} μικρά album. Πατήστε για την επόμενη ποσότητα.`
+            : 'Προσθήκη μικρού album 47×20. Πατήστε για επιλογή ποσότητας.');
+        });
       }
 
       function updateAll() {
@@ -1021,8 +1043,213 @@
         $('#openPresentation').focus();
       }
 
+      /*
+       * Integration API for a parent web application.
+       * The parent application should store both getData() and the PDF that it
+       * renders from getPdfPayload().printableHtml. Database credentials and
+       * private API keys must never be placed inside this HTML file.
+       */
+      const INTEGRATION_SCHEMA_VERSION = '1.0';
+      let integrationConfig = {
+        recordId: null,
+        endpoint: null,
+        parentOrigin: null,
+        interceptPrint: false,
+        credentials: 'same-origin',
+        headers: {}
+      };
+
+      function getResolvedPricing() {
+        const { total: calculatedPrice, rows } = getCalculation();
+        const enteredPrice = Number($('#finalPackagePrice').value);
+        const hasManualPrice = finalPriceManual && Number.isFinite(enteredPrice) && enteredPrice >= 0;
+        const finalPrice = hasManualPrice ? Math.round(enteredPrice) : calculatedPrice;
+        return {
+          basePrice: BASE_PRICE,
+          calculatedPrice,
+          finalPrice,
+          manualPrice: hasManualPrice,
+          adjustment: finalPrice - calculatedPrice,
+          currency: 'EUR',
+          vatIncluded: true,
+          breakdown: rows.map((row) => ({ label: row.label, value: row.value, type: row.type }))
+        };
+      }
+
+      function getOfferData() {
+        const printChoice = $('input[name="prints"]:checked');
+        const upgrades = $$('.add-option:checked').map((input) => ({
+          code: input.dataset.code,
+          label: input.dataset.label,
+          price: Number(input.dataset.price)
+        }));
+        const quantities = $$('.qty').map((input) => {
+          const quantity = cleanNumber(input);
+          const unitPrice = Number(input.dataset.unit);
+          return {
+            code: input.dataset.code,
+            label: input.dataset.label,
+            quantity,
+            unitPrice,
+            total: quantity * unitPrice
+          };
+        }).filter((item) => item.quantity > 0);
+
+        return {
+          schemaVersion: INTEGRATION_SCHEMA_VERSION,
+          offerType: 'baptism',
+          collectionYear: 2027,
+          recordId: integrationConfig.recordId,
+          customer: {
+            parent1: $('#partner1').value.trim(),
+            parent2: $('#partner2').value.trim(),
+            phone1: $('#phone1').value.trim(),
+            phone2: $('#phone2').value.trim()
+          },
+          baptism: {
+            date: $('#eventDate').value,
+            city: $('#city').value.trim(),
+            church: $('#church').value.trim()
+          },
+          selections: {
+            upgrades,
+            quantities,
+            printOption: printChoice ? {
+              code: printChoice.dataset.code,
+              label: printChoice.value
+            } : null
+          },
+          pricing: getResolvedPricing(),
+          notes: $('#notes').value.trim(),
+          generatedAt: new Date().toISOString()
+        };
+      }
+
+      function setOfferData(payload = {}) {
+        const customer = payload.customer || {};
+        const baptism = payload.baptism || {};
+        const selections = payload.selections || {};
+        const pricing = payload.pricing || {};
+
+        $('#partner1').value = customer.parent1 || '';
+        $('#partner2').value = customer.parent2 || '';
+        $('#phone1').value = customer.phone1 || '';
+        $('#phone2').value = customer.phone2 || '';
+        $('#eventDate').value = baptism.date || '';
+        $('#city').value = baptism.city || '';
+        $('#church').value = baptism.church || '';
+        $('#notes').value = payload.notes || '';
+
+        const upgradeCodes = new Set((selections.upgrades || []).map((item) => typeof item === 'string' ? item : item.code));
+        $$('.add-option').forEach((input) => { input.checked = upgradeCodes.has(input.dataset.code); });
+
+        const quantityMap = new Map((selections.quantities || []).map((item) => [item.code, Number(item.quantity) || 0]));
+        $$('.qty').forEach((input) => { input.value = String(quantityMap.get(input.dataset.code) || 0); });
+        if (!quantityMap.has('small_album_47x20') && upgradeCodes.has('small_album_47x20')) {
+          $('#smallAlbumQuantity').value = '1';
+        }
+
+        const printCode = selections.printOption?.code || selections.printOption || 'prints_30_13x18';
+        const matchingPrint = $(`input[name="prints"][data-code="${printCode}"]`);
+        if (matchingPrint) matchingPrint.checked = true;
+
+        if (pricing.manualPrice && Number.isFinite(Number(pricing.finalPrice))) {
+          finalPriceManual = true;
+          $('#finalPackagePrice').value = String(Math.max(0, Math.round(Number(pricing.finalPrice))));
+        } else {
+          finalPriceManual = false;
+        }
+
+        if (payload.recordId !== undefined) integrationConfig.recordId = payload.recordId;
+        updateAll();
+        document.dispatchEvent(new CustomEvent('imagemakers:offer-loaded', { detail: getOfferData() }));
+        return getOfferData();
+      }
+
+      function getPrintableHtml() {
+        updateAll();
+        const html = document.documentElement.cloneNode(false);
+        const head = document.head.cloneNode(true);
+        const body = document.createElement('body');
+        body.appendChild($('.print-document').cloneNode(true));
+        head.querySelectorAll('script').forEach((script) => script.remove());
+        html.appendChild(head);
+        html.appendChild(body);
+        return `<!doctype html>\n${html.outerHTML}`;
+      }
+
+      function buildPdfFileName() {
+        const names = [$('#partner1').value, $('#partner2').value].map((value) => value.trim()).filter(Boolean).join('_');
+        const date = $('#eventDate').value || 'χωρίς_ημερομηνία';
+        const safeNames = (names || 'βάπτιση').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '_');
+        return `Image_Makers_Βάπτιση_${safeNames}_${date}.pdf`;
+      }
+
+      function getPdfPayload() {
+        return {
+          schemaVersion: INTEGRATION_SCHEMA_VERSION,
+          fileName: buildPdfFileName(),
+          offer: getOfferData(),
+          printableHtml: getPrintableHtml(),
+          pdfOptions: {
+            format: 'A4',
+            printBackground: true,
+            preferCssPageSize: true
+          }
+        };
+      }
+
+      function configureIntegration(config = {}) {
+        integrationConfig = {
+          ...integrationConfig,
+          ...config,
+          headers: { ...integrationConfig.headers, ...(config.headers || {}) }
+        };
+        return { ...integrationConfig, headers: { ...integrationConfig.headers } };
+      }
+
+      function requestSave() {
+        const payload = getPdfPayload();
+        document.dispatchEvent(new CustomEvent('imagemakers:save-request', { detail: payload }));
+        if (window.parent !== window && integrationConfig.parentOrigin) {
+          window.parent.postMessage({ type: 'IMAGE_MAKERS_BAPTISM_SAVE_REQUEST', payload }, integrationConfig.parentOrigin);
+        }
+        return payload;
+      }
+
+      async function saveToEndpoint(options = {}) {
+        const endpoint = options.endpoint || integrationConfig.endpoint;
+        if (!endpoint) throw new Error('Δεν έχει οριστεί endpoint αποθήκευσης.');
+        const payload = getPdfPayload();
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          credentials: options.credentials || integrationConfig.credentials,
+          headers: {
+            'Content-Type': 'application/json',
+            ...integrationConfig.headers,
+            ...(options.headers || {})
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error(`Η αποθήκευση απέτυχε (${response.status}).`);
+        const contentType = response.headers.get('content-type') || '';
+        const result = contentType.includes('application/json') ? await response.json() : await response.text();
+        document.dispatchEvent(new CustomEvent('imagemakers:saved', { detail: { payload, result } }));
+        return result;
+      }
+
       function printOffer() {
         updateAll();
+        if (integrationConfig.interceptPrint) {
+          if (integrationConfig.endpoint) {
+            saveToEndpoint().catch((error) => {
+              document.dispatchEvent(new CustomEvent('imagemakers:save-error', { detail: { message: error.message } }));
+            });
+          } else {
+            requestSave();
+          }
+          return;
+        }
         window.print();
       }
 
@@ -1048,9 +1275,13 @@
         finalPriceManual = false;
         updateAll();
       });
+      function handleOfferChange() {
+        updateAll();
+        document.dispatchEvent(new CustomEvent('imagemakers:offer-changed', { detail: getOfferData() }));
+      }
       $$('input, textarea, select').forEach((input) => {
-        input.addEventListener('input', updateAll);
-        input.addEventListener('change', updateAll);
+        input.addEventListener('input', handleOfferChange);
+        input.addEventListener('change', handleOfferChange);
       });
       $('#slideDots').innerHTML = $$('.presentation-slide').map((_, index) => `<button class="slide-dot${index === 0 ? ' active' : ''}" type="button" data-slide-target="${index}" aria-label="Σελίδα ${index + 1}"></button>`).join('');
       $$('[data-slide-target]').forEach((button) => button.addEventListener('click', () => showSlide(Number(button.dataset.slideTarget))));
@@ -1059,6 +1290,14 @@
         if (!input) return;
         input.checked = !input.checked;
         updateAll();
+      }));
+      $$('[data-quantity-target]').forEach((button) => button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.quantityTarget);
+        if (!input) return;
+        const current = cleanNumber(input);
+        const max = input.max === '' ? Number.MAX_SAFE_INTEGER : Number(input.max);
+        input.value = String(current >= max ? 0 : current + 1);
+        handleOfferChange();
       }));
       ['#printTop', '#printBottom'].forEach((selector) => $(selector).addEventListener('click', printOffer));
       $('#resetTop').addEventListener('click', resetOffer);
@@ -1073,7 +1312,22 @@
         if (event.key === 'ArrowRight') showSlide(currentSlide + 1);
       });
 
+      window.ImageMakersBaptismOffer = Object.freeze({
+        schemaVersion: INTEGRATION_SCHEMA_VERSION,
+        getData: getOfferData,
+        setData: setOfferData,
+        getPrintableHtml,
+        getPdfPayload,
+        configure: configureIntegration,
+        requestSave,
+        saveToEndpoint,
+        print: printOffer
+      });
+
       updateAll();
+      window.dispatchEvent(new CustomEvent('imagemakers:ready', {
+        detail: { schemaVersion: INTEGRATION_SCHEMA_VERSION, offerType: 'baptism' }
+      }));
     })();
   </script>
 <script>
@@ -1098,6 +1352,9 @@
     if (s.notes != null) setVal('#notes', s.notes);
     var adds = s.adds || [];
     $$('.add-option').forEach(function (i) { i.checked = adds.indexOf(i.dataset.label) >= 0; });
+    // μικρά album 47×20: ποσότητα (παλιές προσφορές: επιλογή = 1)
+    var small = s.smallAlbums != null ? s.smallAlbums : (adds.indexOf('Μικρό album 47×20') >= 0 ? 1 : 0);
+    setVal('#smallAlbumQuantity', small || 0);
     setVal('#largeSpreads', s.largeSpreads || 0);
     setVal('#smallSpreads', s.smallSpreads || 0);
     if (s.prints) $$('input[name="prints"]').forEach(function (r) { r.checked = r.value === s.prints; });
@@ -1119,10 +1376,13 @@
       removes: [],
       adds: $$('.add-option:checked').map(function (i) { return i.dataset.label; }),
       removeAlbums: 0, extraHours: 0,
+      smallAlbums: num(val('#smallAlbumQuantity')),
       largeSpreads: num(val('#largeSpreads')), smallSpreads: num(val('#smallSpreads')),
       prints: pr ? pr.value : '',
       calculatedTotal: calculated, total: finalP,
-      finalPrice: finalP !== calculated ? finalP : null
+      finalPrice: finalP !== calculated ? finalP : null,
+      // πλήρη δομημένα στοιχεία του Οδηγού (schema baptism-offer/1.0)
+      integration: (window.ImageMakersBaptismOffer && window.ImageMakersBaptismOffer.getData) ? window.ImageMakersBaptismOffer.getData() : null
     };
   }
 
