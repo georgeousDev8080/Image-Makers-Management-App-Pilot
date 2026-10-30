@@ -66,7 +66,7 @@ export function renderHome(root) {
     const pu = pendingUsers().length; if (pu) todo.push({ h: '#/team', i: 'shield', c: 'var(--purple)', t: L(`${pu} νέοι λογαριασμοί περιμένουν ρόλο`, `${pu} new accounts need a role`) });
     if (isVideoAdmin()) {
       const sos = all.filter((v) => ['lab', 'ready', 'delivered'].includes(v.e.photo_status) && v.e.editing_status !== 'done').length;
-      if (sos) todo.push({ h: '#/sheets/mitsos', i: 'warning', c: 'var(--red)', t: L(`${sos} SOS στο Mitsos — το album πάει για εκτύπωση`, `${sos} SOS in Mitsos — album going to print`) });
+      if (sos) todo.push({ h: '#/sheets/mitsos', i: 'warning', c: 'var(--red)', t: L(`${sos} SOS στο Dimitris — το album πάει για εκτύπωση`, `${sos} SOS in Dimitris — album going to print`) });
     }
     const noCrew = upcoming.filter((v) => daysBetween(today, v.e.event_date) <= 21 && !v.crew.length).length;
     if (noCrew) todo.push({ h: '#/events?filter=nocrew', i: 'users', c: 'var(--orange)', t: L(`${noCrew} εκδηλώσεις τις επόμενες 3 εβδομάδες χωρίς συνεργείο`, `${noCrew} events in the next 3 weeks without crew`) });

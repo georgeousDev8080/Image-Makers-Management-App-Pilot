@@ -1,5 +1,5 @@
 /* Image Makers · Service Worker — offline λειτουργία & ειδοποιήσεις push */
-const CACHE = 'im-v17';
+const CACHE = 'im-v18';
 const SHELL = [
   './', 'index.html', 'legal.html', 'config.js', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/core.js', 'js/data.js', 'js/layout.js', 'js/components.js', 'js/push.js', 'js/offer.js', 'js/grid.js', 'js/backup.js', 'js/charts.js', 'js/mappicker.js', 'js/whatsnew.js',

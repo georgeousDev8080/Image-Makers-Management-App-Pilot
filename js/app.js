@@ -84,7 +84,7 @@ function navItems() {
     items.push({ sec: L('Οικονομικά', 'Finance') });
     items.push({ h: '#/money', i: 'wallet', t: L('Έσοδα & Έξοδα', 'Income & Expenses') });
     items.push({ h: '#/sheets', i: 'table', t: L('Φύλλα (Excel)', 'Sheets (Excel)') });
-    if (isVideoAdmin()) items.push({ h: '#/sheets/mitsos', i: 'film', t: 'Mitsos', count: () => sosCount() });
+    if (isVideoAdmin()) items.push({ h: '#/sheets/mitsos', i: 'film', t: 'Dimitris', count: () => sosCount() });
     items.push({ sec: L('Επικοινωνία', 'Communication') });
     items.push({ h: '#/outbox', i: 'message', t: L('Μηνύματα προς πελάτες', 'Messages to clients'), count: () => pendingMessages().length });
   }

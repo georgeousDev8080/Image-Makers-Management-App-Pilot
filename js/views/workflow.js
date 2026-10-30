@@ -1,7 +1,7 @@
 // =====================================================================
 //  Κατάσταση Εργασιών / Workflow
 //  Αντίγραφο του Excel μόνο για Κατάσταση Φωτογραφιών & Κατάσταση Video.
-//  Ό,τι αλλάζει εδώ αλλάζει και στο Excel (και στο Mitsos για το video).
+//  Ό,τι αλλάζει εδώ αλλάζει και στο Excel (και στο Dimitris για το video).
 // =====================================================================
 import { L, esc, icon, fmtDate, todayISO, daysBetween, matches, lbl, options, PHOTO_STATUS, EDIT_STATUS, WF_RULES, MONTHS_EL_UP, CHANNELS, sheet, toast, toastErr, confirmBox, copyText, smsUrl, mailUrl, waUrl, viberUrl, timeAgo, busy } from '../core.js';
 import { S, allEventViews, eventView, patchEvent, logSentMessage, yearsAvailable, saveWfTemplate, deleteWfTemplate } from '../data.js';
@@ -42,7 +42,7 @@ export function renderWorkflow(root) {
   const rank = { late: 0, warn: 1, '': 2 };
   rows.sort((a, b) => (st.filter === 'late' ? rank[a.level] - rank[b.level] : 0) || a.v.e.event_date.localeCompare(b.v.e.event_date));
 
-  let html = pageHead(L('Κατάσταση Εργασιών', 'Work status'), { sub: esc(L('Φωτογραφίες και video κάθε εκδήλωσης. Ό,τι αλλάζετε εδώ αλλάζει αυτόματα και στο Excel και στο Mitsos.', 'Photos and video for every event. Changes here update the Excel and Mitsos automatically.')) });
+  let html = pageHead(L('Κατάσταση Εργασιών', 'Work status'), { sub: esc(L('Φωτογραφίες και video κάθε εκδήλωσης. Ό,τι αλλάζετε εδώ αλλάζει αυτόματα και στο Excel και στο Dimitris.', 'Photos and video for every event. Changes here update the Excel and Dimitris automatically.')) });
   html += `<div class="sheet-toolbar"><div class="search">${icon('search')}<input class="input" id="wq" type="search" placeholder="${esc(L('Αναζήτηση…', 'Search…'))}" value="${esc(st.q)}"></div>
     <div class="chips">${[['active', L('Σε εξέλιξη', 'In progress')], ['late', L('Καθυστερήσεις', 'Delays')], ['done', L('Παραδόθηκαν', 'Delivered')], ['all', L('Όλες', 'All')]].map(([k, t]) => `<button class="chip ${st.filter === k ? 'on' : ''}" data-f="${k}">${esc(t)} <b>${count(k)}</b></button>`).join('')}</div>
     <span style="flex:1"></span><button class="btn small" data-tpl>${icon('message')} ${esc(L('Πρότυπα μηνυμάτων', 'Message templates'))}</button></div>`;

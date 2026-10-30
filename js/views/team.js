@@ -12,7 +12,7 @@ let invites = null;
 
 const ROLE_HELP = () => ({
   admin_photo: L('Πλήρης πρόσβαση: οικονομικά, Excel, ομάδα, ρυθμίσεις.', 'Full access: finances, Excel, team, settings.'),
-  admin_video: L('Πλήρης πρόσβαση + το φύλλο «Mitsos» για το μοντάζ.', 'Full access + the “Mitsos” editing sheet.'),
+  admin_video: L('Πλήρης πρόσβαση + το φύλλο «Dimitris» για το μοντάζ.', 'Full access + the “Dimitris” editing sheet.'),
   photographer: L('Βλέπει μόνο τις εκδηλώσεις που του ανατίθενται, χωρίς τιμές.', 'Sees only events assigned to them, without prices.'),
   videographer: L('Βλέπει μόνο τις εκδηλώσεις που του ανατίθενται, χωρίς τιμές.', 'Sees only events assigned to them, without prices.'),
 });
