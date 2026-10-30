@@ -28,17 +28,21 @@ export function renderWorkflow(root) {
   const years = yearsAvailable();
   if (!st.year) st.year = new Date().getFullYear();
   const today = todayISO();
-  setTopActions(`<select class="select" id="wy" style="min-height:36px;padding:6px 34px 6px 12px;width:auto;font-weight:650">${years.map((y) => `<option ${y === st.year ? 'selected' : ''}>${y}</option>`).join('')}</select>`);
-  const base = allEventViews({ year: st.year, includeCancelled: false });
-  const withLvl = base.map((v) => ({ v, ...wfLevel(v.e, today) }));
+  // «Σε εξέλιξη» και «Καθυστερήσεις»: όλες οι κλεισμένες εκδηλώσεις, κάθε χρονιάς (μπαίνουν εδώ μόλις κλειστούν)
+  // «Παραδόθηκαν» και «Όλες»: ανά χρονιά
+  const byYear = (k) => k === 'done' || k === 'all';
+  setTopActions(byYear(st.filter) ? `<select class="select" id="wy" style="min-height:36px;padding:6px 34px 6px 12px;width:auto;font-weight:650">${years.map((y) => `<option ${y === st.year ? 'selected' : ''}>${y}</option>`).join('')}</select>` : '');
+  const lvl = (list) => list.map((v) => ({ v, ...wfLevel(v.e, today) }));
+  const allRows = lvl(allEventViews({ includeCancelled: false }));
+  const yearRows = allRows.filter((r) => String(r.v.e.event_date).startsWith(String(st.year)));
   const f = {
     active: (r) => r.v.e.photo_status !== 'delivered',
     late: (r) => !!r.level,
     done: (r) => r.v.e.photo_status === 'delivered',
     all: () => true,
   };
-  const count = (k) => withLvl.filter(f[k]).length;
-  let rows = withLvl.filter(f[st.filter]).filter((r) => matches(st.q, r.v.title, r.v.e.church_location, fmtDate(r.v.e.event_date), lbl(PHOTO_STATUS, r.v.e.photo_status), lbl(EDIT_STATUS, r.v.e.editing_status)));
+  const count = (k) => (byYear(k) ? yearRows : allRows).filter(f[k]).length;
+  let rows = (byYear(st.filter) ? yearRows : allRows).filter(f[st.filter]).filter((r) => matches(st.q, r.v.title, r.v.e.church_location, fmtDate(r.v.e.event_date), lbl(PHOTO_STATUS, r.v.e.photo_status), lbl(EDIT_STATUS, r.v.e.editing_status)));
   const rank = { late: 0, warn: 1, '': 2 };
   rows.sort((a, b) => (st.filter === 'late' ? rank[a.level] - rank[b.level] : 0) || a.v.e.event_date.localeCompare(b.v.e.event_date));
 

@@ -8,6 +8,12 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.1.2', date: '30/10/2026',
+    items: [
+      ['📋', 'Κατάσταση Εργασιών: στο «Σε εξέλιξη» εμφανίζονται όλες οι κλεισμένες εκδηλώσεις, όποια χρονιά κι αν είναι (και του 2027), μέχρι να παραδοθούν. Η επιλογή χρονιάς εμφανίζεται στα «Παραδόθηκαν» και «Όλες».', 'Work status: “In progress” shows every booked event, whatever the year (2027 too), until delivered. The year picker appears under “Delivered” and “All”.'],
+    ],
+  },
+  {
     v: '1.1.1', date: '30/10/2026',
     items: [
       ['📑', 'Η καρτέλα «Mitsos» μετονομάστηκε σε «Dimitris» και η σελίδα μοντάζ σε «Editing Workflow».', 'The “Mitsos” tab is now called “Dimitris” and the editing page “Editing Workflow”.'],
