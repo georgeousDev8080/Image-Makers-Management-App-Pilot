@@ -2,7 +2,7 @@
 //  Φύλλα (Excel): Κεντρικό, Πελάτες, Πληρωμές, Φωτογραφίες, Μητρώο,
 //  Έξοδα, Σύνοψη, Dashboard, Έλεγχος δεδομένων, Mitsos
 // =====================================================================
-import { dutyEmoji, L, esc, icon, money, fmtDate, todayISO, daysBetween, sum, matches, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, MONTHS_EL_UP, monthName, monthShort, toast, confirmBox, actionSheet, segmented, initSegmented } from '../core.js';
+import { needsOffer, dutyEmoji, L, esc, icon, money, fmtDate, todayISO, daysBetween, sum, matches, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, MONTHS_EL_UP, monthName, monthShort, toast, confirmBox, actionSheet, segmented, initSegmented } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, saveCustomer, patchCustomer, patchPayment, patchExpense, patchEvent, saveFinance, savePayment, deletePayment, saveExpense, deleteExpense, openOffer, yearsAvailable, profileName, profileById } from '../data.js';
 import { pageHead, setTopActions } from '../layout.js';
 import { renderGrid, exportGrid } from '../grid.js';
@@ -349,7 +349,7 @@ function checksSheet(body) {
   const push = (sev, title, list, fmt) => { if (list.length) issues.push({ sev, title, list, fmt }); };
   const ev = (v) => `<a class="row" href="#/event/${v.e.id}"><div class="main-col"><div class="t">${esc(v.title)}</div><div class="s">${esc(fmtDate(v.e.event_date))} · ${esc(v.e.church_location || '—')}</div></div>${icon('chevR', 'chev')}</a>`;
   push('red', L('Χωρίς τιμή πακέτου', 'No package price'), views.filter((v) => v.price == null), ev);
-  push('red', L('Χωρίς PDF προσφοράς', 'No offer PDF'), views.filter((v) => !v.e.offer_path), ev);
+  push('red', L('Χωρίς PDF προσφοράς', 'No offer PDF'), views.filter((v) => !v.e.offer_path && needsOffer(v.e.category)), ev);
   push('orange', L('Περασμένες εκδηλώσεις με υπόλοιπο', 'Past events with a balance'), views.filter((v) => v.e.event_date < today && v.balance > 0.009), (v) => ev(v).replace('</div></div>', `</div></div><div class="v money neg">${esc(money(v.balance))}</div>`));
   push('orange', L('Πληρωμές μεγαλύτερες από την αξία πακέτου', 'Payments larger than package value'), views.filter((v) => v.price != null && v.paid > v.price + 0.009), ev);
   push('orange', L('Χωρίς εκκλησία / τοποθεσία', 'No church / location'), views.filter((v) => !v.e.church_location), ev);
