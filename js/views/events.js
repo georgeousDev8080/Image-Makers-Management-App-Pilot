@@ -1,7 +1,7 @@
 // =====================================================================
 //  Εκδηλώσεις: λίστα & λεπτομέρειες
 // =====================================================================
-import { L, esc, icon, money, fmtDate, fmtDateLong, fmtTime, todayISO, daysBetween, matches, mapsUrl, telUrl, smsUrl, mailUrl, lbl, CATEGORIES, RESOLUTIONS, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, options, segmented, initSegmented, segValue, sheet, confirmBox, promptBox, toastErr, actionSheet, toast, download, icsFor, busy, monthName } from '../core.js';
+import { needsOffer, L, esc, icon, money, fmtDate, fmtDateLong, fmtTime, todayISO, daysBetween, matches, mapsUrl, telUrl, smsUrl, mailUrl, lbl, CATEGORIES, RESOLUTIONS, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, options, segmented, initSegmented, segValue, sheet, confirmBox, promptBox, toastErr, actionSheet, toast, download, icsFor, busy, monthName } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, coupleName, profileName, patchEvent, deleteEvent, setCrew, openOffer, deletePayment, myEventIds } from '../data.js';
 import { pageHead, setTopActions, emptyState, go, backBtn, UI } from '../layout.js';
 import { eventRow, catPill, offerSummaryHTML, crewBriefHTML, crewChips, avatar, photoStatusPill, editStatusPill } from '../components.js';
@@ -127,8 +127,11 @@ export function renderEventDetail(root, { id }) {
     <div class="card pad"><div class="chips">${crewChips(v)}</div>${e.extra_crew ? `<div class="small muted mt-s">${esc(L('Εξωτερικοί συνεργάτες', 'External crew'))}: ${esc(e.extra_crew)}</div>` : ''}</div>`;
 
   // Πακέτο / Προσφορά
-  html += `<div class="group-label">${esc(admin ? L('Πακέτο & προσφορά', 'Package & offer') : L('Τι περιλαμβάνει η κάλυψη', 'What the coverage includes'))}</div>`;
-  if (admin) {
+  const withOffer = needsOffer(e.category);
+  html += `<div class="group-label">${esc(admin ? (withOffer ? L('Πακέτο & προσφορά', 'Package & offer') : L('Πακέτο', 'Package')) : L('Τι περιλαμβάνει η κάλυψη', 'What the coverage includes'))}</div>`;
+  if (admin && !withOffer) {
+    html += `<div class="list"><div class="row"><div class="main-col"><div class="t">${esc(f.package_name || L('Πακέτο', 'Package'))}</div><div class="s">${esc(L('Χωρίς PDF προσφοράς (δεν χρειάζεται σε αυτή την κατηγορία)', 'No offer PDF (not needed for this category)'))}</div></div></div></div>`;
+  } else if (admin) {
     html += `<div class="list">
       <div class="offer-box">
         <div class="pdf-thumb">PDF</div>

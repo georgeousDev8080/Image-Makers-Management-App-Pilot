@@ -1,7 +1,7 @@
 // =====================================================================
 //  Αρχική
 // =====================================================================
-import { L, vocative, esc, icon, money, fmtDateLong, fmtTime, todayISO, daysBetween, sum, addDays, isIOS, isStandalone } from '../core.js';
+import { needsOffer, L, vocative, esc, icon, money, fmtDateLong, fmtTime, todayISO, daysBetween, sum, addDays, isIOS, isStandalone } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, profileName, myEventIds, pendingAppointments, staleAppointments, pendingMessages, pendingUsers, unreadCount } from '../data.js';
 import { wfLevel } from './workflow.js';
 import { newAppointmentChooser } from './appointments.js';
@@ -72,7 +72,7 @@ export function renderHome(root) {
     if (noCrew) todo.push({ h: '#/events?filter=nocrew', i: 'users', c: 'var(--orange)', t: L(`${noCrew} εκδηλώσεις τις επόμενες 3 εβδομάδες χωρίς συνεργείο`, `${noCrew} events in the next 3 weeks without crew`) });
     const overdue = all.filter((v) => v.e.event_date < today && v.price && v.balance > 0.009).length;
     if (overdue) todo.push({ h: '#/sheets/payments?unpaid=1', i: 'euro', c: 'var(--red)', t: L(`${overdue} περασμένες εκδηλώσεις με υπόλοιπο`, `${overdue} past events with a balance`) });
-    const noOffer = upcoming.filter((v) => !v.e.offer_path).length;
+    const noOffer = upcoming.filter((v) => !v.e.offer_path && needsOffer(v.e.category)).length;
     if (noOffer) todo.push({ h: '#/sheets/checks', i: 'doc', c: 'var(--label-2)', t: L(`${noOffer} μελλοντικές εκδηλώσεις χωρίς PDF προσφοράς`, `${noOffer} upcoming events without an offer PDF`) });
     if (todo.length) {
       html += `<div class="section-title"><h2>${esc(L('Χρειάζονται προσοχή', 'Needs attention'))}</h2></div><div class="list">${todo.map((x) => `<a class="row has-icon" href="${x.h}"><span class="row-icon" style="background:${x.c}">${icon(x.i)}</span><div class="main-col"><div class="t">${esc(x.t)}</div></div>${icon('chevR', 'chev')}</a>`).join('')}</div>`;

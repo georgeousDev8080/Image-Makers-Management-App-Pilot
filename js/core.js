@@ -66,6 +66,8 @@ export function todayISO() { const d = new Date(); return `${d.getFullYear()}-${
 export function toISO(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
 export function parseISO(s) { if (!s) return null; const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d); }
 export function fmtDate(s, blank = '—') { if (!s) return blank; const [y, m, d] = String(s).slice(0, 10).split('-'); return `${d}/${m}/${y}`; }
+/** Διαφημιστικό και Άλλο δεν έχουν PDF προσφοράς */
+export const needsOffer = (cat) => cat !== 'promo' && cat !== 'other';
 /** Αρμοδιότητες συνεργείου */
 export const DUTIES = [{ v: 'photo', el: 'Φωτογραφία', en: 'Photo', e: '📷' }, { v: 'video', el: 'Βίντεο', en: 'Video', e: '🎥' }, { v: 'drone', el: 'Drone', en: 'Drone', e: '🚁' }];
 export const dutyLabel = (d) => { const o = DUTIES.find((x) => x.v === d) || DUTIES[0]; return L(o.el, o.en); };

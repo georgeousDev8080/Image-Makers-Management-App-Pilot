@@ -1,7 +1,7 @@
 // =====================================================================
 //  Νέα εκδήλωση / επεξεργασία (οδηγός σε 4 βήματα)
 // =====================================================================
-import { normTime, timeInputAttrs, fmtTime, L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, initSegmented, toast, toastErr, busy, mapsUrl, money, parseMoney } from '../core.js';
+import { needsOffer, normTime, timeInputAttrs, fmtTime, L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, initSegmented, toast, toastErr, busy, mapsUrl, money, parseMoney } from '../core.js';
 import { S, coupleName, profileName, saveCustomer, saveEvent, saveFinance, setCrew, uploadOffer, eventView, updateRequest, saveAppointment, copyOfferToEvent } from '../data.js';
 import { pageHead, go, backBtn } from '../layout.js';
 import { avatar, packageNameFrom, offerSummaryHTML } from '../components.js';
@@ -84,7 +84,7 @@ function freshState(params) {
   return s;
 }
 
-const STEPS = () => [L('Πελάτης', 'Customer'), L('Εκδήλωση', 'Event'), L('Συνεργείο', 'Crew'), L('Προσφορά & πακέτο', 'Offer & package')];
+const STEPS = () => [L('Πελάτης', 'Customer'), L('Εκδήλωση', 'Event'), L('Συνεργείο', 'Crew'), needsOffer(W.ev.category) ? L('Προσφορά & πακέτο', 'Offer & package') : L('Πακέτο', 'Package')];
 
 export function renderEventForm(root, params = {}) {
   const k = JSON.stringify([params.id, params.request, params.date, params.customer, params.appointment]);
@@ -154,7 +154,7 @@ function validate(root, step) {
     return ok;
   }
   if (step === 3) {
-    if (!W.offer.pdf && !W.offer.existingPath && !W.offer.fromAppointment) { toastErr(L('Λείπει η προσφορά (PDF)', 'Offer PDF missing'), L('Δημιουργήστε την με τον Οδηγό προσφοράς ή ανεβάστε έτοιμο PDF.', 'Create it with the offer builder or upload a ready PDF.')); return false; }
+    if (needsOffer(W.ev.category) && !W.offer.pdf && !W.offer.existingPath && !W.offer.fromAppointment) { toastErr(L('Λείπει η προσφορά (PDF)', 'Offer PDF missing'), L('Δημιουργήστε την με τον Οδηγό προσφοράς ή ανεβάστε έτοιμο PDF.', 'Create it with the offer builder or upload a ready PDF.')); return false; }
     const p = parseMoney(W.fin.package_price);
     if (W.fin.package_price !== '' && (p === null || p < 0)) { showErr(root, 'package_price', L('Μη έγκυρο ποσό', 'Invalid amount')); return false; }
     return true;
@@ -256,7 +256,7 @@ function stepEvent(body, root, params) {
       <div class="field full"><label>${esc(simple ? L('Σχόλια', 'Comments') : L('Σημειώσεις εκδήλωσης', 'Event notes'))}</label><textarea class="textarea" name="notes" placeholder="${esc(simple ? L('Περιγραφή, λεπτομέρειες, ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Description, details, anything the crew should know (they can see this)') : L('Ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Anything the crew should know (they can see this)'))}">${esc(W.ev.notes)}</textarea></div>
     </div></div>`;
   bindInputs(body, W.ev);
-  body.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { if (W.ev.category === b.dataset.cat) return; W.ev.category = b.dataset.cat; stepEvent(body, root, params); }));
+  body.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { if (W.ev.category === b.dataset.cat) return; W.ev.category = b.dataset.cat; draw(root, params); }));
   initSegmented(body, (_, v) => { W.ev.resolution = v; });
   body.querySelectorAll('[data-pin]').forEach((b) => b.addEventListener('click', async () => {
     const key = b.dataset.pin; const field = b.dataset.field;
@@ -307,7 +307,8 @@ function stepCrew(body) {
 function stepOffer(body, root, params) {
   const has = W.offer.pdf || W.offer.existingPath || W.offer.fromAppointment;
   const c = W.custMode === 'existing' && W.customerId ? S.customers.get(W.customerId) : W.cust;
-  body.innerHTML = `
+  const withOffer = needsOffer(W.ev.category);
+  body.innerHTML = `${withOffer ? `
     <div class="card pad">
       <div class="spread"><b>${esc(L('Προσφορά (PDF)', 'Offer (PDF)'))} <span class="req" style="color:var(--red)">*</span></b>${has ? `<span class="pill green">${icon('check')} ${esc(L('Επισυνάφθηκε', 'Attached'))}</span>` : `<span class="pill red">${esc(L('Λείπει', 'Missing'))}</span>`}</div>
       <p class="muted small mt-s">${esc(L('Το PDF το βλέπουν μόνο οι διαχειριστές. Το συνεργείο βλέπει μόνο τι περιλαμβάνει το πακέτο, χωρίς τιμές.', 'Only admins can open the PDF. The crew only sees what the package includes, without prices.'))}</p>
@@ -318,9 +319,9 @@ function stepOffer(body, root, params) {
       </div>
       <div class="help mt-s">${esc(L('Ο Οδηγός ανοίγει συμπληρωμένος με τα στοιχεία του ζευγαριού. Πατήστε «Αποθήκευση στην εκδήλωση» όταν τελειώσετε.', 'The builder opens pre-filled with the couple’s details. Tap “Save to event” when done.'))}</div>
     </div>
-    ${W.offer.data ? `<div class="card pad mt">${offerSummaryHTML(W.offer.data)}</div>` : ''}
-    <div class="card pad mt"><div class="form-grid">
-      ${fld('package_price', L('Τελική αξία πακέτου (€)', 'Final package value (€)'), W.fin.package_price, { inputmode: 'decimal', ph: '2800', help: esc(L('Συμπληρώνεται αυτόματα από τον Οδηγό. Όταν οι πληρωμές φτάσουν αυτό το ποσό, η γραμμή στο Excel γίνεται πράσινη.', 'Filled automatically by the builder. When payments reach this amount, the Excel row turns green.')), extra: '<span class="suffix">€</span>' })}
+    ${W.offer.data ? `<div class="card pad mt">${offerSummaryHTML(W.offer.data)}</div>` : ''}` : ''}
+    <div class="card pad ${withOffer ? 'mt' : ''}"><div class="form-grid">
+      ${fld('package_price', L('Τελική αξία πακέτου (€)', 'Final package value (€)'), W.fin.package_price, { inputmode: 'decimal', ph: '2800', help: esc(withOffer ? L('Συμπληρώνεται αυτόματα από τον Οδηγό. Όταν οι πληρωμές φτάσουν αυτό το ποσό, η γραμμή στο Excel γίνεται πράσινη.', 'Filled automatically by the builder. When payments reach this amount, the Excel row turns green.') : L('Η συμφωνημένη αξία. Όταν οι πληρωμές φτάσουν αυτό το ποσό, η γραμμή στο Excel γίνεται πράσινη.', 'The agreed value. When payments reach this amount, the Excel row turns green.')), extra: '<span class="suffix">€</span>' })}
       ${fld('package_name', L('Όνομα πακέτου', 'Package name'), W.fin.package_name, { ph: 'BASIC PAC' })}
       <label class="check-row full"><span class="switch"><input type="checkbox" name="second_crew" ${W.fin.second_crew ? 'checked' : ''}><span></span></span><span>${esc(L('Δεύτερο συνεργείο', 'Second crew'))}</span></label>
       <div class="field full"><label>${esc(L('Σημειώσεις γραφείου (μόνο για διαχειριστές)', 'Office notes (admins only)'))}</label><textarea class="textarea" name="office_notes" style="min-height:70px">${esc(W.fin.office_notes)}</textarea></div>
@@ -328,7 +329,7 @@ function stepOffer(body, root, params) {
     <div class="card pad mt"><b>${esc(L('Σύνοψη', 'Summary'))}</b>
       <div class="small mt-s" style="line-height:1.7">${esc(coupleName(c))}<br>${esc(fmtDate(W.ev.event_date))} · ${esc(W.ev.event_time || '—')} · ${esc(W.ev.church_location || '—')}<br>${esc(L('Συνεργείο', 'Crew'))}: ${esc(W.crew.map((x) => profileName(S.profiles.find((p) => p.id === x.user_id))).join(', ') || '—')}</div></div>`;
   bindInputs(body, W.fin);
-  body.querySelector('[data-builder]').addEventListener('click', async () => {
+  body.querySelector('[data-builder]')?.addEventListener('click', async () => {
     const res = await openOfferBuilder({ prefill: { ...(W.offer.data || {}), partner1: c?.name1 || '', partner2: c?.name2 || '', phone1: c?.phone1 || '', phone2: c?.phone2 || '', eventDate: W.ev.event_date, church: [W.ev.church_location, W.ev.event_time].filter(Boolean).join(' · '), reception: W.ev.reception_location, city: (W.ev.church_location || '').split(',').pop().trim(), finalPrice: W.fin.package_price || undefined } });
     if (!res) return;
     W.offer.pdf = res.pdf; W.offer.pdfName = res.fileName; W.offer.data = res.state;
@@ -339,7 +340,7 @@ function stepOffer(body, root, params) {
     toast(L('Η προσφορά επισυνάφθηκε', 'Offer attached'), { body: `${money(res.total, { dec: 0 })} · ${W.fin.package_name}` });
     draw(root, params);
   });
-  body.querySelector('[data-upload]').addEventListener('click', async () => {
+  body.querySelector('[data-upload]')?.addEventListener('click', async () => {
     const f = await pickPdfFile();
     if (!f) return;
     W.offer.pdf = f; W.offer.pdfName = f.name;
@@ -361,7 +362,7 @@ async function save(root, params, btn) {
       customerId = c.id; W.customerId = c.id; W.custMode = 'existing';
     }
     // Διορθώθηκαν στοιχεία μετά τη δημιουργία της προσφοράς; Το PDF ξαναφτιάχνεται με τα σωστά.
-    const hasPdf = W.offer.pdf || W.offer.existingPath || W.offer.fromAppointment;
+    const hasPdf = needsOffer(W.ev.category) && (W.offer.pdf || W.offer.existingPath || W.offer.fromAppointment);
     if (W.offer.data && hasPdf) {
       const cc = S.customers.get(customerId) || W.cust;
       const cur = { partner1: cc.name1 || '', partner2: cc.name2 || '', phone1: cc.phone1 || '', eventDate: W.ev.event_date || '', church: [W.ev.church_location, (W.ev.event_time || '').slice(0, 5)].filter(Boolean).join(' · '), reception: W.ev.reception_location || '' };
@@ -381,7 +382,8 @@ async function save(root, params, btn) {
     if (['promo', 'other'].includes(evRow.category)) Object.assign(evRow, { reception_location: null, reception_geo: null });
     const ev = await saveEvent(evRow);
     W.savedId = ev.id;
-    if (W.offer.pdf) {
+    if (!needsOffer(W.ev.category)) { /* διαφημιστικό/άλλο: χωρίς PDF προσφοράς */ }
+    else if (W.offer.pdf) {
       const path = await uploadOffer(ev.id, W.offer.pdf);
       await saveEvent({ id: ev.id, offer_path: path, offer_updated_at: new Date().toISOString() });
       W.offer.existingPath = path; W.offer.pdf = null;

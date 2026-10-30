@@ -8,6 +8,12 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.1.4', date: '30/10/2026',
+    items: [
+      ['📄', 'Διαφημιστικό και Άλλο: η εκδήλωση δημιουργείται χωρίς PDF προσφοράς. Στο τελευταίο βήμα συμπληρώνετε μόνο την αξία και τα στοιχεία του πακέτου.', 'Promo and Other: the event is created without an offer PDF. In the last step you only fill in the value and package details.'],
+    ],
+  },
+  {
     v: '1.1.3', date: '30/10/2026',
     items: [
       ['🏠', 'Νέα εκδήλωση: τα πεδία «Σπίτι νύφης» και «Σπίτι γαμπρού» εμφανίζονται μόνο σε Γάμο και Γαμοβάπτιση.', 'New event: “Bride’s home” and “Groom’s home” appear only for Wedding and Wedding & Baptism.'],
