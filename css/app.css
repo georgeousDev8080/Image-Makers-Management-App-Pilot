@@ -1014,3 +1014,19 @@ button.cal-more:hover { text-decoration: underline; }
 .wn-e { font-size: 19px; line-height: 1.2; text-align: center; }
 .wn-sep { border: 0; border-top: 1px solid var(--sep); margin: 18px 0; }
 .wn-mark { margin-top: 22px; padding-top: 12px; border-top: 1px dashed var(--sep); text-align: center; font-size: 11.5px; letter-spacing: .02em; color: var(--label-3); user-select: all; }
+
+/* ---------- Μηνιαίο αντίγραφο ασφαλείας (υποχρεωτικό) ---------- */
+.backup-gate { position: fixed; inset: 0; z-index: 380; display: grid; place-items: center; overflow-y: auto; padding: calc(24px + var(--safe-top)) 20px calc(24px + var(--safe-bottom)); background: radial-gradient(1000px 520px at 80% -10%, var(--accent-soft), transparent 60%), var(--bg); animation: gateIn .35s var(--ease) both; }
+.backup-gate.hide { opacity: 0; transition: opacity .3s var(--ease); pointer-events: none; }
+.backup-gate .box { width: 100%; max-width: 480px; text-align: center; }
+.backup-gate .bg-ic { display: inline-grid; place-items: center; width: 76px; height: 76px; border-radius: 22px; background: var(--accent); color: var(--on-accent); margin-bottom: 14px; box-shadow: 0 12px 30px color-mix(in srgb, var(--accent) 35%, transparent); }
+.backup-gate .bg-ic .ic { width: 38px; height: 38px; }
+.backup-gate h1 { font-family: var(--font-display); font-size: 27px; margin: 0 0 2px; letter-spacing: -.015em; }
+.backup-gate .bg-month { font-weight: 650; color: var(--accent); margin: 0 0 12px; text-transform: capitalize; }
+.backup-gate p { line-height: 1.55; }
+.backup-gate .bg-actions { display: grid; gap: 10px; margin: 20px 0 10px; }
+.backup-gate .bg-actions .btn { width: 100%; justify-content: center; }
+.backup-gate .bg-tip { margin: 6px 0 16px; }
+.backup-gate .bg-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; border-top: 1px solid var(--sep); padding-top: 12px; }
+body.gate-open { overflow: hidden; }
+@keyframes gateIn { from { opacity: 0; } to { opacity: 1; } }

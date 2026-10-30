@@ -8,6 +8,14 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.3', date: '30/10/2026',
+    items: [
+      ['🗄️', 'Μηνιαίο αντίγραφο ασφαλείας: από την 1η κάθε μήνα εμφανίζεται οθόνη με έτοιμα τα κουμπιά αντιγράφου. Μέχρι να κατεβάσει αντίγραφο ένας διαχειριστής, κανένας διαχειριστής δεν συνεχίζει στην εφαρμογή. Ξεκινά από 1 Νοεμβρίου.', 'Monthly backup: from the 1st of every month a screen appears with the backup buttons ready. Until one admin downloads a backup, no admin can continue in the app. Starts 1 November.'],
+      ['📄', 'Σελίδα εκδήλωσης: «Επεξεργασία της συγκεκριμένης προσφοράς» στο Πακέτο & προσφορά, χωρίς το ανέβασμα έτοιμου PDF.', 'Event page: “Edit this offer” under Package & offer, without the ready-PDF upload.'],
+      ['🚁', 'Σελίδα εκδήλωσης: δίπλα σε κατηγορία και ανάλυση φαίνεται «Drone» όταν η εκδήλωση έχει drone.', 'Event page: “Drone” appears next to the category and resolution when the event includes a drone.'],
+    ],
+  },
+  {
     v: '1.2.1', date: '30/10/2026',
     items: [
       ['👶', 'Ενημερωμένος Οδηγός προσφοράς βάπτισης: τα μικρά album 47×20 επιλέγονται πλέον σε όση ποσότητα χρειάζεται (+70€ το καθένα).', 'Updated baptism offer builder: small 47×20 albums can now be added in any quantity (+70€ each).'],
