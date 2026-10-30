@@ -61,8 +61,27 @@ const BASE_INCLUDED = () => [
   L('Μεγάλο album 80×30 cm · 25 σαλόνια', 'Large album 80×30 cm · 25 spreads'),
   L('Όλο το φωτογραφικό αρχείο σε πλήρη ανάλυση', 'All photos in full resolution'),
 ];
+/** Τι περιλαμβάνει το βασικό πακέτο βάπτισης (Οδηγός βάπτισης) */
+const BAPTISM_INCLUDED = () => [
+  L('Φωτογραφική κάλυψη της βάπτισης', 'Photo coverage of the baptism'),
+  L('Κινηματογράφηση του μυστηρίου', 'Video of the ceremony'),
+  L('Ταινία βάπτισης & σύντομο trailer', 'Baptism film & short trailer'),
+  L('Μεγάλο ψηφιακό album 70×30 (20 σαλόνια)', 'Large digital album 70×30 (20 spreads)'),
+  L('Όλο το φωτογραφικό αρχείο σε πλήρη ανάλυση', 'All photos in full resolution'),
+];
+export const isBaptismOffer = (od) => od?.kind === 'baptism';
 export function offerSummary(od) {
   if (!od) return null;
+  if (isBaptismOffer(od)) {
+    const adds = od.adds || [];
+    const included = [...BAPTISM_INCLUDED()];
+    if (od.prints) included.push(od.prints);
+    included.push(adds.includes('Παράδοση video σε 4K') ? L('Παράδοση video σε 4K', 'Video delivered in 4K') : L('Παράδοση video σε Full HD', 'Video delivered in Full HD'));
+    const upgrades = adds.filter((x) => x !== 'Παράδοση video σε 4K');
+    if (od.largeSpreads) upgrades.push(L(`${od.largeSpreads} επιπλέον σαλόνια μεγάλου album`, `${od.largeSpreads} extra large-album spreads`));
+    if (od.smallSpreads) upgrades.push(L(`${od.smallSpreads} επιπλέον σαλόνια μικρού album`, `${od.smallSpreads} extra small-album spreads`));
+    return { included, upgrades, removed: [], notes: od.notes || '' };
+  }
   const removes = od.removes || [];
   const adds = od.adds || [];
   const included = [...BASE_INCLUDED()];
@@ -98,6 +117,12 @@ export function crewBriefHTML(e, myDuty) {
   const P = 'photo', V = 'video', D = 'drone', B = 'both';
   const items = [];
   const add = (who, text) => items.push({ who, text });
+  if (e.category === 'baptism' || isBaptismOffer(od)) {
+    add(B, L('Μυστήριο βάπτισης', 'Baptism ceremony'));
+    add(V, e.resolution === '4k' || adds.includes('Παράδοση video σε 4K') ? L('Λήψη video σε 4K', 'Video in 4K') : L('Λήψη video σε Full HD (1080p)', 'Video in Full HD (1080p)'));
+    if (adds.includes('Drone στην εκκλησία')) add(D, L('Drone στην εκκλησία', 'Drone at the church'));
+    if (adds.includes('Φωτογράφηση πριν & ψηφιακό album ευχολόγιο')) add(P, L('Φωτογράφηση πριν από τη βάπτιση (ευχολόγιο)', 'Pre-baptism photo shoot (guest book)'));
+  } else {
   add(B, L('Σπίτι γαμπρού και νύφης', 'Groom and bride homes'));
   add(B, L('Μυστήριο', 'Ceremony'));
   add(B, L(`Δεξίωση: έως ${hours} ώρες μετά την είσοδο`, `Reception: up to ${hours} hours after the entrance`));
@@ -111,6 +136,7 @@ export function crewBriefHTML(e, myDuty) {
     if (!removes.includes('Video next day')) add(V, L('Video next day', 'Next-day video'));
     if (!removes.includes('Drone next day')) add(D, L('Drone next day', 'Next-day drone'));
   }
+  }
   const tag = (w) => (w === P ? '📷' : w === V ? '🎥' : w === D ? '🚁' : '📷🎥');
   const mine = (w) => !myDuty || w === B || w === myDuty || (w === D && myDuty === V);
   const list = [...items.filter((i) => mine(i.who)), ...items.filter((i) => !mine(i.who))];
@@ -122,7 +148,12 @@ export function crewBriefHTML(e, myDuty) {
 /** Σύντομο όνομα πακέτου για το φύλλο (π.χ. BASIC PAC + 2ο συνεργείο) */
 export function packageNameFrom(od) {
   if (!od) return '';
-  const parts = ['BASIC PAC'];
+  const parts = [isBaptismOffer(od) ? 'BAPTISM PAC' : 'BASIC PAC'];
+  if (isBaptismOffer(od)) {
+    const bs = { 'Φωτογράφηση πριν & ψηφιακό album ευχολόγιο': 'PRE-BAPTISM', 'Drone στην εκκλησία': 'DRONE', 'Μικρό album 47×20': 'ΜΙΚΡΟ ALBUM', 'Album Platinum series': 'PLATINUM ALBUM', 'Platinum album case': 'PLATINUM CASE', 'Wooden USB case': 'USB CASE', 'Παράδοση video σε 4K': '4K' };
+    (od.adds || []).forEach((a) => parts.push('+' + (bs[a] || a.toUpperCase())));
+    return parts.join(' ');
+  }
   const short = { '2ο συνεργείο': '2ο ΣΥΝΕΡΓΕΙΟ', 'Ευχολόγιο': 'ΕΥΧΟΛΟΓΙΟ', 'Pre-wedding photo & video': 'PRE-WEDDING', 'Slide show για τη δεξίωση': 'SLIDESHOW', 'Album Platinum series': 'PLATINUM ALBUM', 'Platinum album case': 'PLATINUM CASE', 'Wooden USB case': 'USB CASE', 'Παράδοση video σε 4K': '4K' };
   (od.adds || []).forEach((a) => parts.push('+' + (short[a] || a.toUpperCase())));
   const remShort = { 'Drone εκκλησίας': 'ΧΩΡΙΣ DRONE ΕΚΚΛ.', 'Φωτογράφηση next day': 'ΧΩΡΙΣ NEXT DAY PHOTO', 'Video next day': 'ΧΩΡΙΣ NEXT DAY VIDEO', 'Drone next day': 'ΧΩΡΙΣ DRONE NEXT DAY' };

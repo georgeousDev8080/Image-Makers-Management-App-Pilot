@@ -8,7 +8,7 @@ import { L, esc, icon, money, fmtDate, todayISO, daysBetween, matches, lbl, sum,
 import { S, isStaleAppt, STALE_DAYS, saveAppointment, deleteAppointment, uploadAppointmentOffer, openOffer, offerUrl, business, eventView } from '../data.js';
 import { pageHead, emptyState, setTopActions, go, backBtn } from '../layout.js';
 import { catPill, catShort, packageNameFrom, offerSummaryHTML } from '../components.js';
-import { openOfferBuilder, generateOfferPdf, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf } from '../offer.js';
+import { openOfferBuilder, generateOfferPdf, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf, offerKindFor, offerKindOf } from '../offer.js';
 import { clientPageUrl, downloadClientFile } from './requests.js';
 import { barPairs, hbars, bindTips } from '../charts.js';
 
@@ -150,7 +150,7 @@ export async function ensurePdf(a, btn) {
   const w = window.open('about:blank', '_blank');
   busy(btn, true);
   try {
-    const res = await generateOfferPdf(offerPrefill(a));
+    const res = await generateOfferPdf(offerPrefill(a), offerKindOf(a.offer_data));
     const path = await uploadAppointmentOffer(a.id, new File([res.pdf], 'offer.pdf', { type: 'application/pdf' }));
     await saveAppointment({ id: a.id, offer_path: path, offer_data: res.state, total: res.total ?? a.total });
     toast(L('Το PDF δημιουργήθηκε', 'PDF created'));
@@ -162,7 +162,10 @@ export async function ensurePdf(a, btn) {
 }
 
 async function editOffer(a) {
-  const res = await openOfferBuilder({ prefill: { ...offerPrefill(a), finalPrice: a.offer_data?.finalPrice ?? undefined }, saveLabel: L('Αποθήκευση στο ραντεβού', 'Save to appointment') });
+  const kind = offerKindFor(a.category);
+  const pre = offerPrefill(a);
+  if (offerKindOf(a.offer_data) !== kind) { Object.keys(pre).forEach((k) => { if (!['partner1', 'partner2', 'phone1', 'phone2', 'eventDate', 'church', 'reception', 'city'].includes(k)) delete pre[k]; }); }
+  const res = await openOfferBuilder({ kind, prefill: { ...pre, finalPrice: offerKindOf(a.offer_data) === kind ? a.offer_data?.finalPrice ?? undefined : undefined }, saveLabel: L('Αποθήκευση στο ραντεβού', 'Save to appointment') });
   if (!res) return;
   try {
     const path = await uploadAppointmentOffer(a.id, res.pdf);
@@ -180,7 +183,7 @@ export async function confirmAppt(a) {
   if (!a.offer_path && (a.selections || a.offer_data)) {
     toast(L('Δημιουργία PDF προσφοράς…', 'Creating offer PDF…'), { type: 'info' });
     try {
-      const res = await generateOfferPdf(offerPrefill(a));
+      const res = await generateOfferPdf(offerPrefill(a), offerKindOf(a.offer_data));
       const path = await uploadAppointmentOffer(a.id, new File([res.pdf], 'offer.pdf', { type: 'application/pdf' }));
       await saveAppointment({ id: a.id, offer_path: path, offer_data: res.state, total: res.total ?? a.total });
     } catch (e) { console.warn(e); }
@@ -334,7 +337,8 @@ export function renderAppointmentForm(root, params = {}) {
   root.querySelectorAll('[name]').forEach((i) => i.addEventListener('input', () => { F[i.name] = i.value; i.classList.remove('invalid'); }));
   root.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { F.category = b.dataset.cat; root.querySelectorAll('[data-cat]').forEach((x) => x.classList.toggle('on', x === b)); }));
   root.querySelector('[data-builder]').addEventListener('click', async () => {
-    const res = await openOfferBuilder({ prefill: { ...(F.offer_data || {}), partner1: F.name1, partner2: F.name2, phone1: F.phone, eventDate: F.event_date, church: F.church, reception: F.reception, city: (F.church || '').split(',').slice(1).join(',').trim(), finalPrice: F.offer_data?.finalPrice ?? undefined }, saveLabel: L('Αποθήκευση στο ραντεβού', 'Save to appointment') });
+    const kind = offerKindFor(F.category);
+    const res = await openOfferBuilder({ kind, prefill: { ...(F.offer_data && offerKindOf(F.offer_data) === kind ? F.offer_data : {}), partner1: F.name1, partner2: F.name2, phone1: F.phone, eventDate: F.event_date, church: F.church, reception: F.reception, city: (F.church || '').split(',').slice(1).join(',').trim(), finalPrice: offerKindOf(F.offer_data) === kind ? F.offer_data?.finalPrice ?? undefined : undefined }, saveLabel: L('Αποθήκευση στο ραντεβού', 'Save to appointment') });
     if (!res) return;
     F.pdf = res.pdf; F.pdfName = res.fileName; F.offer_data = res.state; F.total = res.total;
     // ό,τι γράφτηκε στον Οδηγό περνά και στη φόρμα, ώστε φόρμα και PDF να συμφωνούν
