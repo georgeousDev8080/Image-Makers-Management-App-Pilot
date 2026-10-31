@@ -8,10 +8,16 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.4.1', date: '31/10/2026',
+    items: [
+      ['🎞️', 'Φύλλο Dimitris: η «Κατάσταση Βίντεο» (όχι έτοιμο, υπό επεξεργασία, έτοιμο να γίνει export, έτοιμο) είναι πλέον ξεχωριστή στήλη και η «Κατάσταση editing» στο μεγάλο Excel κρατά τις γνωστές επιλογές.', 'Dimitris sheet: “Video status” (not ready, in progress, ready for export, ready) is now its own column and “Editing status” in the main Excel keeps its usual options.'],
+      ['🚦', 'Νέα στήλη «Προτεραιότητα» στο φύλλο Dimitris, που αλλάζει μόνη της: φωτογραφίες σε «Αλλαγές» → «Να γίνει», album σε «Εκτύπωση στο εργαστήριο» → SOS. Γίνεται «Έτοιμο» (και στο μεγάλο Excel, φεύγει το SOS) μόνο όταν το βίντεο είναι «έτοιμο» και «παραδόθηκε στο μαγαζί».', 'New “Priority” column in the Dimitris sheet that updates itself: photos to “Changes” → “To do”, album to the lab → SOS. It becomes “Ready” (also in the main Excel, SOS clears) only when the video is “ready” and “delivered to the shop”.'],
+    ],
+  },
+  {
     v: '1.4', date: '31/10/2026',
     items: [
       ['🎬', 'Το φύλλο Dimitris έγινε ίδιο με το Google Sheet του: Μήνας, Ημερομηνία, Κατηγορία, Τοποθεσία, Κατάσταση Βίντεο, Είναι στο μαγαζί;, Υπολογιστής, Περασμένα αρχεία, Αποθηκευμένο σε και Σχόλια, με χρωματιστές επιλογές.', 'The Dimitris sheet now matches his Google Sheet: Month, Date, Category, Location, Video status, In the shop?, Computer, Files copied, Stored at and Comments, with coloured options.'],
-      ['🎞️', 'Νέα κατάσταση βίντεο «έτοιμο να γίνει export». Οι καταστάσεις βίντεο λέγονται πλέον: όχι έτοιμο, υπό επεξεργασία, έτοιμο να γίνει export, έτοιμο.', 'New video status “ready for export”. Video statuses are now: not ready, in progress, ready for export, ready.'],
     ],
   },
   {

@@ -24,7 +24,7 @@ export function photoStatusPill(v) {
 }
 export function editStatusPill(v) {
   if (!v || v === 'none') return '';
-  const color = { todo: 'red', in_progress: 'blue', export: 'orange', done: 'green' }[v] || '';
+  const color = { todo: 'orange', in_progress: 'blue', done: 'green' }[v] || '';
   return `<span class="pill ${color}">${icon('film')} ${esc(lbl(EDIT_STATUS, v))}</span>`;
 }
 

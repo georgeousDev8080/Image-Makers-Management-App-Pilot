@@ -320,13 +320,19 @@ export const REJECT_REASONS = [
   { v: 'cancelled', el: 'Ακύρωσαν την εκδήλωση', en: 'Event cancelled' },
   { v: 'other', el: 'Άλλο', en: 'Other' },
 ];
-/** Κατάσταση βίντεο (όπως στο φύλλο Dimitris). tone = χρώμα ετικέτας, alias = παλιές ονομασίες (για επαναφορά αντιγράφων) */
+/** Κατάσταση editing (Excel) = «Προτεραιότητα» στο φύλλο Dimitris. alias = ονομασίες που υπήρξαν (για επαναφορά αντιγράφων) */
 export const EDIT_STATUS = [
   { v: 'none', el: '—', en: '—' },
-  { v: 'todo', el: 'όχι έτοιμο', en: 'not ready', tone: 'red', alias: ['Να γίνει', 'To do'] },
-  { v: 'in_progress', el: 'υπό επεξεργασία', en: 'in progress', tone: 'blue', alias: ['Σε επεξεργασία', 'In progress'] },
+  { v: 'todo', el: 'Να γίνει', en: 'To do', alias: ['όχι έτοιμο', 'not ready'] },
+  { v: 'in_progress', el: 'Σε επεξεργασία', en: 'In progress', alias: ['υπό επεξεργασία', 'έτοιμο να γίνει export', 'ready for export'] },
+  { v: 'done', el: 'Ολοκληρώθηκε', en: 'Done', alias: ['έτοιμο', 'ready'] },
+];
+/** Κατάσταση Βίντεο του φύλλου Dimitris (ξεχωριστό πεδίο) */
+export const VIDEO_STATUS = [
+  { v: 'not_ready', el: 'όχι έτοιμο', en: 'not ready', tone: 'red' },
+  { v: 'in_progress', el: 'υπό επεξεργασία', en: 'in progress', tone: 'blue' },
   { v: 'export', el: 'έτοιμο να γίνει export', en: 'ready for export', tone: 'yellow' },
-  { v: 'done', el: 'έτοιμο', en: 'ready', tone: 'green', alias: ['Ολοκληρώθηκε', 'Done'] },
+  { v: 'ready', el: 'έτοιμο', en: 'ready', tone: 'green' },
 ];
 export const PCS = [
   { v: 'macbook', el: 'macbook', en: 'macbook', tone: 'grey', alias: ['MacBook'] },
