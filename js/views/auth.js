@@ -58,7 +58,18 @@ function pinPad(container, { onComplete, extraLeft = '' }) {
       locked = false;
     }
   };
-  container.addEventListener('click', (e) => { const b = e.target.closest('button[data-k]'); if (b && b.dataset.k !== 'extra') press(b.dataset.k); });
+  // Πλήκτρα PIN: αντιδρούν με το άγγιγμα (pointerdown), ώστε δύο γρήγορα ίδια ψηφία να μετράνε
+  // ως δύο πατήματα και το iPhone να μην το εκλαμβάνει ως «διπλό πάτημα για zoom»
+  const keyOf = (e) => { const b = e.target.closest('button[data-k]'); return b && b.dataset.k !== 'extra' ? b : null; };
+  container.addEventListener('pointerdown', (e) => {
+    const b = keyOf(e); if (!b || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    e.preventDefault(); // χωρίς zoom, χωρίς επιλογή κειμένου, χωρίς καθυστέρηση
+    b.classList.add('down'); setTimeout(() => b.classList.remove('down'), 120);
+    press(b.dataset.k);
+  });
+  // πληκτρολόγιο / VoiceOver (click χωρίς άγγιγμα)
+  container.addEventListener('click', (e) => { const b = keyOf(e); if (b && e.detail === 0) press(b.dataset.k); });
+  container.addEventListener('dblclick', (e) => e.preventDefault());
   const kd = (e) => { if (!container.isConnected) return document.removeEventListener('keydown', kd); if (/^\d$/.test(e.key)) press(e.key); if (e.key === 'Backspace') press('del'); };
   document.addEventListener('keydown', kd);
   return { reset() { val = ''; paint(); }, destroy() { document.removeEventListener('keydown', kd); } };

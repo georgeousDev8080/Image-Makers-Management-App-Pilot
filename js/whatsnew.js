@@ -8,6 +8,13 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.4.2', date: '31/10/2026',
+    items: [
+      ['🔢', 'iPhone: το PIN πληκτρολογείται γρήγορα χωρίς zoom — δύο ίδια ψηφία στη σειρά (π.χ. 11) μετράνε κανονικά ως δύο πατήματα.', 'iPhone: the PIN can be typed quickly without zooming — two identical digits in a row (e.g. 11) count as two taps.'],
+      ['🔍', 'iPhone: η εφαρμογή δεν κάνει πια zoom με διπλό πάτημα ούτε όταν πατάτε σε πεδίο για να γράψετε. Το zoom με δύο δάχτυλα λειτουργεί κανονικά.', 'iPhone: the app no longer zooms on double-tap or when you tap a field to type. Two-finger zoom still works.'],
+    ],
+  },
+  {
     v: '1.4.1', date: '31/10/2026',
     items: [
       ['🎞️', 'Φύλλο Dimitris: η «Κατάσταση Βίντεο» (όχι έτοιμο, υπό επεξεργασία, έτοιμο να γίνει export, έτοιμο) είναι πλέον ξεχωριστή στήλη και η «Κατάσταση editing» στο μεγάλο Excel κρατά τις γνωστές επιλογές.', 'Dimitris sheet: “Video status” (not ready, in progress, ready for export, ready) is now its own column and “Editing status” in the main Excel keeps its usual options.'],
