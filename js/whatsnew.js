@@ -8,6 +8,13 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.4', date: '31/10/2026',
+    items: [
+      ['🎬', 'Το φύλλο Dimitris έγινε ίδιο με το Google Sheet του: Μήνας, Ημερομηνία, Κατηγορία, Τοποθεσία, Κατάσταση Βίντεο, Είναι στο μαγαζί;, Υπολογιστής, Περασμένα αρχεία, Αποθηκευμένο σε και Σχόλια, με χρωματιστές επιλογές.', 'The Dimitris sheet now matches his Google Sheet: Month, Date, Category, Location, Video status, In the shop?, Computer, Files copied, Stored at and Comments, with coloured options.'],
+      ['🎞️', 'Νέα κατάσταση βίντεο «έτοιμο να γίνει export». Οι καταστάσεις βίντεο λέγονται πλέον: όχι έτοιμο, υπό επεξεργασία, έτοιμο να γίνει export, έτοιμο.', 'New video status “ready for export”. Video statuses are now: not ready, in progress, ready for export, ready.'],
+    ],
+  },
+  {
     v: '1.3', date: '30/10/2026',
     items: [
       ['🗄️', 'Μηνιαίο αντίγραφο ασφαλείας: από την 1η κάθε μήνα εμφανίζεται οθόνη με έτοιμα τα κουμπιά αντιγράφου. Μέχρι να κατεβάσει αντίγραφο ένας διαχειριστής, κανένας διαχειριστής δεν συνεχίζει στην εφαρμογή. Ξεκινά από 1 Νοεμβρίου.', 'Monthly backup: from the 1st of every month a screen appears with the backup buttons ready. Until one admin downloads a backup, no admin can continue in the app. Starts 1 November.'],
