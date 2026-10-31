@@ -320,16 +320,34 @@ export const REJECT_REASONS = [
   { v: 'cancelled', el: 'Ακύρωσαν την εκδήλωση', en: 'Event cancelled' },
   { v: 'other', el: 'Άλλο', en: 'Other' },
 ];
+/** Κατάσταση βίντεο (όπως στο φύλλο Dimitris). tone = χρώμα ετικέτας, alias = παλιές ονομασίες (για επαναφορά αντιγράφων) */
 export const EDIT_STATUS = [
   { v: 'none', el: '—', en: '—' },
-  { v: 'todo', el: 'Να γίνει', en: 'To do' },
-  { v: 'in_progress', el: 'Σε επεξεργασία', en: 'In progress' },
-  { v: 'done', el: 'Ολοκληρώθηκε', en: 'Done' },
+  { v: 'todo', el: 'όχι έτοιμο', en: 'not ready', tone: 'red', alias: ['Να γίνει', 'To do'] },
+  { v: 'in_progress', el: 'υπό επεξεργασία', en: 'in progress', tone: 'blue', alias: ['Σε επεξεργασία', 'In progress'] },
+  { v: 'export', el: 'έτοιμο να γίνει export', en: 'ready for export', tone: 'yellow' },
+  { v: 'done', el: 'έτοιμο', en: 'ready', tone: 'green', alias: ['Ολοκληρώθηκε', 'Done'] },
 ];
 export const PCS = [
-  { v: 'mac_mini', el: 'Mac Mini', en: 'Mac Mini' },
-  { v: 'macbook', el: 'MacBook', en: 'MacBook' },
-  { v: 'win_pc', el: 'Win PC', en: 'Win PC' },
+  { v: 'macbook', el: 'macbook', en: 'macbook', tone: 'grey', alias: ['MacBook'] },
+  { v: 'mac_mini', el: 'mac mini', en: 'mac mini', tone: 'grey', alias: ['Mac Mini'] },
+  { v: 'win_pc', el: 'win pc', en: 'win pc', tone: 'grey', alias: ['Win PC'] },
+];
+/** Είναι στο μαγαζί; */
+export const SHOP_STATUS = [
+  { v: 'to_deliver', el: 'να παραδοθεί στο μαγαζί', en: 'to be delivered to the shop', tone: 'orange' },
+  { v: 'delivered', el: 'παραδόθηκε στο μαγαζί', en: 'delivered to the shop', tone: 'green' },
+];
+/** Περασμένα αρχεία */
+export const FILES_COPIED = [
+  { v: 'yes', el: 'ναι', en: 'yes', tone: 'solid-green' },
+  { v: 'no', el: 'όχι', en: 'no', tone: 'solid-red' },
+];
+/** Αποθηκευμένο σε */
+export const STORED_AT = [
+  { v: 'home', el: 'Σπίτι', en: 'Home', tone: 'grey' },
+  { v: 'shop', el: 'Μαγαζί', en: 'Shop', tone: 'grey' },
+  { v: 'both', el: 'Και τα 2', en: 'Both', tone: 'grey' },
 ];
 export const RESOLUTIONS = [
   { v: '1080', el: 'Full HD (1080p)', en: 'Full HD (1080p)' },

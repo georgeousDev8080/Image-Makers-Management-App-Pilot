@@ -1030,3 +1030,32 @@ button.cal-more:hover { text-decoration: underline; }
 .backup-gate .bg-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; border-top: 1px solid var(--sep); padding-top: 12px; }
 body.gate-open { overflow: hidden; }
 @keyframes gateIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Ετικέτες επιλογών τύπου Google Sheets ---------- */
+.tchip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 21px; padding: 1px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--tc-bg, #e8e8ea); color: var(--tc-fg, #3a3a3c); }
+.tchip.caret::after { content: ''; flex: 0 0 auto; width: 0; height: 0; margin-left: auto; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentColor; opacity: .55; }
+td.edit .tchip.caret { width: 100%; }
+.tchip.t-red { --tc-bg: #ffcfc9; --tc-fg: #b10202; }
+.tchip.t-green { --tc-bg: #d4edbc; --tc-fg: #11734b; }
+.tchip.t-blue { --tc-bg: #c6dbe1; --tc-fg: #0a53a8; }
+.tchip.t-yellow { --tc-bg: #ffe5a0; --tc-fg: #6b4f00; }
+.tchip.t-orange { --tc-bg: #ffc8aa; --tc-fg: #753800; }
+.tchip.t-grey { --tc-bg: #e8eaed; --tc-fg: #3c4043; }
+.tchip.t-solid-green { --tc-bg: #34a853; --tc-fg: #fff; }
+.tchip.t-solid-red { --tc-bg: #c5221f; --tc-fg: #fff; }
+.tchip.t-empty { --tc-bg: #e8eaed; width: 100%; min-width: 60px; }
+td.edit .tchip.t-empty::after { content: ''; margin-left: auto; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid #5f6368; opacity: .55; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tchip.t-grey, :root:not([data-theme="light"]) .tchip.t-empty { --tc-bg: #3a3a3c; --tc-fg: #e5e5ea; } }
+:root[data-theme="dark"] .tchip.t-grey, :root[data-theme="dark"] .tchip.t-empty { --tc-bg: #3a3a3c; --tc-fg: #e5e5ea; }
+.chip-menu { position: fixed; z-index: 300; padding: 6px; border-radius: 10px; background: var(--bg-elev); box-shadow: 0 10px 30px rgba(0,0,0,.18), 0 0 0 1px var(--sep); display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow-y: auto; }
+.chip-menu .cm-cur { padding: 6px 8px 8px; margin: -6px -6px 4px; border: 2px solid #1a73e8; border-radius: 10px 10px 0 0; font-size: 13px; min-height: 30px; }
+.chip-menu .cm-opt { display: flex; align-items: center; padding: 5px 8px; border: 0; border-radius: 6px; background: transparent; text-align: left; cursor: pointer; }
+.chip-menu .cm-opt:hover, .chip-menu .cm-opt.kb { background: var(--fill-2); }
+.chip-menu .cm-opt.on .tchip { box-shadow: 0 0 0 2px var(--accent); }
+.chip-menu .cm-clear { color: var(--label-2); font-size: 12.5px; border-top: 1px solid var(--sep); border-radius: 0; margin-top: 4px; padding-top: 8px; }
+/* φύλλο Dimitris: μωβ κεφαλίδα όπως στο Google Sheet */
+.dim-grid .xl thead th { background: #5b5fc7 !important; color: #fff !important; }
+.dim-grid .xl tbody tr:nth-child(even):not(.sos) td { background: color-mix(in srgb, #5b5fc7 5%, var(--bg-elev)); }
+.dim-grid .dim-loc { color: var(--label); text-decoration: none; }
+.dim-grid .dim-loc:hover { text-decoration: underline; color: var(--accent); }
+.dim-grid td .c { gap: 4px; }

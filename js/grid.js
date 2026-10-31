@@ -5,6 +5,8 @@
 import { L, esc, money, fmtDate, parseMoney, normTime, opt, sheet, toast, toastErr, haptic, latinName } from './core.js';
 
 const memory = {}; // id → { scrollLeft, scrollTop, sel: {rk, ck} }
+/** Χρωματιστή ετικέτα επιλογής (tone: red, green, blue, yellow, orange, grey, solid-green, solid-red, ή CSS χρώμα μέσω o.color) */
+export const toneChip = (o, caret = true) => `<span class="tchip t-${esc(o.tone || 'grey')}${caret ? ' caret' : ''}"${o.color ? ` style="--tc:${esc(o.color)}"` : ''}>${esc(L(o.el, o.en))}</span>`;
 const coarse = () => window.matchMedia('(pointer: coarse)').matches;
 
 /**
@@ -19,11 +21,12 @@ export function renderGrid(container, cols, opts) {
   const show = (c, r) => {
     if (c.display) return c.display(r);
     const v = raw(c, r);
+    if ((v === null || v === undefined || v === '') && c.type === 'select' && c.chips) return '<span class="tchip t-empty"></span>';
     if (v === null || v === undefined || v === '') return '<span class="ph"></span>';
     if (c.type === 'money') return esc(money(v));
     if (c.type === 'date') return esc(fmtDate(v));
     if (c.type === 'time') return esc(String(v).slice(0, 5));
-    if (c.type === 'select') { const list = typeof c.options === 'function' ? c.options(r) : c.options; const o = opt(list, v); return esc(o ? L(o.el, o.en) : v); }
+    if (c.type === 'select') { const list = typeof c.options === 'function' ? c.options(r) : c.options; const o = opt(list, v); return o?.tone ? toneChip(o) : esc(o ? L(o.el, o.en) : v); }
     if (c.type === 'bool') return v ? L('Ναι', 'Yes') : L('Όχι', 'No');
     return esc(v);
   };
@@ -114,6 +117,7 @@ export function renderGrid(container, cols, opts) {
     if (c.onOpen) { c.onOpen(r); return; }
     if (c.type === 'bool') { commit(td, !raw(c, r)); haptic(); return; }
     if (coarse()) return editInSheet(td, r, c);
+    if (c.type === 'select' && c.chips) return chipMenu(td, r, c);
     const v = raw(c, r);
     const box = td.querySelector('.c');
     let input;
@@ -161,12 +165,45 @@ export function renderGrid(container, cols, opts) {
     if (c.type === 'select') input.addEventListener('change', () => finish(true));
   }
 
+  // λίστα επιλογών με χρωματιστές ετικέτες (όπως τα dropdown chips του Google Sheets)
+  function chipMenu(td, r, c) {
+    document.querySelector('.chip-menu')?.remove();
+    const list = typeof c.options === 'function' ? c.options(r) : c.options;
+    const v = raw(c, r);
+    const m = document.createElement('div');
+    m.className = 'chip-menu';
+    m.innerHTML = `<div class="cm-cur">${esc(v ? L(opt(list, v)?.el || v, opt(list, v)?.en || v) : '')}&nbsp;</div>`
+      + list.map((o) => `<button type="button" class="cm-opt ${o.v === v ? 'on' : ''}" data-v="${esc(o.v)}">${toneChip(o, false)}</button>`).join('')
+      + (c.blank !== false ? `<button type="button" class="cm-opt cm-clear" data-v="">${esc(L('Καθαρισμός', 'Clear'))}</button>` : '');
+    document.body.appendChild(m);
+    const rc = td.getBoundingClientRect();
+    const h = m.offsetHeight, w = Math.max(rc.width, 220);
+    m.style.width = w + 'px';
+    m.style.left = Math.min(rc.left, innerWidth - w - 8) + 'px';
+    m.style.top = (rc.bottom + h + 8 > innerHeight ? Math.max(8, rc.top - h - 4) : rc.top) + 'px';
+    let idx = Math.max(0, list.findIndex((o) => o.v === v));
+    const btns = [...m.querySelectorAll('.cm-opt')];
+    const focusAt = (i) => { idx = (i + btns.length) % btns.length; btns.forEach((b, j) => b.classList.toggle('kb', j === idx)); };
+    focusAt(idx);
+    const close = () => { m.remove(); document.removeEventListener('mousedown', outside, true); document.removeEventListener('keydown', keys, true); wrap.focus({ preventScroll: true }); };
+    const pick = (val) => { close(); commit(td, val || null); };
+    const outside = (e) => { if (!m.contains(e.target)) close(); };
+    const keys = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); focusAt(idx + 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); focusAt(idx - 1); }
+      else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); pick(btns[idx].dataset.v); }
+    };
+    btns.forEach((b) => b.addEventListener('click', () => pick(b.dataset.v)));
+    setTimeout(() => { document.addEventListener('mousedown', outside, true); document.addEventListener('keydown', keys, true); }, 0);
+  }
+
   function editInSheet(td, r, c) {
     const v = raw(c, r);
     let inner;
     if (c.type === 'select') {
       const list = typeof c.options === 'function' ? c.options(r) : c.options;
-      inner = `<div class="list">${(c.blank !== false ? [{ v: '', el: '—', en: '—' }] : []).concat(list).map((o) => `<button class="row" data-v="${esc(o.v)}"><div class="main-col"><div class="t">${esc(L(o.el, o.en))}</div></div>${(o.v || null) === (v || null) ? '<span class="pos">✓</span>' : ''}</button>`).join('')}</div>`;
+      inner = `<div class="list">${(c.blank !== false ? [{ v: '', el: '—', en: '—' }] : []).concat(list).map((o) => `<button class="row" data-v="${esc(o.v)}"><div class="main-col"><div class="t">${o.tone ? toneChip(o, false) : esc(L(o.el, o.en))}</div></div>${(o.v || null) === (v || null) ? '<span class="pos">✓</span>' : ''}</button>`).join('')}</div>`;
     } else {
       const type = c.type === 'date' ? 'date' : 'text';
       const val = v == null ? '' : c.type === 'money' ? String(v).replace('.', ',') : c.type === 'time' ? String(v).slice(0, 5) : String(v);

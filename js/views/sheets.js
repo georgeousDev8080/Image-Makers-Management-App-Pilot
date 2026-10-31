@@ -2,9 +2,10 @@
 //  Φύλλα (Excel): Κεντρικό, Πελάτες, Πληρωμές, Φωτογραφίες, Μητρώο,
 //  Έξοδα, Σύνοψη, Dashboard, Έλεγχος δεδομένων, Mitsos
 // =====================================================================
-import { needsOffer, dutyEmoji, L, esc, icon, money, fmtDate, todayISO, daysBetween, sum, matches, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, MONTHS_EL_UP, monthName, monthShort, toast, confirmBox, actionSheet, segmented, initSegmented } from '../core.js';
+import { needsOffer, dutyEmoji, L, esc, icon, money, fmtDate, todayISO, daysBetween, sum, matches, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, PCS, SHOP_STATUS, FILES_COPIED, STORED_AT, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, MONTHS_EL_UP, monthName, monthShort, toast, confirmBox, actionSheet, segmented, initSegmented } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, saveCustomer, patchCustomer, patchPayment, patchExpense, patchEvent, saveFinance, savePayment, deletePayment, saveExpense, deleteExpense, openOffer, yearsAvailable, profileName, profileById } from '../data.js';
 import { pageHead, setTopActions } from '../layout.js';
+import { catShort } from '../components.js';
 import { renderGrid, exportGrid } from '../grid.js';
 import { openIncomeForm, openExpenseForm, expenseTitle, paymentActions, expenseActions } from './money.js';
 import { openCrewSheet, deleteEventFlow } from './events.js';
@@ -106,7 +107,7 @@ function eventsSheet(body, tab, redraw) {
   const updCust = async (v, field, val) => { if (!v.c) return; if (field === 'name1' && !val) throw new Error('required'); await patchCustomer(v.c.id, { [field]: val || null }); };
   const cols = [];
   const add = (g, c) => { if (visible.has(g)) cols.push({ group: g, ...c }); };
-  add('basic', { key: 'month', label: L('Μήνας', 'Month'), w: 104, get: (v) => monthUp(v.e.event_date) });
+  add('basic', { key: 'month', label: L('Μήνας', 'Month'), w: 126, get: (v) => monthUp(v.e.event_date) });
   add('basic', { key: 'date', label: L('Ημερομηνία', 'Date'), w: 96, type: 'date', editable: true, required: true, get: (v) => v.e.event_date, set: (v, val) => val && patchEvent(v.e.id, { event_date: val }) });
   add('basic', { key: 'loc', label: L('Τοποθεσία', 'Location'), w: 210, editable: true, get: (v) => v.e.church_location, set: (v, val) => patchEvent(v.e.id, { church_location: val }) });
   add('couple', { key: 'name1', label: L('Όνομα 1', 'Name 1'), w: 160, editable: (v) => !!v.c, get: (v) => v.c?.name1, set: (v, val) => updCust(v, 'name1', val) });
@@ -180,29 +181,40 @@ function eventsSheet(body, tab, redraw) {
 //  Mitsos (μόνο Διαχειριστής Βιντεογράφος)
 // ---------------------------------------------------------------------
 const isSOS = (e) => ['lab', 'ready', 'delivered'].includes(e.photo_status) && e.editing_status !== 'done' && e.status !== 'cancelled';
+// Χρώματα μηνών (όπως στο φύλλο του Dimitris)
+const MONTH_COLORS = ['#3d6fb6', '#1f6b45', '#4f9a5b', '#bfe3b4', '#a8d67a', '#e6c84f', '#f0a34a', '#e2763d', '#c95b4a', '#9b5bb5', '#6b6fc7', '#5a8fd6'];
+const MONTH_DARK = [true, true, true, false, false, false, false, true, true, true, true, true];
+const VIDEO_STATUS = () => EDIT_STATUS.filter((o) => o.v !== 'none');
 function mitsosSheet(body, tab, redraw) {
   if (!isVideoAdmin()) { body.innerHTML = `<div class="empty">${icon('lock')}<b>${esc(L('Μόνο για Διαχειριστή (Βιντεογράφο)', 'Admin (Videographer) only'))}</b></div>`; return; }
   let views = allEventViews({ year: st.year, includeCancelled: false });
-  const counts = { open: views.filter((v) => v.e.editing_status !== 'done' && v.e.editing_status !== 'none').length, sos: views.filter((v) => isSOS(v.e)).length };
+  const counts = { open: views.filter((v) => v.e.editing_status !== 'done').length, sos: views.filter((v) => isSOS(v.e)).length };
   views = views.filter((v) => (st.mitsosFilter === 'all' || (st.mitsosFilter === 'sos' ? isSOS(v.e) : st.mitsosFilter === 'open' ? (v.e.editing_status !== 'done') : true))
-    && matches(st.q, v.title, v.e.church_location, fmtDate(v.e.event_date), v.e.video_notes));
-  views.sort((a, b) => (isSOS(b.e) - isSOS(a.e)) || a.e.event_date.localeCompare(b.e.event_date));
+    && matches(st.q, v.title, v.e.church_location, fmtDate(v.e.event_date), v.e.video_notes, MONTHS_EL_UP[Number(v.e.event_date.slice(5, 7)) - 1], lbl(EDIT_STATUS, v.e.editing_status)));
+  views.sort((a, b) => a.e.event_date.localeCompare(b.e.event_date) || String(a.e.event_time || '').localeCompare(String(b.e.event_time || '')));
+  const mi = (v) => Number(v.e.event_date.slice(5, 7)) - 1;
   const cols = [
-    { key: 'date', label: L('Ημερομηνία', 'Date'), w: 96, type: 'date', sticky: true, group: 'basic', get: (v) => v.e.event_date },
-    { key: 'sos', label: 'SOS', w: 64, align: 'center', group: 'basic', get: (v) => (isSOS(v.e) ? 'SOS' : ''), display: (v) => (isSOS(v.e) ? '<span class="sos-tag">SOS</span>' : '') },
-    { key: 'couple', label: L('Ζευγάρι', 'Couple'), w: 200, group: 'basic', get: (v) => v.title, display: (v) => `<a href="#/event/${v.e.id}">${esc(v.title)}</a>` },
-    { key: 'loc', label: L('Τοποθεσία', 'Location'), w: 190, group: 'basic', get: (v) => v.e.church_location },
-    { key: 'res', label: L('Ανάλυση', 'Resolution'), w: 90, type: 'select', options: RESOLUTIONS, group: 'video', editable: true, get: (v) => v.e.resolution, set: (v, val) => patchEvent(v.e.id, { resolution: val }) },
-    { key: 'pst', label: L('Φωτογραφίες', 'Photos'), w: 210, type: 'select', options: PHOTO_STATUS, group: 'video', get: (v) => v.e.photo_status },
-    { key: 'est', label: L('Κατάσταση Editing', 'Editing status'), w: 140, type: 'select', blank: false, options: EDIT_STATUS, group: 'video', editable: true, get: (v) => v.e.editing_status, set: (v, val) => patchEvent(v.e.id, { editing_status: val }) },
-    { key: 'pc', label: L('Υπολογιστής μοντάζ', 'Editing computer'), w: 130, type: 'select', options: PCS, group: 'video', editable: true, get: (v) => v.e.editing_pc, set: (v, val) => patchEvent(v.e.id, { editing_pc: val }) },
-    { key: 'vn', label: L('Σχόλια βίντεο', 'Video notes'), w: 260, group: 'video', editable: true, get: (v) => v.e.video_notes, set: (v, val) => patchEvent(v.e.id, { video_notes: val }) },
+    { key: 'month', label: L('Μήνας', 'Month'), w: 126, sticky: true, get: (v) => MONTHS_EL_UP[mi(v)],
+      display: (v) => `<span class="tchip" style="background:${MONTH_COLORS[mi(v)]};color:${MONTH_DARK[mi(v)] ? '#fff' : '#1c2a17'}">${esc(MONTHS_EL_UP[mi(v)])}</span>` },
+    { key: 'date', label: L('Ημερομηνία', 'Date'), w: 132, type: 'date', align: 'center', get: (v) => v.e.event_date,
+      display: (v) => `${isSOS(v.e) ? '<span class="sos-tag" title="SOS: το album πάει για εκτύπωση">SOS</span> ' : ''}${esc(fmtDate(v.e.event_date))}` },
+    { key: 'cat', label: L('Κατηγορία Εκδήλωσης', 'Event category'), w: 168, get: (v) => lbl(CATEGORIES, v.e.category),
+      display: (v) => `<span class="tchip cat-${v.e.category}" style="background:var(--c);color:#fff">${esc(catShort(v.e.category).toLocaleUpperCase('el-GR').normalize('NFD').replace(/\p{M}/gu, ''))}</span>` },
+    { key: 'loc', label: L('ΤΟΠΟΘΕΣΙΑ', 'LOCATION'), w: 220, align: 'center', get: (v) => v.e.church_location || '',
+      display: (v) => `<a href="#/event/${v.e.id}" class="dim-loc" title="${esc(v.title)}">${esc(v.e.church_location || '—')}</a>` },
+    { key: 'vst', label: L('Κατάσταση Βίντεο', 'Video status'), w: 190, type: 'select', chips: true, blank: false, options: VIDEO_STATUS, editable: true,
+      get: (v) => (v.e.editing_status === 'none' ? 'todo' : v.e.editing_status), set: (v, val) => patchEvent(v.e.id, { editing_status: val || 'todo' }) },
+    { key: 'shop', label: L('Είναι στο μαγαζί;', 'In the shop?'), w: 200, type: 'select', chips: true, options: SHOP_STATUS, editable: true, get: (v) => v.e.shop_status, set: (v, val) => patchEvent(v.e.id, { shop_status: val }) },
+    { key: 'pc', label: L('Υπολογιστής', 'Computer'), w: 110, type: 'select', chips: true, options: PCS, editable: true, get: (v) => v.e.editing_pc, set: (v, val) => patchEvent(v.e.id, { editing_pc: val }) },
+    { key: 'files', label: L('Περασμένα αρχεία', 'Files copied'), w: 120, type: 'select', chips: true, options: FILES_COPIED, editable: true, get: (v) => v.e.files_copied, set: (v, val) => patchEvent(v.e.id, { files_copied: val }) },
+    { key: 'stored', label: L('Αποθηκευμένο σε', 'Stored at'), w: 120, type: 'select', chips: true, options: STORED_AT, editable: true, get: (v) => v.e.stored_at, set: (v, val) => patchEvent(v.e.id, { stored_at: val }) },
+    { key: 'vn', label: L('Σχόλια', 'Comments'), w: 240, editable: true, get: (v) => v.e.video_notes, set: (v, val) => patchEvent(v.e.id, { video_notes: val }) },
   ];
-  body.innerHTML = `<div class="banner">${icon('film')}<div><b>${esc(L('Πώς δουλεύει το Editing Workflow', 'How the Editing Workflow works'))}</b><span>${esc(L('Όταν οι φωτογραφίες γίνουν «Αλλαγές», το editing γίνεται αυτόματα «Να γίνει». Όταν το album πάει «Εκτύπωση στο εργαστήριο», η γραμμή γίνεται κόκκινη SOS μέχρι να ολοκληρωθεί το editing.', 'When photos become “Changes”, editing becomes “To do”. When the album goes to the lab, the row turns red SOS until editing is done.'))}</span></div></div>`
-    + toolbar({ months: false, cats: false, extra: segmented('mf', [{ v: 'all', label: L('Όλα', 'All') }, { v: 'open', label: L(`Εκκρεμή`, 'Pending') }, { v: 'sos', label: `SOS (${counts.sos})` }], st.mitsosFilter) }) + '<div id="grid"></div>';
+  body.innerHTML = `<div class="banner">${icon('film')}<div><b>${esc(L('Πώς δουλεύει το Editing Workflow', 'How the Editing Workflow works'))}</b><span>${esc(L('Κάθε εκδήλωση μπαίνει εδώ μόλις κλειστεί. Όταν οι φωτογραφίες γίνουν «Αλλαγές», η κατάσταση βίντεο γίνεται αυτόματα «όχι έτοιμο» και ειδοποιείστε. Όταν το album πάει «Εκτύπωση στο εργαστήριο» και το βίντεο δεν είναι «έτοιμο», η γραμμή γίνεται κόκκινη SOS. Πατήστε την τοποθεσία για να ανοίξει η εκδήλωση.', 'Every event appears here once booked. When photos become “Changes”, video status becomes “not ready” and you are notified. When the album goes to the lab and the video isn’t “ready”, the row turns red SOS. Tap the location to open the event.'))}</span></div></div>`
+    + toolbar({ months: false, cats: false, extra: segmented('mf', [{ v: 'all', label: L('Όλα', 'All') }, { v: 'open', label: L(`Εκκρεμή (${counts.open})`, `Pending (${counts.open})`) }, { v: 'sos', label: `SOS (${counts.sos})` }], st.mitsosFilter) }) + '<div id="grid" class="dim-grid"></div>';
   bindToolbar(body, redraw);
   initSegmented(body, (_, v) => { st.mitsosFilter = v; redraw(); });
-  renderGrid(body.querySelector('#grid'), cols, { id: 'mitsos', rows: views, rowKey: (v) => v.e.id, groups: GROUPS(), rowClass: (v) => (isSOS(v.e) ? 'sos' : v.e.editing_status === 'done' ? 'paid' : ''), onEdit: (v, c, val) => c.set(v, val), empty: L('Δεν υπάρχουν εκκρεμότητες 🎉', 'Nothing pending 🎉') });
+  renderGrid(body.querySelector('#grid'), cols, { id: 'mitsos', rows: views, rowKey: (v) => v.e.id, rowClass: (v) => (isSOS(v.e) ? 'sos' : ''), onEdit: (v, c, val) => c.set(v, val), empty: L('Δεν υπάρχουν εκδηλώσεις εδώ', 'No events here') });
   body.querySelector('#sx').addEventListener('click', () => exportGrid(`Dimitris ${st.year}`, cols, views));
 }
 
