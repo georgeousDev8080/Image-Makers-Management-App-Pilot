@@ -85,6 +85,31 @@ export function normTime(v) {
   if (h > 23 || m > 59) return null;
   return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
 }
+/**
+ * iPhone/iPad: το Safari αγνοεί συχνά το CSS «touch-action» για το zoom με διπλό πάτημα.
+ * Αν δύο αγγίγματα έρθουν πολύ κοντά (< 350ms), ακυρώνουμε το δεύτερο ως χειρονομία zoom
+ * και, αν ήταν σε κουμπί/σύνδεσμο, το εκτελούμε κανονικά ως πάτημα. Τα πεδία κειμένου
+ * (διπλό πάτημα = επιλογή λέξης) και το πληκτρολόγιο PIN (δικός του χειρισμός) εξαιρούνται.
+ */
+if (typeof document !== 'undefined' && !window.__imNoDblZoom) {
+  window.__imNoDblZoom = true;
+  let lastEnd = 0, lastX = 0, lastY = 0;
+  document.addEventListener('touchend', (e) => {
+    if (e.touches.length || e.changedTouches.length !== 1) { lastEnd = 0; return; }
+    const t = e.changedTouches[0];
+    const now = Date.now();
+    const quick = now - lastEnd < 350 && Math.abs(t.clientX - lastX) < 40 && Math.abs(t.clientY - lastY) < 40;
+    lastEnd = now; lastX = t.clientX; lastY = t.clientY;
+    if (!quick) return;
+    const el = e.target instanceof Element ? e.target : e.target?.parentElement;
+    if (!el || el.closest('input, textarea, select, [contenteditable="true"], .leaflet-container')) return;
+    if (el.closest('.keypad')) { e.preventDefault(); return; }
+    e.preventDefault(); // όχι zoom
+    const act = el.closest('button, a[href], [role="button"], label, .row, .chip, td, .cal-cell, [data-k], [data-g]');
+    if (act && !act.disabled) act.click();
+  }, { passive: false });
+  // Safari: χειρονομία «gesturestart» (zoom) μόνο με δύο δάχτυλα επιτρέπεται· τίποτα άλλο
+}
 /** Πεδίο ώρας 24ωρης μορφής (αντί του <input type=time> που σε κάποια κινητά δείχνει ΠΜ/ΜΜ) */
 export const timeInputAttrs = 'type="text" inputmode="numeric" maxlength="5" placeholder="ΩΩ:ΛΛ" data-time autocomplete="off"';
 if (typeof document !== 'undefined' && !window.__imTimeBound) {
