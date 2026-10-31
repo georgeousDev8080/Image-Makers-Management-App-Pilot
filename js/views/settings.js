@@ -8,7 +8,7 @@ import { pushState, enablePush, disablePushHere, sendTest, setupServerPush, serv
 import { verifyPinPrompt, showNewPin, lockAfterMinutes, TERMS_ENABLED } from './auth.js';
 import { exportAllXlsx, exportFullZip, importBackup, importOldSheet } from '../backup.js';
 
-export const APP_VERSION = '1.4.1';
+export const APP_VERSION = '1.4.2';
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; });
 
