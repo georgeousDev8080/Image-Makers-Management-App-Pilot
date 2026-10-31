@@ -1059,3 +1059,4 @@ td.edit .tchip.t-empty::after { content: ''; margin-left: auto; border-left: 4px
 .dim-grid .dim-loc { color: var(--label); text-decoration: none; }
 .dim-grid .dim-loc:hover { text-decoration: underline; color: var(--accent); }
 .dim-grid td .c { gap: 4px; }
+.tchip.sos-pulse { animation: sosPulse 1.4s ease-in-out infinite; font-weight: 800; letter-spacing: .04em; }
