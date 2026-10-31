@@ -70,6 +70,8 @@ function pinPad(container, { onComplete, extraLeft = '' }) {
   // πληκτρολόγιο / VoiceOver (click χωρίς άγγιγμα)
   container.addEventListener('click', (e) => { const b = keyOf(e); if (b && e.detail === 0) press(b.dataset.k); });
   container.addEventListener('dblclick', (e) => e.preventDefault());
+  // iOS: καμία χειρονομία (zoom/επιλογή) πάνω στο πληκτρολόγιο PIN
+  container.querySelector('.keypad').addEventListener('touchstart', (e) => { if (e.touches.length === 1) e.preventDefault(); }, { passive: false });
   const kd = (e) => { if (!container.isConnected) return document.removeEventListener('keydown', kd); if (/^\d$/.test(e.key)) press(e.key); if (e.key === 'Backspace') press('del'); };
   document.addEventListener('keydown', kd);
   return { reset() { val = ''; paint(); }, destroy() { document.removeEventListener('keydown', kd); } };
