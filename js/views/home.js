@@ -1,7 +1,7 @@
 // =====================================================================
 //  Αρχική
 // =====================================================================
-import { needsOffer, L, vocative, esc, icon, money, fmtDateLong, fmtTime, todayISO, daysBetween, sum, addDays, isIOS, isStandalone } from '../core.js';
+import { CATEGORIES, needsOffer, L, vocative, esc, icon, money, fmtDateLong, fmtTime, todayISO, daysBetween, sum, addDays, isIOS, isStandalone } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, profileName, myEventIds, pendingAppointments, staleAppointments, pendingMessages, pendingUsers, unreadCount } from '../data.js';
 import { wfLevel } from './workflow.js';
 import { newAppointmentChooser } from './appointments.js';
@@ -10,6 +10,7 @@ import { eventRow } from '../components.js';
 import { openIncomeForm, openExpenseForm } from './money.js';
 import { pushState } from '../push.js';
 
+const catLabel = (c) => { const o = CATEGORIES.find((x) => x.v === c); return o ? L(o.el, o.en).replace(/\s*\(.*\)$/, '') : ''; };
 export function renderHome(root) {
   const admin = isAdmin();
   const today = todayISO();
@@ -32,17 +33,19 @@ export function renderHome(root) {
     const d = daysBetween(today, next.e.event_date);
     const countTxt = d === 0 ? L('σήμερα', 'today') : d === 1 ? L('αύριο', 'tomorrow') : '';
     const count = `<div class="count"><b>${d === 0 || d === 1 ? '' : d}</b><span>${esc(countTxt || L('ημέρες', 'days'))}</span></div>`;
-    const meta = (v) => `<div class="meta">${group.length > 1 ? '' : `<span>${icon('calendar')} ${esc(fmtDateLong(v.e.event_date))}</span>`}${v.e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(v.e.event_time))}</span>` : ''}${v.e.church_location ? `<span>${icon('pin')} ${esc(v.e.church_location)}</span>` : ''}</div>`;
+    // Μεγάλα: τύπος εκδήλωσης και τοποθεσία · μικρά από κάτω: όνομα, ημερομηνία, ώρα
+    const big = (v) => `${esc(catLabel(v.e.category))}${v.e.church_location ? ` · ${esc(v.e.church_location)}` : ''}`;
+    const meta = (v) => `<div class="meta"><span>${icon('user')} ${esc(v.title)}</span>${group.length > 1 ? '' : `<span>${icon('calendar')} ${esc(fmtDateLong(v.e.event_date))}</span>`}${v.e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(v.e.event_time))}</span>` : ''}</div>`;
     if (group.length === 1) {
       html += `<a class="hero-card" href="#/event/${next.e.id}">${count}
         <div class="eyebrow">${esc(admin ? L('Επόμενη εκδήλωση', 'Next event') : L('Η επόμενη εκδήλωσή σου', 'Your next event'))}</div>
-        <h2>${esc(next.title)}</h2>${meta(next)}</a>`;
+        <h2>${big(next)}</h2>${meta(next)}</a>`;
     } else {
       let lastDate = '';
       const items = group.map((v) => {
         const head = v.e.event_date !== lastDate ? `<div class="hero-day">${icon('calendar')} ${esc(fmtDateLong(v.e.event_date))}</div>` : '';
         lastDate = v.e.event_date;
-        return `${head}<a class="hero-item" href="#/event/${v.e.id}"><h3>${esc(v.title)}</h3>${meta(v)}</a>`;
+        return `${head}<a class="hero-item" href="#/event/${v.e.id}"><h3>${big(v)}</h3>${meta(v)}</a>`;
       }).join('');
       html += `<div class="hero-card multi">${count}
         <div class="eyebrow">${esc(admin ? L(`Επόμενες εκδηλώσεις · ${group.length}`, `Next events · ${group.length}`) : L(`Οι επόμενες εκδηλώσεις σου · ${group.length}`, `Your next events · ${group.length}`))}</div>
