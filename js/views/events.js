@@ -1,7 +1,7 @@
 // =====================================================================
 //  Εκδηλώσεις: λίστα & λεπτομέρειες
 // =====================================================================
-import { needsOffer, L, esc, icon, money, fmtDate, fmtDateLong, fmtTime, todayISO, daysBetween, matches, mapsUrl, telUrl, smsUrl, mailUrl, lbl, CATEGORIES, RESOLUTIONS, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, options, segmented, initSegmented, segValue, sheet, confirmBox, promptBox, toastErr, actionSheet, toast, download, icsFor, busy, monthName } from '../core.js';
+import { evDays, evOverlaps, evEnd, isMultiDay, fmtRange, dayCount, needsOffer, L, esc, icon, money, fmtDate, fmtDateLong, fmtTime, todayISO, daysBetween, matches, mapsUrl, telUrl, smsUrl, mailUrl, lbl, CATEGORIES, RESOLUTIONS, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, options, segmented, initSegmented, segValue, sheet, confirmBox, promptBox, toastErr, actionSheet, toast, download, icsFor, busy, monthName } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, coupleName, profileName, patchEvent, deleteEvent, setCrew, saveCrewBrief, absencesOn, absenceWhen, openOffer, deletePayment, myEventIds } from '../data.js';
 import { pageHead, setTopActions, emptyState, go, backBtn, UI } from '../layout.js';
 import { crewBriefTexts, eventHasDrone, eventRow, catPill, offerSummaryHTML, crewBriefHTML, crewChips, avatar, photoStatusPill, editStatusPill } from '../components.js';
@@ -18,8 +18,8 @@ export function renderEvents(root, params = {}) {
   let list = allEventViews().filter((v) => admin || mine.has(v.e.id));
   if (params.filter === 'nocrew') { st.when = 'upcoming'; }
   list = list.filter((v) => {
-    if (st.when === 'upcoming' && v.e.event_date < today) return false;
-    if (st.when === 'past' && v.e.event_date >= today) return false;
+    if (st.when === 'upcoming' && evEnd(v.e) < today) return false;
+    if (st.when === 'past' && evEnd(v.e) >= today) return false;
     if (st.cat && v.e.category !== st.cat) return false;
     if (params.filter === 'nocrew' && v.crew.length) return false;
     return matches(st.q, v.title, v.c?.phone1, v.c?.phone2, v.c?.email1, v.e.church_location, v.e.reception_location, v.e.house_location, v.e.bride_house, v.e.groom_house, fmtDate(v.e.event_date), v.f?.package_name);
@@ -85,7 +85,7 @@ export function renderEventDetail(root, { id }) {
     ${days >= 0 ? `<div class="countdown"><b>${days}</b><small>${esc(days === 1 ? L('ημέρα', 'day') : L('ημέρες', 'days'))}</small></div>` : ''}
     <div class="hstack">${catPill(e.category)}${e.status === 'cancelled' ? `<span class="pill red">${esc(L('Ακυρωμένη', 'Cancelled'))}</span>` : ''}${(e.coverage || 'both') !== 'both' ? `<span class="pill orange">${esc(e.coverage === 'photo' ? L('📷 Μόνο φωτογραφία', '📷 Photo only') : L('🎥 Μόνο βίντεο', '🎥 Video only'))}</span>` : ''}${e.resolution && e.coverage !== 'photo' ? `<span class="pill blue">${esc(e.resolution === '4k' ? '4K' : 'Full HD')}</span>` : ''}${eventHasDrone(e, v.crew) ? '<span class="pill purple">🚁 Drone</span>' : ''}</div>
     <h1 style="margin-top:10px">${esc(v.title)}</h1>
-    <div class="when"><span>${icon('calendar')} ${esc(fmtDateLong(e.event_date))}</span>${e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(e.event_time))}</span>` : `<span class="no-time">${icon('clock')} ${esc(L('Ώρα: δεν γνωρίζουμε ακόμη', 'Time: not known yet'))}</span>`}</div>
+    <div class="when"><span>${icon('calendar')} ${esc(fmtRange(e, true))}${isMultiDay(e) ? ` · ${esc(L(`${dayCount(e)} ημέρες`, `${dayCount(e)} days`))}` : ''}</span>${e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(e.event_time))}</span>` : `<span class="no-time">${icon('clock')} ${esc(L('Ώρα: δεν γνωρίζουμε ακόμη', 'Time: not known yet'))}</span>`}</div>
     <div class="quick-actions">
       ${phone ? `<a class="qa" href="${telUrl(phone)}">${icon('phone')}${esc(L('Κλήση', 'Call'))}</a>${admin ? `<a class="qa" href="${smsUrl(phone)}">${icon('sms')}SMS</a>` : ''}` : ''}
       ${email && admin ? `<a class="qa" href="${mailUrl(email)}">${icon('mail')}Email</a>` : ''}
@@ -129,7 +129,7 @@ export function renderEventDetail(root, { id }) {
   const me = v.crew.find((c) => c.user_id === S.profile?.id);
   if (admin && v.crew.length) {
     html += `<div class="group-label">${esc(L('Κείμενα ανάθεσης', 'Assignment notes'))}</div><div class="list">${v.crew.map((c) => {
-      const un = absenceWhen(absencesOn(c.user_id, e.event_date));
+      const un = evDays(e).map((d) => absenceWhen(absencesOn(c.user_id, d))).filter(Boolean).join('; ');
       return `<div class="row brief-row"><span>${avatar(c.profile, 'sm')}</span><div class="main-col"><div class="t">${esc(profileName(c.profile))}${un ? ` <span class="unavail">(${esc(L('δήλωσε απουσία', 'declared absence'))}: ${esc(un)})</span>` : ''}</div><div class="s brief-text">${esc(c.brief || L('Δεν υπάρχει κείμενο ανάθεσης.', 'No assignment note.'))}</div></div><button class="btn small" data-brief="${c.user_id}">${icon('edit')}<span class="hide-mobile"> ${esc(L('Επεξεργασία', 'Edit'))}</span></button></div>`;
     }).join('')}</div>`;
   } else if (me?.brief) {
@@ -299,8 +299,14 @@ function editBrief(eventId, userId) {
 export function openCrewSheet(eventId, { onSave, initial } = {}) {
   // 2 συνεργεία: η σύνθεση αλλάζει από τον οδηγό της εκδήλωσης (βήμα «Συνεργείο»)
   if (!onSave && S.events.get(eventId)?.crew_mode === 'double') { go(`#/event/${eventId}/edit?step=2`); return; }
-  const day = S.events.get(eventId)?.event_date;
-  const cov = S.events.get(eventId)?.coverage || 'both';
+  const ev0 = S.events.get(eventId);
+  const day = ev0?.event_date;
+  const cov = ev0?.coverage || 'both';
+  const days = ev0 ? evDays(ev0) : [];
+  const unAll = (uid) => days.map((d) => { const w = absenceWhen(absencesOn(uid, d)); return w ? (days.length > 1 ? `${fmtDate(d).slice(0, 5)} ${w}` : w) : ''; }).filter(Boolean).join('; ');
+  const catN = (c) => { const o = CATEGORIES.find((x) => x.v === c); return o ? L(o.el, o.en).replace(/\s*\(.*\)$/, '') : ''; };
+  const busy = (uid) => S.crew.filter((c) => c.user_id === uid && c.event_id !== eventId).map((c) => S.events.get(c.event_id))
+    .filter((e) => e && e.status !== 'cancelled' && ev0 && evOverlaps(e, ev0)).map((e) => [catN(e.category), e.event_time ? fmtTime(e.event_time) : L('ώρα ;', 'time ?')].join(' · ')).join(', ');
   const team = S.profiles.filter((p) => p.role && p.active).sort((a, b) => profileName(a).localeCompare(profileName(b)));
   const cur = initial || S.crew.filter((c) => c.event_id === eventId).map((c) => ({ user_id: c.user_id, duty: c.duty }));
   const sel = new Map(cur.map((c) => [c.user_id, c.duty]));
@@ -311,9 +317,9 @@ export function openCrewSheet(eventId, { onSave, initial } = {}) {
       ${onSave ? '' : `<button class="btn small mb" data-two>${icon('users')} ${esc(L('Θέλω 2 συνεργεία…', 'I need 2 crews…'))}</button>`}
       <div class="list">${team.map((p) => {
         const on = sel.has(p.id);
-        const un = day ? absenceWhen(absencesOn(p.id, day)) : '';
+        const un = day ? unAll(p.id) : ''; const bz = busy(p.id);
         const off = !!un && !on;
-        return `<div class="row ${off ? 'is-off' : ''}"><label class="hstack" style="flex:1;cursor:${off ? 'not-allowed' : 'pointer'};flex-wrap:nowrap"><input type="checkbox" data-u="${p.id}" ${on ? 'checked' : ''} ${off ? 'disabled' : ''} style="width:22px;height:22px;accent-color:var(--accent)">${avatar(p)}<div class="main-col"><div class="t" style="white-space:normal">${esc(profileName(p))}${un ? ` <span class="unavail">(${esc(L('δεν είναι διαθέσιμος/η', 'not available'))}: ${esc(un)})</span>` : ''}</div><div class="s">${esc(lbl([{ v: 'admin_photo', el: 'Διαχειριστής · Φωτογράφος', en: 'Admin · Photographer' }, { v: 'admin_video', el: 'Διαχειριστής · Βιντεογράφος', en: 'Admin · Videographer' }, { v: 'photographer', el: 'Φωτογράφος', en: 'Photographer' }, { v: 'videographer', el: 'Βιντεογράφος', en: 'Videographer' }], p.role))}</div></div></label>
+        return `<div class="row ${off ? 'is-off' : ''}"><label class="hstack" style="flex:1;cursor:${off ? 'not-allowed' : 'pointer'};flex-wrap:nowrap"><input type="checkbox" data-u="${p.id}" ${on ? 'checked' : ''} ${off ? 'disabled' : ''} style="width:22px;height:22px;accent-color:var(--accent)">${avatar(p)}<div class="main-col"><div class="t" style="white-space:normal">${esc(profileName(p))}${un ? ` <span class="unavail">(${esc(L('δεν είναι διαθέσιμος/η', 'not available'))}: ${esc(un)})</span>` : ''}${bz ? ` <span class="busy">(${esc(L('ήδη δεσμευμένος/η', 'already booked'))}: ${esc(bz)})</span>` : ''}</div><div class="s">${esc(lbl([{ v: 'admin_photo', el: 'Διαχειριστής · Φωτογράφος', en: 'Admin · Photographer' }, { v: 'admin_video', el: 'Διαχειριστής · Βιντεογράφος', en: 'Admin · Videographer' }, { v: 'photographer', el: 'Φωτογράφος', en: 'Photographer' }, { v: 'videographer', el: 'Βιντεογράφος', en: 'Videographer' }], p.role))}</div></div></label>
           ${on ? segmented('d_' + p.id, [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }, { v: 'drone', label: 'Drone' }].filter((o) => !(cov === 'photo' && o.v === 'video') && !(cov === 'video' && o.v === 'photo')), sel.get(p.id)) : ''}</div>`;
       }).join('') || `<div class="row muted">${esc(L('Δεν υπάρχουν μέλη με ρόλο.', 'No team members with a role.'))}</div>`}</div>`;
     body.querySelectorAll('[data-u]').forEach((cb) => cb.addEventListener('change', () => {

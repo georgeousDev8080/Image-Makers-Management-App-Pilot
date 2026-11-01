@@ -8,6 +8,15 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.6', date: '02/11/2026',
+    items: [
+      ['📆', 'Πολυήμερες εκδηλώσεις: στη δημιουργία εκδήλωσης ενεργοποιήστε «Πολυήμερη εκδήλωση» και βάλτε την τελευταία ημέρα. Η εκδήλωση εμφανίζεται σε όλες τις ημέρες της στο ημερολόγιο (με 1/3, 2/3 …), στις λίστες, στο Excel (στήλη «Έως»), στο «Στο κινητό» και στους ελέγχους διαθεσιμότητας.', 'Multi-day events: turn on “Multi-day event” when creating an event and set the last day. It shows on all its days in the calendar (1/3, 2/3 …), in lists, in the Excel (“Until” column), in “To phone” and in availability checks.'],
+      ['🧑‍🤝‍🧑', 'Επιλογή συνεργείου: όποιος είναι ήδη δεσμευμένος σε άλλη εκδήλωση τις ίδιες ημέρες φαίνεται με πορτοκαλί, με τον τύπο και την ώρα της άλλης εκδήλωσης.', 'Crew selection: anyone already booked on another event the same days is shown in orange, with that event’s type and time.'],
+      ['🔔', 'Ειδοποιήσεις ανάθεσης: η πρώτη γραμμή γράφει τύπο εκδήλωσης, τοποθεσία και ώρα, και μετά όλα τα υπόλοιπα.', 'Assignment notifications: the first line shows the event type, location and time, then everything else.'],
+      ['🚫', 'Απουσίες πολλών ημερών εμφανίζονται και διαγράφονται ως μία απουσία (π.χ. «3 ημέρες»).', 'Multi-day absences are shown and deleted as one absence (e.g. “3 days”).'],
+    ],
+  },
+  {
     v: '1.5.3', date: '01/11/2026',
     items: [
       ['⏰', 'Ώρα εκδήλωσης: δίπλα στο πεδίο της ώρας υπάρχει η επιλογή «Δεν γνωρίζουμε ακόμη». Ισχύει και για τις υπάρχουσες εκδηλώσεις (Επεξεργασία).', 'Event time: next to the time field there is a “Not known yet” option. It also works for existing events (Edit).'],

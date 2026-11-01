@@ -1113,3 +1113,4 @@ html, body, button, a, input, select, textarea, label, [role="button"], .row, .c
 .task-box.off { opacity: .45; cursor: not-allowed; background: var(--fill); border-style: dashed; }
 .task-box.off small { font-weight: 500; color: var(--label-2); }
 .task-box input[type="radio"] { width: 20px; height: 20px; accent-color: var(--accent); }
+.busy { color: var(--orange); font-size: 12.5px; font-weight: 600; }

@@ -1,22 +1,24 @@
 // =====================================================================
 //  Νέα εκδήλωση / επεξεργασία (οδηγός σε 4 βήματα)
 // =====================================================================
-import { COVERAGE, needsOffer, normTime, timeInputAttrs, fmtTime, L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, initSegmented, toast, toastErr, busy, mapsUrl, money, parseMoney } from '../core.js';
+import { evEnd, evOverlaps, evDays, fmtDate as fmtD, COVERAGE, needsOffer, normTime, timeInputAttrs, fmtTime, L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, initSegmented, toast, toastErr, busy, mapsUrl, money, parseMoney } from '../core.js';
 import { S, coupleName, profileName, saveCustomer, saveEvent, saveFinance, setCrew, crewDiffers, absencesOn, absenceWhen, uploadOffer, eventView, updateRequest, saveAppointment, copyOfferToEvent } from '../data.js';
 import { pageHead, go, backBtn } from '../layout.js';
 import { avatar, packageNameFrom, offerSummaryHTML, CREW_TASKS, crewBriefTexts } from '../components.js';
 import { pickLocation } from '../mappicker.js';
 import { openOfferBuilder, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf, offerKindFor, offerKindOf } from '../offer.js';
 
+const addDays1 = (iso) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); };
 let W = null;
 let key = '';
 
 function freshState(params) {
   const s = {
+    editId: params.id || null,
     step: params.id && params.step ? Math.min(3, Math.max(0, Number(params.step) || 0)) : 0, mode: params.id ? 'edit' : 'new',
     custMode: 'existing', customerId: null, cq: '',
     cust: { name1: '', name2: '', phone1: '', phone2: '', email1: '', email2: '' },
-    ev: { category: 'wedding', coverage: 'both', event_date: params.date || '', event_time: normTime(params.time) || '', resolution: '1080', church_location: '', bride_house: '', groom_house: '', reception_location: '', church_geo: '', bride_geo: '', groom_geo: '', reception_geo: '', notes: '', extra_crew: '' },
+    ev: { category: 'wedding', coverage: 'both', end_date: '', event_date: params.date || '', event_time: normTime(params.time) || '', resolution: '1080', church_location: '', bride_house: '', groom_house: '', reception_location: '', church_geo: '', bride_geo: '', groom_geo: '', reception_geo: '', notes: '', extra_crew: '' },
     fin: { package_price: '', package_name: '', second_crew: false, office_notes: '' },
     crew: [], crewMode: null, cs: 'mode', tasks: { 1: [], 2: [] }, picked: [],
     offer: { pdf: null, pdfName: '', data: null, existingPath: null },
@@ -34,6 +36,7 @@ function freshState(params) {
       Object.keys(s.ev).forEach((k) => { s.ev[k] = e[k] ?? ''; });
       s.ev.event_time = (e.event_time || '').slice(0, 5);
       s.timeUnknown = !e.event_time;
+      s.multi = !!(e.end_date && e.end_date > e.event_date);
       s.fin = { package_price: v.f.package_price ?? '', package_name: v.f.package_name || '', second_crew: !!v.f.second_crew, office_notes: v.f.office_notes || '' };
       s.crew = v.crew.map((c) => ({ user_id: c.user_id, duty: c.duty, team: c.team ?? null, tasks: c.tasks || [] }));
       s.crewMode = e.crew_mode || 'single';
@@ -167,6 +170,7 @@ function validate(root, step) {
     let ok = true;
     ok = showErr(root, 'event_date', W.ev.event_date ? '' : req) && ok;
     if (W.timeUnknown) W.ev.event_time = '';
+    if (W.multi && (!W.ev.end_date || W.ev.end_date <= W.ev.event_date)) { ok = showErr(root, 'end_date', L('Η τελευταία ημέρα πρέπει να είναι μετά την πρώτη', 'The last day must be after the first')) && false; }
     ok = showErr(root, 'event_time', W.timeUnknown ? '' : !W.ev.event_time ? req : normTime(W.ev.event_time) === null ? L('Γράψτε την ώρα ως ΩΩ:ΛΛ, π.χ. 18:00', 'Enter the time as HH:MM, e.g. 18:00') : '') && ok;
     if (normTime(W.ev.event_time)) W.ev.event_time = normTime(W.ev.event_time);
     ok = showErr(root, 'church_location', W.ev.church_location ? '' : req) && ok;
@@ -272,10 +276,12 @@ function stepEvent(body, root, params) {
   body.innerHTML = `<div class="card pad"><div class="form-grid">
       <div class="field full"><label>${esc(L('Κατηγορία εκδήλωσης', 'Event category'))} <span class="req">*</span></label>
         <div class="chips">${CATEGORIES.map((c) => `<button type="button" class="chip ${W.ev.category === c.v ? 'on' : ''}" data-cat="${c.v}"><span class="cat-dot cat-${c.v}"></span>${esc(L(c.el, c.en))}</button>`).join('')}</div></div>
-      ${fld('event_date', L('Ημερομηνία', 'Date'), W.ev.event_date, { req: true, type: 'date' })}
+      ${fld('event_date', W.multi ? L('Πρώτη ημέρα', 'First day') : L('Ημερομηνία', 'Date'), W.ev.event_date, { req: true, type: 'date' })}
       <div class="field"><label>${esc(simple ? L('Ώρα έναρξης', 'Start time') : L('Ώρα μυστηρίου / έναρξης', 'Ceremony / start time'))} <span class="req">*</span></label>
         <div class="time-split ${W.timeUnknown ? 'unknown' : ''}"><input class="input" name="event_time" ${timeInputAttrs} value="${esc(W.timeUnknown ? '' : fmtTime(W.ev.event_time))}" ${W.timeUnknown ? 'disabled' : ''}><button type="button" class="ts-unknown ${W.timeUnknown ? 'on' : ''}" data-tunk aria-pressed="${W.timeUnknown ? 'true' : 'false'}">${W.timeUnknown ? '✓ ' : ''}${esc(L('Δεν γνωρίζουμε ακόμη', 'Not known yet'))}</button></div>
         ${W.timeUnknown ? `<div class="help">${esc(L('Θα λάβετε υπενθύμιση 3 μήνες πριν, αν δεν έχει μπει ώρα.', 'You’ll get a reminder 3 months before if no time has been set.'))}</div>` : ''}<div class="err" hidden></div></div>
+      <div class="field full multi-day"><label class="check-row"><span class="switch"><input type="checkbox" data-multi ${W.multi ? 'checked' : ''}><span></span></span><span>${esc(L('Πολυήμερη εκδήλωση', 'Multi-day event'))}</span></label>
+        ${W.multi ? `<div class="form-grid mt-s"><div class="field"><label>${esc(L('Τελευταία ημέρα', 'Last day'))} <span class="req">*</span></label><input class="input" type="date" name="end_date" value="${esc(W.ev.end_date || '')}" min="${esc(W.ev.event_date || '')}"><div class="err" hidden></div></div><div class="field"><label>&nbsp;</label><div class="small muted" style="padding-top:12px">${W.ev.event_date && W.ev.end_date > W.ev.event_date ? esc(L(`${evDays({ event_date: W.ev.event_date, end_date: W.ev.end_date }).length} ημέρες · η ώρα αφορά την 1η ημέρα`, `${evDays({ event_date: W.ev.event_date, end_date: W.ev.end_date }).length} days · the time is for day 1`)) : ''}</div></div></div>` : ''}</div>
       <div class="field full" id="sameDay"></div>
       <div class="field full"><label>${esc(L('Κάλυψη', 'Coverage'))} <span class="req">*</span></label>${segmented('cov', COVERAGE.map((c) => ({ v: c.v, label: L(c.el, c.en) })), W.ev.coverage || 'both', { block: true })}</div>
       ${W.ev.coverage === 'photo' ? '' : `<div class="field full"><label>${esc(L('Ανάλυση video', 'Video resolution'))} <span class="req">*</span></label>${segmented('res', RESOLUTIONS.map((r) => ({ v: r.v, label: L(r.el, r.en) })), W.ev.resolution, { block: true })}</div>`}
@@ -288,6 +294,8 @@ function stepEvent(body, root, params) {
       <div class="field full"><label>${esc(simple ? L('Σχόλια', 'Comments') : L('Σημειώσεις εκδήλωσης', 'Event notes'))}</label><textarea class="textarea" name="notes" placeholder="${esc(simple ? L('Περιγραφή, λεπτομέρειες, ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Description, details, anything the crew should know (they can see this)') : L('Ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Anything the crew should know (they can see this)'))}">${esc(W.ev.notes)}</textarea></div>
     </div></div>`;
   bindInputs(body, W.ev);
+  body.querySelector('[data-multi]')?.addEventListener('change', (e) => { W.multi = e.target.checked; if (W.multi && !W.ev.end_date && W.ev.event_date) W.ev.end_date = addDays1(W.ev.event_date); if (!W.multi) W.ev.end_date = ''; draw(root, params); });
+  body.querySelector('[name=end_date]')?.addEventListener('change', () => draw(root, params));
   body.querySelector('[data-tunk]')?.addEventListener('click', () => { W.timeUnknown = !W.timeUnknown; if (W.timeUnknown) W.ev.event_time = ''; draw(root, params); if (!W.timeUnknown) setTimeout(() => root.querySelector('[name=event_time]')?.focus(), 50); });
   body.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { if (W.ev.category === b.dataset.cat) return; W.ev.category = b.dataset.cat; draw(root, params); }));
   initSegmented(body, (name, v) => {
@@ -311,8 +319,9 @@ function stepEvent(body, root, params) {
   }));
   const sd = body.querySelector('#sameDay');
   const paintSame = () => {
-    const list = W.ev.event_date ? [...S.events.values()].filter((e) => e.event_date === W.ev.event_date && e.id !== params.id && e.status !== 'cancelled') : [];
-    sd.innerHTML = list.length ? `<div class="banner" style="margin:0">${icon('warning')}<div><b>${esc(L(`Υπάρχουν ήδη ${list.length} εκδηλώσεις αυτή την ημέρα`, `${list.length} events already on this day`))}</b><span>${list.map((e) => esc(coupleName(S.customers.get(e.customer_id)) + (e.church_location ? ' · ' + e.church_location : ''))).join('<br>')}</span></div></div>` : '';
+    const me = { event_date: W.ev.event_date, end_date: W.multi ? W.ev.end_date : null };
+    const list = W.ev.event_date ? [...S.events.values()].filter((e) => evOverlaps(e, me) && e.id !== params.id && e.status !== 'cancelled') : [];
+    sd.innerHTML = list.length ? `<div class="banner" style="margin:0">${icon('warning')}<div><b>${esc(W.multi ? L(`Υπάρχουν ήδη ${list.length} εκδηλώσεις αυτές τις ημέρες`, `${list.length} events already on these days`) : L(`Υπάρχουν ήδη ${list.length} εκδηλώσεις αυτή την ημέρα`, `${list.length} events already on this day`))}</b><span>${list.map((e) => esc(coupleName(S.customers.get(e.customer_id)) + (e.church_location ? ' · ' + e.church_location : ''))).join('<br>')}</span></div></div>` : '';
     sd.hidden = !list.length;
   };
   body.querySelector('[name=event_date]').addEventListener('change', paintSame);
@@ -326,8 +335,26 @@ const crewTeam = () => S.profiles.filter((p) => p.role && p.active).sort((a, b) 
 const defDuty = (p) => (W.ev.coverage === 'photo' ? 'photo' : W.ev.coverage === 'video' ? 'video' : ['videographer', 'admin_video'].includes(p?.role) ? 'video' : 'photo');
 const dutyOpts = () => [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }, { v: 'drone', label: 'Drone' }].filter((o) => !(W.ev.coverage === 'photo' && o.v === 'video') && !(W.ev.coverage === 'video' && o.v === 'photo'));
 /** Δεν είναι διαθέσιμος/η την ημέρα της εκδήλωσης; → κείμενο ωρών, αλλιώς '' */
-const unavailable = (uid) => (W.ev.event_date ? absenceWhen(absencesOn(uid, W.ev.event_date)) : '');
+const evRange = () => ({ event_date: W.ev.event_date, end_date: W.multi ? W.ev.end_date : null });
+/** Απουσίες στις ημέρες της εκδήλωσης → κείμενο ωρών (με ημερομηνία αν είναι πολυήμερη), αλλιώς '' */
+const unavailable = (uid) => {
+  if (!W.ev.event_date) return '';
+  const days = evDays(evRange());
+  const parts = days.map((d) => { const w = absenceWhen(absencesOn(uid, d)); return w ? { d, w } : null; }).filter(Boolean);
+  if (days.length > 1 && parts.length === days.length && parts.every((x) => x.w === parts[0].w)) return parts[0].w === L('όλη την ημέρα', 'all day') ? L('όλες τις ημέρες', 'all days') : `${L('όλες τις ημέρες', 'all days')} ${parts[0].w}`;
+  return parts.map((x) => (days.length > 1 ? `${fmtD(x.d).slice(0, 5)} ${x.w}` : x.w)).join('; ');
+};
 const unavailTag = (txt) => `<span class="unavail">(${esc(L('δεν είναι διαθέσιμος/η', 'not available'))}: ${esc(txt)})</span>`;
+const catName = (c) => { const o = CATEGORIES.find((x) => x.v === c); return o ? L(o.el, o.en).replace(/\s*\(.*\)$/, '') : ''; };
+/** Ήδη δεσμευμένος/η σε άλλη εκδήλωση τις ίδιες ημέρες → «Γάμος · 18:00» */
+const busyWith = (uid) => {
+  if (!W.ev.event_date) return '';
+  const me = evRange(); const multi = evDays(me).length > 1;
+  return S.crew.filter((c) => c.user_id === uid && c.event_id !== W.editId && c.event_id !== W.savedId)
+    .map((c) => S.events.get(c.event_id)).filter((e) => e && e.status !== 'cancelled' && evOverlaps(e, me))
+    .map((e) => [catName(e.category), e.event_time ? fmtTime(e.event_time) : L('ώρα ;', 'time ?'), multi || e.event_date !== W.ev.event_date ? fmtD(e.event_date).slice(0, 5) : ''].filter(Boolean).join(' · ')).join(', ');
+};
+const busyTag = (txt) => `<span class="busy">(${esc(L('ήδη δεσμευμένος/η', 'already booked'))}: ${esc(txt)})</span>`;
 
 /** Επόμενο μέσα στο βήμα «Συνεργείο»: 'stay' = άλλαξε υπο-οθόνη, false = σφάλμα, undefined = προχώρα στο επόμενο βήμα */
 function crewNext() {
@@ -360,7 +387,7 @@ function stepCrew(body, root, params) {
   const subtitle = (n, t, sub) => `<div class="crew-sub"><span class="crew-sub-n">${n}</span><div><b>${esc(t)}</b>${sub ? `<div class="small muted">${esc(sub)}</div>` : ''}</div></div>`;
   const person = (p, { on, disabled, extraHtml = '' }) => {
     const un = unavailable(p.id);
-    return `<div class="row ${disabled ? 'is-off' : ''}"><label class="hstack" style="flex:1;cursor:${disabled ? 'not-allowed' : 'pointer'};flex-wrap:nowrap"><input type="checkbox" data-u="${p.id}" ${on ? 'checked' : ''} ${disabled ? 'disabled' : ''} style="width:22px;height:22px;accent-color:var(--accent)">${avatar(p)}<div class="main-col"><div class="t" style="white-space:normal">${esc(profileName(p))} ${un ? unavailTag(un) : ''}</div></div></label>${extraHtml}</div>`;
+    return `<div class="row ${disabled ? 'is-off' : ''}"><label class="hstack" style="flex:1;cursor:${disabled ? 'not-allowed' : 'pointer'};flex-wrap:nowrap"><input type="checkbox" data-u="${p.id}" ${on ? 'checked' : ''} ${disabled ? 'disabled' : ''} style="width:22px;height:22px;accent-color:var(--accent)">${avatar(p)}<div class="main-col"><div class="t" style="white-space:normal">${esc(profileName(p))} ${un ? unavailTag(un) : ''}${busyWith(p.id) ? ` ${busyTag(busyWith(p.id))}` : ''}</div></div></label>${extraHtml}</div>`;
   };
   const wedCat = ['wedding', 'wedding_baptism'].includes(W.ev.category);
   const HOUSES = ['groom_house', 'bride_house'];
@@ -539,7 +566,7 @@ async function save(root, params, btn) {
         busy(btn, true, L('Αποθήκευση…', 'Saving…'));
       }
     }
-    const evRow = { ...W.ev, customer_id: customerId, event_time: W.timeUnknown ? null : (W.ev.event_time || null) };
+    const evRow = { ...W.ev, customer_id: customerId, event_time: W.timeUnknown ? null : (W.ev.event_time || null), end_date: W.multi && W.ev.end_date > W.ev.event_date ? W.ev.end_date : null };
     if (W.mode === 'edit') evRow.id = params.id;
     else if (W.savedId) evRow.id = W.savedId; // νέα προσπάθεια μετά από σφάλμα: όχι δεύτερη εκδήλωση
     if (W.offer.data) evRow.offer_data = W.offer.data;

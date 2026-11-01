@@ -1,7 +1,7 @@
 // =====================================================================
 //  Κοινά κομμάτια UI (κάρτες εκδηλώσεων, πακέτο προσφοράς κ.λπ.)
 // =====================================================================
-import { dutyLabel, dutyEmoji, safeColor, L, esc, icon, fmtTime, parseISO, monthShort, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, money, initials, colorFor, relDays, daysBetween, todayISO, LANG } from './core.js';
+import { isMultiDay, fmtDate, dutyLabel, dutyEmoji, safeColor, L, esc, icon, fmtTime, parseISO, monthShort, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, money, initials, colorFor, relDays, daysBetween, todayISO, LANG } from './core.js';
 import { isAdmin, profileName, profileById } from './data.js';
 
 export const catPill = (cat) => `<span class="pill cat-pill cat-${esc(cat)}">${esc(lbl(CATEGORIES, cat))}</span>`;
@@ -32,7 +32,7 @@ export function editStatusPill(v) {
 export function eventRow(v, { money: showMoney = isAdmin(), compact = false, crewType = false } = {}) {
   const e = v.e;
   const cancelled = e.status === 'cancelled';
-  const sub = [e.event_time ? fmtTime(e.event_time) : L('ώρα: ;', 'time: ?'), e.church_location].filter(Boolean).join(' · ');
+  const sub = [isMultiDay(e) ? L(`έως ${fmtDate(e.end_date).slice(0, 5)}`, `until ${fmtDate(e.end_date).slice(0, 5)}`) : '', e.event_time ? fmtTime(e.event_time) : L('ώρα: ;', 'time: ?'), e.church_location].filter(Boolean).join(' · ');
   const crew = v.crew.map((c) => avatar(c.profile, 'sm')).join('');
   let right = '';
   if (showMoney && v.price != null) {

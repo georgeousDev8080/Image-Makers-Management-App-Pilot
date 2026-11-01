@@ -6,6 +6,7 @@ import { needsOffer, dutyEmoji, L, esc, icon, money, fmtDate, todayISO, daysBetw
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, saveCustomer, patchCustomer, patchPayment, patchExpense, patchEvent, saveFinance, savePayment, deletePayment, saveExpense, deleteExpense, openOffer, yearsAvailable, profileName, profileById } from '../data.js';
 import { pageHead, setTopActions } from '../layout.js';
 import { catShort } from '../components.js';
+import { toastErr as tErr } from '../core.js';
 import { renderGrid, exportGrid } from '../grid.js';
 import { openIncomeForm, openExpenseForm, expenseTitle, paymentActions, expenseActions } from './money.js';
 import { openCrewSheet, deleteEventFlow } from './events.js';
@@ -109,6 +110,7 @@ function eventsSheet(body, tab, redraw) {
   const add = (g, c) => { if (visible.has(g)) cols.push({ group: g, ...c }); };
   add('basic', { key: 'month', label: L('Μήνας', 'Month'), w: 126, get: (v) => monthUp(v.e.event_date) });
   add('basic', { key: 'date', label: L('Ημερομηνία', 'Date'), w: 96, type: 'date', editable: true, required: true, get: (v) => v.e.event_date, set: (v, val) => val && patchEvent(v.e.id, { event_date: val }) });
+  add('basic', { key: 'end', label: L('Έως (πολυήμερη)', 'Until (multi-day)'), w: 110, type: 'date', editable: true, get: (v) => (v.e.end_date && v.e.end_date > v.e.event_date ? v.e.end_date : null), set: (v, val) => { if (val && val <= v.e.event_date) { tErr(L('Η τελευταία ημέρα πρέπει να είναι μετά την πρώτη', 'The last day must be after the first')); return Promise.reject(new Error('end_date')); } return patchEvent(v.e.id, { end_date: val || null }); } });
   add('basic', { key: 'loc', label: L('Τοποθεσία', 'Location'), w: 210, editable: true, get: (v) => v.e.church_location, set: (v, val) => patchEvent(v.e.id, { church_location: val }) });
   add('couple', { key: 'name1', label: L('Όνομα 1', 'Name 1'), w: 160, editable: (v) => !!v.c, get: (v) => v.c?.name1, set: (v, val) => updCust(v, 'name1', val) });
   add('couple', { key: 'name2', label: L('Όνομα 2', 'Name 2'), w: 160, editable: (v) => !!v.c, get: (v) => v.c?.name2, set: (v, val) => updCust(v, 'name2', val) });
@@ -192,6 +194,9 @@ const priority = (e) => (e.editing_status === 'done' ? { v: 'done', el: 'Έτο�
   : e.editing_status === 'in_progress' ? { v: 'in_progress', el: 'Σε επεξεργασία', en: 'In progress', tone: 'blue' }
   : { v: 'none', el: '—', en: '—', tone: 'grey' });
 function mitsosSheet(body, tab, redraw) {
+  if (isVideoAdmin() && (S.profile?.username === 'dimitris' || /^Δημήτρ/.test(S.profile?.full_name || '')) && st.q.trim().toLowerCase() === 'diva') {
+    st.q = ''; import('../diva.js').then((m) => m.showDiva((S.profile?.full_name || 'Dimitris').split(' ')[0]));
+  }
   if (!isVideoAdmin()) { body.innerHTML = `<div class="empty">${icon('lock')}<b>${esc(L('Μόνο για Διαχειριστή (Βιντεογράφο)', 'Admin (Videographer) only'))}</b></div>`; return; }
   let views = allEventViews({ year: st.year, includeCancelled: false }).filter((v) => v.e.coverage !== 'photo'); // μόνο φωτογραφία: δεν αφορά το βίντεο
   const counts = { open: views.filter((v) => v.e.editing_status !== 'done').length, sos: views.filter((v) => isSOS(v.e)).length };

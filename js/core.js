@@ -68,6 +68,21 @@ export function parseISO(s) { if (!s) return null; const [y, m, d] = String(s).s
 export function fmtDate(s, blank = '—') { if (!s) return blank; const [y, m, d] = String(s).slice(0, 10).split('-'); return `${d}/${m}/${y}`; }
 /** Διαφημιστικό και Άλλο δεν έχουν PDF προσφοράς */
 export const needsOffer = (cat) => cat !== 'promo' && cat !== 'other';
+/** Πολυήμερες εκδηλώσεις: τελευταία ημέρα, όλες οι ημέρες, ημέρα Χ από Ν, εύρος για εμφάνιση */
+export const evEnd = (e) => (e?.end_date && e.end_date > e.event_date ? e.end_date : e?.event_date);
+export const isMultiDay = (e) => !!(e?.end_date && e.end_date > e.event_date);
+export function evDays(e) {
+  const out = []; if (!e?.event_date) return out;
+  for (let d = e.event_date, i = 0; d <= evEnd(e) && i < 60; d = addDays(d, 1), i++) out.push(d);
+  return out;
+}
+export const evOn = (e, day) => !!e?.event_date && e.event_date <= day && evEnd(e) >= day;
+export const evOverlaps = (a, b) => !!a?.event_date && !!b?.event_date && a.event_date <= evEnd(b) && b.event_date <= evEnd(a);
+export function fmtRange(e, long = false) {
+  if (!isMultiDay(e)) return long ? fmtDateLong(e.event_date) : fmtDate(e.event_date);
+  return `${long ? fmtDateLong(e.event_date) : fmtDate(e.event_date)} – ${long ? fmtDateLong(evEnd(e)) : fmtDate(evEnd(e))}`;
+}
+export const dayCount = (e) => evDays(e).length;
 /** Κάλυψη εκδήλωσης */
 export const COVERAGE = [
   { v: 'both', el: 'Φωτογραφία & βίντεο', en: 'Photo & video', e: '📷🎥' },
@@ -647,7 +662,7 @@ export function icsFor(ev, title, location, description) {
   return [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Image Makers//Studio Manager//EL', 'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT', `UID:${ev.id}@imagemakers`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
-    ...(ev.event_time ? [`DTSTART;TZID=Europe/Athens:${d}T${t}`, `DTEND;TZID=Europe/Athens:${d}T${endH}${t.slice(2)}`] : [`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDays(ev.event_date, 1).replace(/-/g, '')}`]), // χωρίς ώρα: ολοήμερο
+    ...(ev.event_time ? [`DTSTART;TZID=Europe/Athens:${d}T${t}`, `DTEND;TZID=Europe/Athens:${evEnd(ev).replace(/-/g, '')}T${endH}${t.slice(2)}`] : [`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDays(evEnd(ev), 1).replace(/-/g, '')}`]), // χωρίς ώρα: ολοήμερο · πολυήμερη: έως την τελευταία ημέρα
     `SUMMARY:${escI(title)}`, `LOCATION:${escI(location)}`, `DESCRIPTION:${escI(description)}`,
     'BEGIN:VALARM', 'TRIGGER:-P1D', 'ACTION:DISPLAY', `DESCRIPTION:${escI(title)}`, 'END:VALARM',
     'END:VEVENT', 'END:VCALENDAR',

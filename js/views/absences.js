@@ -9,14 +9,38 @@ const canEdit = (a) => isAdmin() || a.user_id === S.profile?.id;
 const who = (id) => profileName(S.profiles.find((p) => p.id === id) || (id === S.profile?.id ? S.profile : null));
 export const absenceText = (a) => `${who(a.user_id)} · ${absenceWhen([a])}${a.note ? ` · ${a.note}` : ''}`;
 
+/** Συνεχόμενες ημέρες ίδιου ατόμου με ίδιες ώρες/σημείωση → μία πολυήμερη απουσία */
+export function groupAbsences(list) {
+  const sorted = [...list].sort((a, b) => a.user_id.localeCompare(b.user_id) || String(a.start_time || '').localeCompare(String(b.start_time || '')) || (a.note || '').localeCompare(b.note || '') || a.day.localeCompare(b.day));
+  const out = [];
+  sorted.forEach((a) => {
+    const g = out[out.length - 1];
+    if (g && g.user_id === a.user_id && (g.start_time || '') === (a.start_time || '') && (g.end_time || '') === (a.end_time || '') && (g.note || '') === (a.note || '') && addDays(g.to, 1) === a.day) { g.to = a.day; g.ids.push(a.id); }
+    else out.push({ ...a, from: a.day, to: a.day, ids: [a.id] });
+  });
+  return out.sort((a, b) => a.from.localeCompare(b.from));
+}
+const groupWhen = (g) => (g.from === g.to ? fmtDateLong(g.from) : `${fmtDateLong(g.from)} – ${fmtDateLong(g.to)}`);
+
 /** Ενέργειες σε μια απουσία (διαγραφή, αν επιτρέπεται) */
 export async function absenceActions(a) {
   if (!a) return;
+  // ολόκληρη η πολυήμερη απουσία στην οποία ανήκει αυτή η ημέρα
+  const g = groupAbsences(S.absences.filter((x) => x.user_id === a.user_id)).find((x) => x.ids.includes(a.id));
+  if (g && g.ids.length > 1) return absenceGroupActions(g);
   if (!canEdit(a)) { toast(absenceText(a), { type: 'info' }); return; }
   const r = await actionSheet({ title: `${fmtDateLong(a.day)} · ${absenceText(a)}`, actions: [{ label: L('Διαγραφή απουσίας', 'Delete absence'), value: 'del', icon: 'trash', destructive: true }] });
   if (r !== 'del') return;
   if (!await confirmBox(L('Διαγραφή απουσίας;', 'Delete absence?'), `${fmtDate(a.day)} · ${absenceText(a)}`, { ok: L('Διαγραφή', 'Delete'), destructive: true })) return;
   try { await deleteAbsence(a.id); toast(L('Η απουσία διαγράφηκε', 'Absence deleted')); } catch (e) { console.error(e); }
+}
+
+async function absenceGroupActions(g) {
+  if (!canEdit(g)) { toast(`${groupWhen(g)} · ${absenceText(g)}`, { type: 'info' }); return; }
+  const r = await actionSheet({ title: `${groupWhen(g)} · ${absenceText(g)}`, actions: [{ label: L(`Διαγραφή όλης της απουσίας (${g.ids.length} ημέρες)`, `Delete the whole absence (${g.ids.length} days)`), value: 'del', icon: 'trash', destructive: true }] });
+  if (r !== 'del') return;
+  if (!await confirmBox(L('Διαγραφή απουσίας;', 'Delete absence?'), `${groupWhen(g)} · ${absenceText(g)}`, { ok: L('Διαγραφή', 'Delete'), destructive: true })) return;
+  try { for (const id of g.ids) await deleteAbsence(id); toast(L('Η απουσία διαγράφηκε', 'Absence deleted')); } catch (e) { console.error(e); }
 }
 
 /** Φόρμα δήλωσης απουσίας */
@@ -25,8 +49,7 @@ export function openAbsenceSheet({ day = todayISO(), userId = null } = {}) {
   const people = admin ? S.profiles.filter((p) => p.role && p.active).sort((a, b) => profileName(a).localeCompare(profileName(b))) : [S.profile];
   const f = { user_id: userId || S.profile?.id, from: day < todayISO() ? todayISO() : day, to: '', allDay: true, start: '', end: '', note: '' };
   const body = document.createElement('div');
-  const upcoming = () => S.absences.filter((a) => a.day >= todayISO() && (admin || a.user_id === S.profile?.id))
-    .sort((a, b) => a.day.localeCompare(b.day) || String(a.start_time || '').localeCompare(String(b.start_time || ''))).slice(0, 40);
+  const upcoming = () => groupAbsences(S.absences.filter((a) => a.day >= todayISO() && (admin || a.user_id === S.profile?.id))).slice(0, 40);
   const draw = () => {
     body.innerHTML = `<div class="form">
       ${admin ? `<div class="field"><label>${esc(L('Ποιος δεν θα είναι διαθέσιμος', 'Who will be unavailable'))}</label><select class="select" name="user_id">${people.map((p) => `<option value="${p.id}" ${p.id === f.user_id ? 'selected' : ''}>${esc(profileName(p))}</option>`).join('')}</select></div>`
@@ -43,7 +66,7 @@ export function openAbsenceSheet({ day = todayISO(), userId = null } = {}) {
       <div class="field"><label>${esc(L('Σημείωση (προαιρετικά)', 'Note (optional)'))}</label><input class="input" name="note" maxlength="300" value="${esc(f.note)}" placeholder="${esc(L('π.χ. ταξίδι, άλλη υποχρέωση', 'e.g. travel, other commitment'))}"></div>
     </div>
     <div class="section-title"><h2>${esc(admin ? L('Επόμενες απουσίες', 'Upcoming absences') : L('Οι απουσίες μου', 'My absences'))}</h2></div>
-    <div class="list">${upcoming().map((a) => `<button class="row" data-abs="${a.id}"><div class="main-col"><div class="t">${esc(fmtDateLong(a.day))}</div><div class="s">${esc(absenceText(a))}</div></div>${canEdit(a) ? icon('trash', 'chev') : ''}</button>`).join('') || `<div class="row muted small">${esc(L('Δεν υπάρχουν δηλωμένες απουσίες.', 'No absences declared.'))}</div>`}</div>`;
+    <div class="list">${upcoming().map((a) => `<button class="row" data-abs="${a.id}"><div class="main-col"><div class="t">${esc(groupWhen(a))}${a.ids.length > 1 ? ` <span class="pill">${esc(L(`${a.ids.length} ημέρες`, `${a.ids.length} days`))}</span>` : ''}</div><div class="s">${esc(absenceText(a))}</div></div>${canEdit(a) ? icon('trash', 'chev') : ''}</button>`).join('') || `<div class="row muted small">${esc(L('Δεν υπάρχουν δηλωμένες απουσίες.', 'No absences declared.'))}</div>`}</div>`;
     body.querySelectorAll('[name]').forEach((i) => i.addEventListener(i.type === 'checkbox' || i.tagName === 'SELECT' ? 'change' : 'input', () => {
       if (i.type === 'checkbox') { f[i.name] = i.checked; draw(); return; }
       f[i.name] = i.value;
