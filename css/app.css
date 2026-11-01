@@ -1108,3 +1108,5 @@ html, body, button, a, input, select, textarea, label, [role="button"], .row, .c
 .time-split .ts-unknown.on { background: var(--accent-soft); color: var(--accent); }
 .time-split:focus-within { box-shadow: 0 0 0 4px var(--accent-soft); }
 .no-time { color: var(--orange); font-weight: 600; }
+/* μήνας: τύπος + τοποθεσία σε έως 2 γραμμές */
+.cal-cell .cal-ev { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.3; padding: 3px 6px; }

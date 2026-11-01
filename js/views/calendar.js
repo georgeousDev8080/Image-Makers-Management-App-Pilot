@@ -62,7 +62,7 @@ function timeGrid(days, byDate, admin) {
       const w = 100 / n;
       const loc = v.e.church_location || '';
       return `<a class="tg-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}" style="top:${(s / 60) * HOUR}px;height:${(DUR / 60) * HOUR - 2}px;left:calc(${col * w}% + 1px);width:calc(${w}% - 3px)" title="${esc(evTip(v))}">
-        <b>${esc(evType(v))}</b><span>${esc(hhmm(s))}${loc ? ` · ${esc(loc)}` : ''}</span></a>`;
+        <b>${esc(evType(v))}</b><span>${esc(hhmm(s))}</span></a>`;
     }).join('');
     const nowLine = iso === today ? `<div class="tg-now" style="top:${(nowM / 60) * HOUR}px"></div>` : '';
     return `<div class="tg-col ${iso === today ? 'today' : ''}" data-day="${iso}" ${admin ? 'data-slot' : ''}>${blocks}${nowLine}</div>`;
@@ -79,7 +79,7 @@ const absBy = () => { const m = {}; S.absences.forEach((a) => { (m[a.day] ||= []
 const shortName = (id) => (profileName(S.profiles.find((p) => p.id === id) || (id === S.profile?.id ? S.profile : null)) || '').split(' ')[0];
 const absChip = (a) => `<button type="button" class="cal-abs" data-abs="${a.id}" title="${esc(absenceText(a))}">🚫 ${esc(shortName(a.user_id))}${a.start_time ? ` <span class="t">${esc(absenceWhen([a]))}</span>` : ''}</button>`;
 /** Στο ημερολόγιο φαίνεται ο τύπος της εκδήλωσης (το όνομα του πελάτη μένει στο αναδυόμενο κείμενο) */
-const evType = (v) => catLabel(v.e.category);
+const evType = (v) => [catLabel(v.e.category), v.e.church_location].filter(Boolean).join(' · ');
 const evTip = (v) => [catLabel(v.e.category), v.e.event_time ? fmtTime(v.e.event_time) : '', v.e.church_location, v.title].filter(Boolean).join(' · ');
 function monthGrid(byDate, admin) {
   const AB = absBy();
@@ -124,7 +124,7 @@ function schedule(views) {
     const first = v.e.event_date !== lastD; lastD = v.e.event_date;
     html += `<div class="sch-row ${first ? 'first' : ''}">
       <div class="sch-date ${v.e.event_date === today ? 'today' : ''}">${first ? `<span class="n">${d.getDate()}</span><span class="w">${esc(wd[(d.getDay() + 6) % 7])}</span>` : ''}</div>
-      <a class="sch-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}"><i></i><span class="sch-t">${esc(v.e.event_time ? fmtTime(v.e.event_time) : L('Χωρίς ώρα', 'No time'))}</span><span class="sch-n"><b>${esc(evType(v))}</b>${v.e.church_location ? `<small>${esc(v.e.church_location)}</small>` : ''}</span></a>
+      <a class="sch-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}"><i></i><span class="sch-t">${esc(v.e.event_time ? fmtTime(v.e.event_time) : L('Χωρίς ώρα', 'No time'))}</span><span class="sch-n"><b>${esc(evType(v))}</b></span></a>
     </div>`;
   });
   return html + '</div>';
