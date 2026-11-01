@@ -2,9 +2,9 @@
 //  Νέα εκδήλωση / επεξεργασία (οδηγός σε 4 βήματα)
 // =====================================================================
 import { needsOffer, normTime, timeInputAttrs, fmtTime, L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, initSegmented, toast, toastErr, busy, mapsUrl, money, parseMoney } from '../core.js';
-import { S, coupleName, profileName, saveCustomer, saveEvent, saveFinance, setCrew, uploadOffer, eventView, updateRequest, saveAppointment, copyOfferToEvent } from '../data.js';
+import { S, coupleName, profileName, saveCustomer, saveEvent, saveFinance, setCrew, crewDiffers, absencesOn, absenceWhen, uploadOffer, eventView, updateRequest, saveAppointment, copyOfferToEvent } from '../data.js';
 import { pageHead, go, backBtn } from '../layout.js';
-import { avatar, packageNameFrom, offerSummaryHTML } from '../components.js';
+import { avatar, packageNameFrom, offerSummaryHTML, CREW_TASKS, crewBriefTexts } from '../components.js';
 import { pickLocation } from '../mappicker.js';
 import { openOfferBuilder, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf, offerKindFor, offerKindOf } from '../offer.js';
 
@@ -13,12 +13,12 @@ let key = '';
 
 function freshState(params) {
   const s = {
-    step: 0, mode: params.id ? 'edit' : 'new',
+    step: params.id && params.step ? Math.min(3, Math.max(0, Number(params.step) || 0)) : 0, mode: params.id ? 'edit' : 'new',
     custMode: 'existing', customerId: null, cq: '',
     cust: { name1: '', name2: '', phone1: '', phone2: '', email1: '', email2: '' },
     ev: { category: 'wedding', event_date: params.date || '', event_time: normTime(params.time) || '', resolution: '1080', church_location: '', bride_house: '', groom_house: '', reception_location: '', church_geo: '', bride_geo: '', groom_geo: '', reception_geo: '', notes: '', extra_crew: '' },
     fin: { package_price: '', package_name: '', second_crew: false, office_notes: '' },
-    crew: [],
+    crew: [], crewMode: null, cs: 'mode', tasks: { 1: [], 2: [] }, picked: [],
     offer: { pdf: null, pdfName: '', data: null, existingPath: null },
     requestId: params.request || null,
     appointmentId: params.appointment || null,
@@ -34,7 +34,12 @@ function freshState(params) {
       Object.keys(s.ev).forEach((k) => { s.ev[k] = e[k] ?? ''; });
       s.ev.event_time = (e.event_time || '').slice(0, 5);
       s.fin = { package_price: v.f.package_price ?? '', package_name: v.f.package_name || '', second_crew: !!v.f.second_crew, office_notes: v.f.office_notes || '' };
-      s.crew = v.crew.map((c) => ({ user_id: c.user_id, duty: c.duty }));
+      s.crew = v.crew.map((c) => ({ user_id: c.user_id, duty: c.duty, team: c.team ?? null, tasks: c.tasks || [] }));
+      s.crewMode = e.crew_mode || 'single';
+      if (s.crewMode === 'double') {
+        s.picked = s.crew.map((c) => c.user_id);
+        [1, 2].forEach((t) => { s.tasks[t] = [...(s.crew.find((c) => c.team === t)?.tasks || [])]; });
+      }
       s.offer = { pdf: null, pdfName: '', data: e.offer_data || null, existingPath: e.offer_path || null };
       s.origCategory = e.category;
     }
@@ -94,7 +99,7 @@ const offerReady = () => !needsOffer(W.ev.category) || (!!(W.offer.pdf || W.offe
 const STEPS = () => [L('Πελάτης', 'Customer'), L('Εκδήλωση', 'Event'), L('Συνεργείο', 'Crew'), needsOffer(W.ev.category) ? L('Προσφορά & πακέτο', 'Offer & package') : L('Πακέτο', 'Package')];
 
 export function renderEventForm(root, params = {}) {
-  const k = JSON.stringify([params.id, params.request, params.date, params.customer, params.appointment]);
+  const k = JSON.stringify([params.id, params.request, params.date, params.customer, params.appointment, params.step]);
   if (!W || k !== key || params._fresh) { W = freshState(params); key = k; params._fresh = false; }
   draw(root, params);
 }
@@ -107,7 +112,7 @@ function draw(root, params) {
   html += `<div id="stepBody" class="view-enter"></div>`;
   html += `<div class="wizard-foot">
     <button class="btn" data-prev ${W.step === 0 ? 'style="visibility:hidden"' : ''}>${icon('chevL')} ${esc(L('Πίσω', 'Back'))}</button>
-    ${W.step < 3 ? `<button class="btn primary large" data-next>${esc(L('Επόμενο', 'Next'))} ${icon('chevR')}</button>` : `<button class="btn primary large" data-save>${icon('check')} ${esc(W.mode === 'edit' ? L('Αποθήκευση αλλαγών', 'Save changes') : L('Αποθήκευση εκδήλωσης', 'Save event'))}</button>`}
+    ${W.step < 3 ? `<span class="hstack" style="gap:8px">${W.mode === 'edit' ? `<button class="btn large" data-save2>${icon('check')} <span class="hide-mobile">${esc(L('Αποθήκευση', 'Save'))}</span></button>` : ''}<button class="btn primary large" data-next>${esc(L('Επόμενο', 'Next'))} ${icon('chevR')}</button></span>` : `<button class="btn primary large" data-save>${icon('check')} ${esc(W.mode === 'edit' ? L('Αποθήκευση αλλαγών', 'Save changes') : L('Αποθήκευση εκδήλωσης', 'Save event'))}</button>`}
   </div>`;
   root.innerHTML = html;
   const body = root.querySelector('#stepBody');
@@ -119,11 +124,18 @@ function draw(root, params) {
     if (to > W.step && !validateUpTo(root, params, to - 1)) return;
     W.step = to; draw(root, params); window.scrollTo({ top: 0, behavior: 'smooth' });
   }));
-  root.querySelector('[data-prev]')?.addEventListener('click', () => { W.step--; draw(root, params); window.scrollTo({ top: 0, behavior: 'smooth' }); });
-  root.querySelector('[data-next]')?.addEventListener('click', () => {
-    if (!validate(root, W.step)) return;
-    W.step++; draw(root, params); window.scrollTo({ top: 0, behavior: 'smooth' });
+  root.querySelector('[data-prev]')?.addEventListener('click', () => {
+    if (W.step === 2 && crewBack()) { draw(root, params); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    W.step--; if (W.step === 2) W.cs = W.crewMode === 'double' ? 't2' : W.crewMode === 'single' ? 'single' : 'mode';
+    draw(root, params); window.scrollTo({ top: 0, behavior: 'smooth' });
   });
+  root.querySelector('[data-next]')?.addEventListener('click', () => {
+    if (W.step === 2) { const r = crewNext(); if (r === false) return; if (r === 'stay') { draw(root, params); window.scrollTo({ top: 0, behavior: 'smooth' }); return; } }
+    if (!validate(root, W.step)) return;
+    W.step++; if (W.step === 2) W.cs = 'mode';
+    draw(root, params); window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  root.querySelector('[data-save2]')?.addEventListener('click', (e) => save(root, params, e.currentTarget));
   root.querySelector('[data-save]')?.addEventListener('click', (e) => save(root, params, e.currentTarget));
 }
 
@@ -159,6 +171,13 @@ function validate(root, step) {
     if (!W.ev.category || !W.ev.resolution) ok = false;
     if (!ok) toastErr(L('Συμπληρώστε τα υποχρεωτικά πεδία', 'Fill in the required fields'));
     return ok;
+  }
+  if (step === 2) {
+    if (W.crewMode === 'double') {
+      const t1 = W.crew.filter((c) => c.team === 1), t2 = W.crew.filter((c) => c.team === 2);
+      if (!t1.length || !t2.length) { toastErr(L('Συμπληρώστε και τα 2 συνεργεία', 'Fill in both crews'), L('Κάθε συνεργείο χρειάζεται τουλάχιστον ένα άτομο.', 'Each crew needs at least one person.')); return false; }
+    }
+    return true;
   }
   if (step === 3) {
     if (offerMismatch()) { toastErr(L('Χρειάζεται νέα προσφορά', 'A new offer is needed'), offerKind() === 'baptism' ? L('Η προσφορά που υπάρχει είναι για γάμο. Δημιουργήστε την προσφορά με τον Οδηγό προσφοράς βάπτισης.', 'The existing offer is for a wedding. Create the offer with the baptism offer builder.') : L('Η προσφορά που υπάρχει είναι για βάπτιση. Δημιουργήστε νέα με τον Οδηγό προσφοράς.', 'The existing offer is for a baptism. Create a new one with the offer builder.')); return false; }
@@ -287,28 +306,122 @@ function stepEvent(body, root, params) {
 }
 
 // ---------- Βήμα 3: Συνεργείο ----------
-function stepCrew(body) {
-  const team = S.profiles.filter((p) => p.role && p.active).sort((a, b) => profileName(a).localeCompare(profileName(b)));
-  const sel = new Map(W.crew.map((c) => [c.user_id, c.duty]));
-  const defDuty = (p) => (['videographer', 'admin_video'].includes(p.role) ? 'video' : 'photo');
-  const paint = () => {
-    body.innerHTML = `<div class="card pad"><p class="muted small">${esc(L('Προαιρετικό. Όσοι επιλεγούν θα λάβουν ειδοποίηση με τα στοιχεία της εκδήλωσης (χωρίς οικονομικά).', 'Optional. Selected members get a notification with the event details (no finances).'))}</p></div>
-      <div class="list mt-s">${team.map((p) => {
-        const on = sel.has(p.id);
-        return `<div class="row"><label class="hstack" style="flex:1;cursor:pointer;flex-wrap:nowrap"><input type="checkbox" data-u="${p.id}" ${on ? 'checked' : ''} style="width:22px;height:22px;accent-color:var(--accent)">${avatar(p)}<div class="main-col"><div class="t">${esc(profileName(p))}</div></div></label>
-          ${on ? segmented('d_' + p.id, [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }, { v: 'drone', label: 'Drone' }], sel.get(p.id)) : ''}</div>`;
-      }).join('') || `<div class="row muted">${esc(L('Δεν υπάρχουν ακόμα μέλη ομάδας με ρόλο.', 'No team members with a role yet.'))}</div>`}</div>
-      <div class="card pad mt"><div class="field"><label>${esc(L('Εξωτερικοί συνεργάτες (προαιρετικό)', 'External crew (optional)'))}</label><input class="input" name="extra_crew" value="${esc(W.ev.extra_crew || '')}" placeholder="${esc(L('π.χ. Νίκος (drone)', 'e.g. Nick (drone)'))}"></div></div>`;
+// Συνεργείο: 1 συνεργείο (όπως πάντα) ή 2 συνεργεία (επιλογή ατόμων → συνεργείο 1 → συνεργείο 2)
+const crewTeam = () => S.profiles.filter((p) => p.role && p.active).sort((a, b) => profileName(a).localeCompare(profileName(b)));
+const defDuty = (p) => (['videographer', 'admin_video'].includes(p?.role) ? 'video' : 'photo');
+/** Δεν είναι διαθέσιμος/η την ημέρα της εκδήλωσης; → κείμενο ωρών, αλλιώς '' */
+const unavailable = (uid) => (W.ev.event_date ? absenceWhen(absencesOn(uid, W.ev.event_date)) : '');
+const unavailTag = (txt) => `<span class="unavail">(${esc(L('δεν είναι διαθέσιμος/η', 'not available'))}: ${esc(txt)})</span>`;
+
+/** Επόμενο μέσα στο βήμα «Συνεργείο»: 'stay' = άλλαξε υπο-οθόνη, false = σφάλμα, undefined = προχώρα στο επόμενο βήμα */
+function crewNext() {
+  if (W.cs === 'mode') {
+    if (!W.crewMode) W.crewMode = 'single';
+    W.cs = W.crewMode === 'double' ? 'pick' : 'single';
+    return 'stay';
+  }
+  if (W.cs === 'pick') {
+    if (W.picked.length < 2) { toastErr(L('Επιλέξτε τουλάχιστον 2 άτομα', 'Choose at least 2 people'), L('Για 2 συνεργεία χρειάζεται ένα άτομο σε κάθε συνεργείο.', 'Two crews need at least one person each.')); return false; }
+    W.cs = 't1'; return 'stay';
+  }
+  if (W.cs === 't1') {
+    if (!W.crew.some((c) => c.team === 1)) { toastErr(L('Επιλέξτε ποιοι είναι στο συνεργείο 1', 'Choose who is in crew 1')); return false; }
+    if (!W.picked.some((u) => !W.crew.some((c) => c.user_id === u && c.team === 1))) { toastErr(L('Δεν έμεινε κανείς για το συνεργείο 2', 'Nobody left for crew 2'), L('Αφήστε τουλάχιστον ένα άτομο για το 2ο συνεργείο.', 'Leave at least one person for crew 2.')); return false; }
+    W.cs = 't2'; return 'stay';
+  }
+  return undefined;
+}
+function crewBack() {
+  const back = { pick: 'mode', single: 'mode', t1: 'pick', t2: 't1' }[W.cs];
+  if (!back) return false;
+  W.cs = back; return true;
+}
+
+function stepCrew(body, root, params) {
+  const team = crewTeam();
+  const redraw = () => draw(root, params);
+  const extra = `<div class="card pad mt"><div class="field"><label>${esc(L('Εξωτερικοί συνεργάτες (προαιρετικό)', 'External crew (optional)'))}</label><input class="input" name="extra_crew" value="${esc(W.ev.extra_crew || '')}" placeholder="${esc(L('π.χ. Νίκος (drone)', 'e.g. Nick (drone)'))}"></div></div>`;
+  const subtitle = (n, t, sub) => `<div class="crew-sub"><span class="crew-sub-n">${n}</span><div><b>${esc(t)}</b>${sub ? `<div class="small muted">${esc(sub)}</div>` : ''}</div></div>`;
+  const person = (p, { on, disabled, extraHtml = '' }) => {
+    const un = unavailable(p.id);
+    return `<div class="row ${disabled ? 'is-off' : ''}"><label class="hstack" style="flex:1;cursor:${disabled ? 'not-allowed' : 'pointer'};flex-wrap:nowrap"><input type="checkbox" data-u="${p.id}" ${on ? 'checked' : ''} ${disabled ? 'disabled' : ''} style="width:22px;height:22px;accent-color:var(--accent)">${avatar(p)}<div class="main-col"><div class="t" style="white-space:normal">${esc(profileName(p))} ${un ? unavailTag(un) : ''}</div></div></label>${extraHtml}</div>`;
+  };
+  const taskBoxes = (t) => `<div class="card pad mt"><b>${esc(t === 1 ? L('Τι αναλαμβάνει το συνεργείο 1', 'What crew 1 covers') : L('Τι αναλαμβάνει το συνεργείο 2', 'What crew 2 covers'))}</b>
+      <div class="task-grid mt-s">${CREW_TASKS.filter((k) => k.v !== 'houses' || ['wedding', 'wedding_baptism'].includes(W.ev.category)).map((k) => `<label class="task-box ${W.tasks[t].includes(k.v) ? 'on' : ''}"><input type="checkbox" data-task="${k.v}" ${W.tasks[t].includes(k.v) ? 'checked' : ''}><span>${esc(L(k.el, k.en))}</span></label>`).join('')}</div></div>`;
+  const syncTasks = (t) => { W.crew = W.crew.map((c) => (c.team === t ? { ...c, tasks: [...W.tasks[t]] } : c)); };
+  const bindTasks = (t) => body.querySelectorAll('[data-task]').forEach((cb) => cb.addEventListener('change', () => {
+    const v = cb.dataset.task;
+    W.tasks[t] = cb.checked ? [...new Set([...W.tasks[t], v])] : W.tasks[t].filter((x) => x !== v);
+    cb.closest('.task-box').classList.toggle('on', cb.checked);
+    syncTasks(t);
+  }));
+
+  // Οθόνη 1: πόσα συνεργεία
+  if (W.cs === 'mode') {
+    body.innerHTML = `<div class="crew-modes">
+        <button type="button" class="crew-mode ${W.crewMode !== 'double' ? 'on' : ''}" data-cm="single"><span class="cm-ic">${icon('users')}</span><b>${esc(L('1 συνεργείο', '1 crew'))}</b><span>${esc(L('(βασικό)', '(main)'))}</span></button>
+        <button type="button" class="crew-mode ${W.crewMode === 'double' ? 'on' : ''}" data-cm="double"><span class="cm-ic">${icon('users')}${icon('users')}</span><b>${esc(L('2 συνεργεία', '2 crews'))}</b><span>${esc(L('χωρίζονται οι αρμοδιότητες', 'tasks are split'))}</span></button>
+      </div>
+      <p class="muted small center mt">${esc(L('Προαιρετικό: μπορείτε να ορίσετε το συνεργείο και αργότερα.', 'Optional: you can set the crew later.'))}</p>`;
+    body.querySelectorAll('[data-cm]').forEach((b) => b.addEventListener('click', () => {
+      const m = b.dataset.cm;
+      if (m !== W.crewMode) {
+        // αλλαγή τύπου: κρατάμε τα άτομα, μηδενίζουμε τη διαίρεση σε συνεργεία
+        W.crewMode = m;
+        if (m === 'double') { W.picked = W.crew.map((c) => c.user_id); W.crew = W.crew.map((c) => ({ ...c, team: null, tasks: [] })); W.tasks = { 1: [], 2: [] }; }
+        else W.crew = W.crew.map((c) => ({ ...c, team: null, tasks: [] }));
+      }
+      W.cs = m === 'double' ? 'pick' : 'single';
+      redraw();
+    }));
+    return;
+  }
+
+  // 1 συνεργείο: όπως πάντα (Φωτο / Βίντεο / Drone ανά άτομο)
+  if (W.cs === 'single') {
+    const sel = new Map(W.crew.map((c) => [c.user_id, c.duty]));
+    const write = () => { W.crew = [...sel.entries()].map(([user_id, duty]) => ({ user_id, duty, team: null, tasks: [] })); };
+    body.innerHTML = subtitle('1', L('1 συνεργείο (βασικό)', '1 crew (main)'), L('Όσοι επιλεγούν θα λάβουν ειδοποίηση με τα στοιχεία της εκδήλωσης και την αρμοδιότητά τους (χωρίς οικονομικά).', 'Selected members get a notification with the event details and their duty (no finances).'))
+      + `<div class="list mt-s">${team.map((p) => {
+        const on = sel.has(p.id); const un = unavailable(p.id);
+        return person(p, { on, disabled: !!un && !on, extraHtml: on ? segmented('d_' + p.id, [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }, { v: 'drone', label: 'Drone' }], sel.get(p.id)) : '' });
+      }).join('') || `<div class="row muted">${esc(L('Δεν υπάρχουν ακόμα μέλη ομάδας με ρόλο.', 'No team members with a role yet.'))}</div>`}</div>` + extra;
     body.querySelectorAll('[data-u]').forEach((cb) => cb.addEventListener('change', () => {
       const p = team.find((x) => x.id === cb.dataset.u);
       if (cb.checked) sel.set(p.id, defDuty(p)); else sel.delete(p.id);
-      W.crew = [...sel.entries()].map(([user_id, duty]) => ({ user_id, duty }));
-      paint();
+      write(); redraw();
     }));
-    initSegmented(body, (name, val) => { sel.set(name.slice(2), val); W.crew = [...sel.entries()].map(([user_id, duty]) => ({ user_id, duty })); });
+    initSegmented(body, (name, val) => { sel.set(name.slice(2), val); write(); });
     bindInputs(body, W.ev);
-  };
-  paint();
+    return;
+  }
+
+  // 2 συνεργεία · Οθόνη 2: ποιοι θα πάνε (μόνο ονόματα)
+  if (W.cs === 'pick') {
+    body.innerHTML = subtitle('2', L('Επιλέξτε συνολικά τα άτομα', 'Choose everyone who goes'), L('Όλοι όσοι θα πάνε και στα 2 συνεργεία. Στα επόμενα βήματα τους χωρίζετε.', 'Everyone going in both crews. You split them in the next steps.'))
+      + `<div class="list mt-s">${team.map((p) => { const on = W.picked.includes(p.id); return person(p, { on, disabled: !!unavailable(p.id) && !on }); }).join('')}</div>` + extra;
+    body.querySelectorAll('[data-u]').forEach((cb) => cb.addEventListener('change', () => {
+      const u = cb.dataset.u;
+      if (cb.checked) W.picked = [...new Set([...W.picked, u])];
+      else { W.picked = W.picked.filter((x) => x !== u); W.crew = W.crew.filter((c) => c.user_id !== u); }
+    }));
+    bindInputs(body, W.ev);
+    return;
+  }
+
+  // Οθόνη 3 / 4: συνεργείο 1 (από όσους επιλέχθηκαν) και συνεργείο 2 (από όσους έμειναν)
+  const t = W.cs === 't1' ? 1 : 2;
+  const pool = W.picked.map((u) => team.find((p) => p.id === u)).filter(Boolean)
+    .filter((p) => t === 1 || !W.crew.some((c) => c.user_id === p.id && c.team === 1));
+  body.innerHTML = subtitle(t === 1 ? '3' : '4', t === 1 ? L('Επιλέξτε το 1ο συνεργείο (βασικό)', 'Choose crew 1 (main)') : L('Επιλέξτε το 2ο συνεργείο', 'Choose crew 2'), t === 1 ? L('Από τα άτομα που επιλέξατε.', 'From the people you chose.') : L('Από τα άτομα που έμειναν. Όποιος δεν επιλεγεί, δεν θα πάει.', 'From the people left. Anyone not chosen will not go.'))
+    + `<div class="list mt-s">${pool.map((p) => person(p, { on: W.crew.some((c) => c.user_id === p.id && c.team === t) })).join('') || `<div class="row muted">${esc(L('Δεν έμεινε κανείς.', 'Nobody left.'))}</div>`}</div>`
+    + taskBoxes(t);
+  body.querySelectorAll('[data-u]').forEach((cb) => cb.addEventListener('change', () => {
+    const u = cb.dataset.u;
+    W.crew = W.crew.filter((c) => c.user_id !== u);
+    if (cb.checked) W.crew.push({ user_id: u, duty: defDuty(team.find((p) => p.id === u)), team: t, tasks: [...W.tasks[t]] });
+  }));
+  bindTasks(t);
 }
 
 // ---------- Βήμα 4: Προσφορά ----------
@@ -395,6 +508,8 @@ async function save(root, params, btn) {
     // πεδία που δεν υπάρχουν στην κατηγορία: σπίτια μόνο σε γάμο/γαμοβάπτιση, δεξίωση όχι σε διαφημιστικό/άλλο
     if (!['wedding', 'wedding_baptism'].includes(evRow.category)) Object.assign(evRow, { bride_house: null, groom_house: null, bride_geo: null, groom_geo: null, house_location: null });
     if (['promo', 'other'].includes(evRow.category)) Object.assign(evRow, { reception_location: null, reception_geo: null });
+    const prevMode = (evRow.id && S.events.get(evRow.id)?.crew_mode) || 'single';
+    evRow.crew_mode = W.crewMode === 'double' ? 'double' : 'single';
     const ev = await saveEvent(evRow);
     W.savedId = ev.id;
     if (!needsOffer(W.ev.category)) { /* διαφημιστικό/άλλο: χωρίς PDF προσφοράς */ }
@@ -409,9 +524,17 @@ async function save(root, params, btn) {
     }
     const price = parseMoney(W.fin.package_price);
     await saveFinance(ev.id, { package_price: price, package_name: W.fin.package_name || null, second_crew: !!W.fin.second_crew, office_notes: W.fin.office_notes || null });
-    const curCrew = S.crew.filter((c) => c.event_id === ev.id);
-    const crewChanged = W.crew.length !== curCrew.length || W.crew.some((c) => !curCrew.some((x) => x.user_id === c.user_id && x.duty === c.duty));
-    if (crewChanged) await setCrew(ev.id, W.crew);
+    // συνεργείο: αν άλλαξε η σύνθεση/οι αρμοδιότητες, ξαναγράφονται τα κείμενα ανάθεσης
+    const mode = W.crewMode === 'double' ? 'double' : 'single';
+    const list = (mode === 'double' ? W.crew.filter((c) => c.team === 1 || c.team === 2) : W.crew.map((c) => ({ ...c, team: null, tasks: [] })))
+      .map((c) => ({ user_id: c.user_id, duty: c.duty || 'photo', team: c.team ?? null, tasks: c.tasks || [] }));
+    const cur = S.crew.filter((c) => c.event_id === ev.id);
+    const configChanged = prevMode !== mode || cur.length !== list.length || list.some((l) => { const c = cur.find((x) => x.user_id === l.user_id); return !c || c.duty !== l.duty || (c.team ?? null) !== l.team || JSON.stringify([...(c.tasks || [])].sort()) !== JSON.stringify([...l.tasks].sort()); });
+    if (configChanged) {
+      const texts = crewBriefTexts(mode, list);
+      const withBriefs = list.map((l) => ({ ...l, brief: texts[l.user_id] || null }));
+      if (crewDiffers(ev.id, withBriefs)) await setCrew(ev.id, withBriefs);
+    }
     if (W.appointmentId) await saveAppointment({ id: W.appointmentId, status: 'confirmed', event_id: ev.id, customer_id: customerId, handled_by: S.profile.id }).catch(() => {});
     if (W.requestId) await updateRequest(W.requestId, { status: 'converted', event_id: ev.id, customer_id: customerId, handled_by: S.profile.id }).catch(() => {});
     toast(W.mode === 'edit' ? L('Οι αλλαγές αποθηκεύτηκαν', 'Changes saved') : L('Η εκδήλωση δημιουργήθηκε! 🎉', 'Event created! 🎉'), { body: W.crew.length ? L('Το συνεργείο ειδοποιήθηκε.', 'The crew was notified.') : '' });

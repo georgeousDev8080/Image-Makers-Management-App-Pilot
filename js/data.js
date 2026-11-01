@@ -20,6 +20,7 @@ export const S = {
   events: new Map(),
   finance: new Map(),
   crew: [],
+  absences: [],
   payments: [],
   expenses: [],
   notifications: [],
@@ -96,6 +97,7 @@ const loaders = {
   customers: async () => { S.customers = new Map((await fetchAll('customers')).map((r) => [r.id, r])); },
   events: async () => { S.events = new Map((await fetchAll('events', (x) => x, 'event_date')).map((r) => [r.id, r])); },
   event_crew: async () => { S.crew = await fetchAll('event_crew'); },
+  absences: async () => { try { S.absences = await fetchAll('absences', (x) => x, 'day'); } catch (e) { console.warn('absences', e); S.absences = []; } },
   event_finance: async () => { S.finance = isAdmin() ? new Map((await fetchAll('event_finance', (x) => x, 'event_id')).map((r) => [r.event_id, r])) : new Map(); },
   payments: async () => { S.payments = isAdmin() ? await fetchAll('payments') : []; },
   expenses: async () => { S.expenses = isAdmin() ? await fetchAll('expenses') : []; },
@@ -151,7 +153,7 @@ let onNewNotification = null;
 export function setNotificationHandler(fn) { onNewNotification = fn; }
 export function startRealtime() {
   stopRealtime();
-  const tables = ['notifications', 'events', 'event_crew', 'event_finance', 'payments', 'expenses', 'customers', 'message_queue', 'offer_requests', 'profiles', 'appointments', 'workflow_templates'];
+  const tables = ['notifications', 'events', 'event_crew', 'absences', 'event_finance', 'payments', 'expenses', 'customers', 'message_queue', 'offer_requests', 'profiles', 'appointments', 'workflow_templates'];
   channel = sb.channel('im-db');
   tables.forEach((t) => {
     channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, (payload) => {
@@ -290,7 +292,7 @@ export async function deleteCustomer(id) {
   S.customers.delete(id); emit('customers');
 }
 
-const EVENT_FIELDS = ['customer_id', 'category', 'event_date', 'event_time', 'church_location', 'house_location', 'bride_house', 'groom_house', 'church_geo', 'bride_geo', 'groom_geo', 'reception_geo', 'reception_location', 'resolution', 'notes', 'extra_crew', 'offer_path', 'offer_data', 'offer_updated_at', 'photo_status', 'editing_status', 'editing_pc', 'video_notes', 'status'];
+const EVENT_FIELDS = ['crew_mode', 'customer_id', 'category', 'event_date', 'event_time', 'church_location', 'house_location', 'bride_house', 'groom_house', 'church_geo', 'bride_geo', 'groom_geo', 'reception_geo', 'reception_location', 'resolution', 'notes', 'extra_crew', 'offer_path', 'offer_data', 'offer_updated_at', 'photo_status', 'editing_status', 'editing_pc', 'video_notes', 'status'];
 export async function saveEvent(ev) {
   const row = {};
   EVENT_FIELDS.forEach((k) => { if (k in ev) row[k] = ev[k] === '' ? null : ev[k]; });
@@ -323,17 +325,50 @@ export async function saveFinance(eventId, patch) {
   S.finance.set(eventId, data); emit('event_finance');
   return data;
 }
+/** Τα πεδία μιας ανάθεσης συνεργείου που αποθηκεύονται */
+const crewRow = (l) => ({ duty: l.duty || 'photo', team: l.team ?? null, tasks: l.tasks || [], brief: l.brief ?? null });
+const sameCrew = (a, b) => (a.duty || 'photo') === (b.duty || 'photo') && (a.team ?? null) === (b.team ?? null)
+  && JSON.stringify([...(a.tasks || [])].sort()) === JSON.stringify([...(b.tasks || [])].sort()) && (a.brief ?? null) === (b.brief ?? null);
+export function crewDiffers(eventId, list) {
+  const cur = S.crew.filter((c) => c.event_id === eventId);
+  return cur.length !== list.length || list.some((l) => { const c = cur.find((x) => x.user_id === l.user_id); return !c || !sameCrew(c, l); });
+}
 export async function setCrew(eventId, list) {
-  // list: [{user_id, duty}]
+  // list: [{user_id, duty, team?, tasks?, brief?}]
   const cur = S.crew.filter((c) => c.event_id === eventId);
   const remove = cur.filter((c) => !list.some((l) => l.user_id === c.user_id));
   const add = list.filter((l) => !cur.some((c) => c.user_id === l.user_id));
-  const change = list.filter((l) => cur.some((c) => c.user_id === l.user_id && c.duty !== l.duty));
+  const change = list.filter((l) => { const c = cur.find((x) => x.user_id === l.user_id); return c && !sameCrew(c, l); });
   for (const r of remove) await q(sb.from('event_crew').delete().eq('event_id', eventId).eq('user_id', r.user_id));
-  if (add.length) await q(sb.from('event_crew').insert(add.map((a) => ({ event_id: eventId, user_id: a.user_id, duty: a.duty }))));
-  for (const c of change) await q(sb.from('event_crew').update({ duty: c.duty }).eq('event_id', eventId).eq('user_id', c.user_id));
-  S.crew = [...S.crew.filter((c) => c.event_id !== eventId), ...list.map((l) => ({ event_id: eventId, ...l }))];
+  if (add.length) await q(sb.from('event_crew').insert(add.map((a) => ({ event_id: eventId, user_id: a.user_id, ...crewRow(a) }))));
+  for (const c of change) await q(sb.from('event_crew').update(crewRow(c)).eq('event_id', eventId).eq('user_id', c.user_id));
+  S.crew = [...S.crew.filter((c) => c.event_id !== eventId), ...list.map((l) => ({ event_id: eventId, user_id: l.user_id, ...crewRow(l) }))];
   emit('event_crew');
+}
+/** Αλλαγή μόνο του κειμένου ανάθεσης ενός μέλους */
+export async function saveCrewBrief(eventId, userId, brief) {
+  await q(sb.from('event_crew').update({ brief: brief || null }).eq('event_id', eventId).eq('user_id', userId));
+  S.crew = S.crew.map((c) => (c.event_id === eventId && c.user_id === userId ? { ...c, brief: brief || null } : c));
+  emit('event_crew');
+}
+
+// ---------- Δηλώσεις απουσίας ----------
+/** Απουσίες ενός μέλους σε μια ημέρα */
+export const absencesOn = (userId, day) => S.absences.filter((a) => a.user_id === userId && a.day === day);
+/** «όλη την ημέρα» ή «10:00–14:00, 18:00–20:00» */
+export function absenceWhen(list) {
+  if (!list.length) return '';
+  if (list.some((a) => !a.start_time)) return L('όλη την ημέρα', 'all day');
+  return list.map((a) => `${String(a.start_time).slice(0, 5)}–${String(a.end_time).slice(0, 5)}`).join(', ');
+}
+export async function saveAbsences(rows) {
+  const data = await q(sb.from('absences').insert(rows).select());
+  S.absences = [...S.absences, ...data]; emit('absences');
+  return data;
+}
+export async function deleteAbsence(id) {
+  await q(sb.from('absences').delete().eq('id', id));
+  S.absences = S.absences.filter((a) => a.id !== id); emit('absences');
 }
 export async function savePayment(p) {
   const row = { event_id: p.event_id || null, category: p.category || 'other', kind: p.kind || 'installment', label: p.label || null, amount: p.amount, paid_on: p.paid_on || todayISO(), method: p.method || null, description: p.description || null, notes: p.notes || null };

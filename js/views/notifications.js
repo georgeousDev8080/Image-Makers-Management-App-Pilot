@@ -7,7 +7,7 @@ const st = { tab: 'unread' };
 import { S, markRead, markAllRead, deleteNotification } from '../data.js';
 import { pageHead, emptyState, setTopActions, go } from '../layout.js';
 
-const KIND = { assignment: ['users', 'var(--accent)'], event: ['events', 'var(--blue)'], reminder: ['clock', 'var(--orange)'], message: ['message', 'var(--accent)'], request: ['inbox', 'var(--blue)'], appointment: ['handshake', 'var(--orange)'], team: ['shield', 'var(--purple)'], sos: ['warning', 'var(--red)'], editing: ['film', 'var(--purple)'], test: ['checkCircle', 'var(--green)'], update: ['sparkles', 'var(--accent)'] };
+const KIND = { assignment: ['users', 'var(--accent)'], event: ['events', 'var(--blue)'], reminder: ['clock', 'var(--orange)'], message: ['message', 'var(--accent)'], request: ['inbox', 'var(--blue)'], appointment: ['handshake', 'var(--orange)'], team: ['shield', 'var(--purple)'], sos: ['warning', 'var(--red)'], editing: ['film', 'var(--purple)'], test: ['checkCircle', 'var(--green)'], update: ['sparkles', 'var(--accent)'], absence: ['calendar', 'var(--label-2)'] };
 
 export function renderNotifications(root) {
   const all = S.notifications;

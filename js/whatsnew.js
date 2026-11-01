@@ -8,6 +8,15 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.5', date: '01/11/2026',
+    items: [
+      ['👥', 'Νέα εκδήλωση: επιλογή «1 συνεργείο (βασικό)» ή «2 συνεργεία». Με 2 συνεργεία επιλέγετε τα άτομα, τα χωρίζετε σε συνεργείο 1 και 2 και ορίζετε τι αναλαμβάνει το καθένα (Σπίτι γαμπρού/νύφης, Εκκλησία, Κέντρο, Drone).', 'New event: choose “1 crew (main)” or “2 crews”. With 2 crews you pick the people, split them into crew 1 and 2 and set what each covers (Groom/bride homes, Church, Reception, Drone).'],
+      ['📝', 'Κάθε μέλος του συνεργείου έχει μέσα στην εκδήλωση το δικό του κείμενο ανάθεσης, που φτιάχνεται αυτόματα και μπορεί να αλλάξει. Οι ειδοποιήσεις γράφουν σε κάθε μέλος τι αναλαμβάνει και ποιοι είναι μαζί του.', 'Each crew member has their own assignment note inside the event, generated automatically and editable. Notifications tell each member what they cover and who is with them.'],
+      ['🚫', 'Δήλωση απουσίας στο Ημερολόγιο: κάθε μέλος δηλώνει τις μέρες/ώρες που δεν είναι διαθέσιμο και οι διαχειριστές μπορούν να δηλώσουν για οποιονδήποτε.', 'Absence declarations in the Calendar: each member declares days/hours they are unavailable and admins can declare for anyone.'],
+      ['⛔', 'Στην επιλογή συνεργείου, όποιος δεν είναι διαθέσιμος εκείνη την ημέρα φαίνεται αλλά δεν επιλέγεται, με τις ώρες σε παρένθεση.', 'When choosing the crew, anyone unavailable that day is shown but cannot be selected, with the hours in brackets.'],
+    ],
+  },
+  {
     v: '1.4.2', date: '31/10/2026',
     items: [
       ['🔢', 'iPhone: το PIN πληκτρολογείται γρήγορα χωρίς zoom — δύο ίδια ψηφία στη σειρά (π.χ. 11) μετράνε κανονικά ως δύο πατήματα.', 'iPhone: the PIN can be typed quickly without zooming — two identical digits in a row (e.g. 11) count as two taps.'],

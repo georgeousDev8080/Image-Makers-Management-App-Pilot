@@ -3,7 +3,8 @@
 //  Προβολές: Ημέρα · Εβδομάδα · Μήνας · Πρόγραμμα (ώρες σε 24ωρη μορφή)
 // =====================================================================
 import { L, esc, icon, toISO, parseISO, todayISO, addDays, monthName, fmtDateLong, fmtTime, LANG, DOW_SHORT_EL, DOW_SHORT_EN, segmented, initSegmented } from '../core.js';
-import { isAdmin, allEventViews, myEventIds } from '../data.js';
+import { S, isAdmin, allEventViews, myEventIds, profileName, absenceWhen } from '../data.js';
+import { openAbsenceSheet, absenceActions, absenceText } from './absences.js';
 import { pageHead } from '../layout.js';
 import { eventRow, catShort } from '../components.js';
 
@@ -47,11 +48,12 @@ function timeGrid(days, byDate, admin) {
   const now = new Date(); const nowM = now.getHours() * 60 + now.getMinutes();
   const wd = dows();
   const head = days.map((iso) => { const d = parseISO(iso); return `<button class="tg-dh ${iso === today ? 'today' : ''}" data-goday="${iso}"><span class="tg-dow">${esc(wd[(d.getDay() + 6) % 7])}</span><span class="tg-num">${d.getDate()}</span></button>`; }).join('');
+  const AB = absBy();
   const allDay = days.map((iso) => {
     const list = (byDate[iso] || []).filter((v) => mins(v.e.event_time) == null);
-    return `<div class="tg-ad">${list.map((v) => `<a class="cal-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}">${esc(v.title)}</a>`).join('')}</div>`;
+    return `<div class="tg-ad">${list.map((v) => `<a class="cal-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}">${esc(v.title)}</a>`).join('')}${(AB[iso] || []).map(absChip).join('')}</div>`;
   }).join('');
-  const hasAllDay = days.some((iso) => (byDate[iso] || []).some((v) => mins(v.e.event_time) == null));
+  const hasAllDay = days.some((iso) => (byDate[iso] || []).some((v) => mins(v.e.event_time) == null) || (AB[iso] || []).length);
   const hours = Array.from({ length: 24 }, (_, h) => `<div class="tg-h"><span>${h ? hhmm(h * 60) : ''}</span></div>`).join('');
   const cols = days.map((iso) => {
     const timed = (byDate[iso] || []).filter((v) => mins(v.e.event_time) != null);
@@ -71,7 +73,12 @@ function timeGrid(days, byDate, admin) {
   </div>`;
 }
 
+// απουσίες ανά ημέρα (οι διαχειριστές βλέπουν όλων, τα μέλη μόνο τις δικές τους)
+const absBy = () => { const m = {}; S.absences.forEach((a) => { (m[a.day] ||= []).push(a); }); return m; };
+const shortName = (id) => (profileName(S.profiles.find((p) => p.id === id) || (id === S.profile?.id ? S.profile : null)) || '').split(' ')[0];
+const absChip = (a) => `<button type="button" class="cal-abs" data-abs="${a.id}" title="${esc(absenceText(a))}">🚫 ${esc(shortName(a.user_id))}${a.start_time ? ` <span class="t">${esc(absenceWhen([a]))}</span>` : ''}</button>`;
 function monthGrid(byDate, admin) {
+  const AB = absBy();
   const sel = parseISO(st.sel); const y = sel.getFullYear(), m = sel.getMonth();
   const first = new Date(y, m, 1);
   const start = new Date(y, m, 1 - ((first.getDay() + 6) % 7));
@@ -87,13 +94,16 @@ function monthGrid(byDate, admin) {
       <button class="num" data-goday="${iso}" tabindex="-1">${d.getDate()}</button>
       ${evs.slice(0, 3).map((v) => `<a class="cal-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}" title="${esc(v.title)}"><i></i>${v.e.event_time ? `<span class="t">${esc(fmtTime(v.e.event_time))}</span> ` : ''}${esc(v.title)}</a>`).join('')}
       ${evs.length > 3 ? `<button class="cal-more" data-goday="${iso}">+${evs.length - 3} ${esc(L('ακόμη', 'more'))}</button>` : ''}
-      <div class="cal-dots">${evs.slice(0, 4).map((v) => `<i class="cat-${v.e.category}" style="background:var(--c)"></i>`).join('')}</div>
+      ${(AB[iso] || []).slice(0, 2).map(absChip).join('')}${(AB[iso] || []).length > 2 ? `<div class="cal-more">+${AB[iso].length - 2} 🚫</div>` : ''}
+      <div class="cal-dots">${evs.slice(0, 4).map((v) => `<i class="cat-${v.e.category}" style="background:var(--c)"></i>`).join('')}${(AB[iso] || []).length ? '<i class="abs-dot"></i>' : ''}</div>
     </div>`;
   }
   let html = `<div class="cal" id="cal"><div class="cal-dow">${dows().map((d) => `<div>${esc(d)}</div>`).join('')}</div><div class="cal-grid ${st.anim}">${cells}</div></div>`;
   const dayEvs = byDate[st.sel] || [];
   html += `<div class="section-title cal-daylist"><h2 style="text-transform:capitalize">${esc(fmtDateLong(st.sel))}</h2>${admin ? `<a class="btn small" href="#/new-event?date=${st.sel}">${icon('plus')} ${esc(L('Νέα', 'New'))}</a>` : ''}</div>`;
   html += `<div class="cal-daylist">${dayEvs.length ? `<div class="list">${dayEvs.map((v) => eventRow(v)).join('')}</div>` : `<div class="card pad muted center small">${esc(L('Καμία εκδήλωση αυτή την ημέρα.', 'No events on this day.'))}</div>`}</div>`;
+  const dayAbs = AB[st.sel] || [];
+  if (dayAbs.length) html += `<div class="cal-daylist"><div class="group-label">${esc(L('Απουσίες', 'Absences'))}</div><div class="list">${dayAbs.map((a) => `<button class="row has-icon" data-abs="${a.id}"><span class="row-icon" style="background:var(--label-3)">🚫</span><div class="main-col"><div class="t">${esc(absenceText(a))}</div></div></button>`).join('')}</div></div>`;
   return html;
 }
 
@@ -124,7 +134,7 @@ export function renderCalendar(root) {
   views.forEach((v) => { (byDate[v.e.event_date] ||= []).push(v); });
 
   const modes = [{ v: 'day', label: L('Ημέρα', 'Day') }, { v: 'week', label: L('Εβδομάδα', 'Week') }, { v: 'month', label: L('Μήνας', 'Month') }, { v: 'list', label: L('Πρόγραμμα', 'Schedule') }];
-  const actions = admin ? `<a class="btn primary" href="#/new-event?date=${st.sel}">${icon('plus')} <span class="hide-mobile">${esc(L('Νέα εκδήλωση', 'New event'))}</span></a>` : '';
+  const actions = `<button class="btn" data-absence>🚫 <span class="hide-mobile">${esc(L('Δήλωση απουσίας', 'Declare absence'))}</span></button>${admin ? `<a class="btn primary" href="#/new-event?date=${st.sel}">${icon('plus')} <span class="hide-mobile">${esc(L('Νέα εκδήλωση', 'New event'))}</span></a>` : ''}`;
   let html = pageHead(L('Ημερολόγιο', 'Calendar'), { actions });
 
   html += `<div class="gc-bar">
@@ -147,6 +157,8 @@ export function renderCalendar(root) {
 
   root.innerHTML = html;
   initSegmented(root, (_, v) => { st.mode = v; renderCalendar(root); });
+  root.querySelector('[data-absence]')?.addEventListener('click', () => openAbsenceSheet({ day: st.sel }));
+  root.querySelectorAll('[data-abs]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); absenceActions(S.absences.find((a) => a.id === b.dataset.abs)); }));
   root.querySelectorAll('[data-mine]').forEach((b) => b.addEventListener('click', () => { st.onlyMine = b.dataset.mine === '1'; renderCalendar(root); }));
   const nav = (dir) => {
     if (dir === 0) st.sel = todayISO();

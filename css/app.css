@@ -1071,3 +1071,31 @@ html, body, button, a, input, select, textarea, label, [role="button"], .row, .c
 @supports (-webkit-touch-callout: none) {
   input, select, textarea, .input, .select, .textarea, .wf-row .select, .xl .cell-input { font-size: 16px !important; }
 }
+
+/* ---------- Συνεργείο: 1 ή 2 συνεργεία ---------- */
+.crew-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.crew-mode { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 190px; padding: 22px 14px; border-radius: 20px; border: 2px solid var(--sep); background: var(--bg-elev); color: var(--label); cursor: pointer; text-align: center; transition: border-color .15s, background .15s, transform .12s; }
+.crew-mode:active { transform: scale(.98); }
+.crew-mode b { font-family: var(--font-display); font-size: 22px; letter-spacing: -.01em; }
+.crew-mode span { color: var(--label-2); font-size: 13.5px; }
+.crew-mode .cm-ic { display: flex; gap: 2px; color: var(--accent); }
+.crew-mode .cm-ic .ic { width: 38px; height: 38px; }
+.crew-mode.on { border-color: var(--accent); background: var(--accent-soft); }
+.crew-sub { display: flex; align-items: center; gap: 12px; padding: 4px 2px 6px; }
+.crew-sub-n { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-weight: 800; }
+.task-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.task-box { display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 14px; border: 1.5px solid var(--sep); background: var(--fill-2); cursor: pointer; font-weight: 600; }
+.task-box input { width: 20px; height: 20px; accent-color: var(--accent); }
+.task-box.on { border-color: var(--accent); background: var(--accent-soft); }
+.row.is-off { opacity: .6; }
+.unavail { color: var(--red); font-size: 12.5px; font-weight: 600; }
+.crew-team + .crew-team { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--sep); }
+.brief-text { white-space: pre-wrap; line-height: 1.55; }
+.brief-row { align-items: flex-start; }
+.brief-row .s { white-space: pre-wrap; overflow: visible; text-overflow: clip; }
+@media (max-width: 520px) { .crew-mode { min-height: 150px; } .crew-mode b { font-size: 18px; } .task-grid { grid-template-columns: 1fr; } }
+/* απουσίες στο ημερολόγιο */
+.cal-abs { display: flex; align-items: center; gap: 4px; width: 100%; margin-top: 3px; padding: 2px 6px; border: 0; border-radius: 6px; background: repeating-linear-gradient(45deg, var(--fill), var(--fill) 4px, var(--fill-2) 4px, var(--fill-2) 8px); color: var(--label-2); font-size: 11.5px; font-weight: 600; text-align: left; cursor: pointer; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cal-abs .t { opacity: .8; font-variant-numeric: tabular-nums; }
+.cal-dots .abs-dot { background: var(--label-3) !important; }
+@media (max-width: 760px) { .cal-cell .cal-abs { display: none; } }

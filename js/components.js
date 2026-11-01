@@ -2,7 +2,7 @@
 //  Κοινά κομμάτια UI (κάρτες εκδηλώσεων, πακέτο προσφοράς κ.λπ.)
 // =====================================================================
 import { dutyLabel, dutyEmoji, safeColor, L, esc, icon, fmtTime, parseISO, monthShort, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, money, initials, colorFor, relDays, daysBetween, todayISO, LANG } from './core.js';
-import { isAdmin, profileName } from './data.js';
+import { isAdmin, profileName, profileById } from './data.js';
 
 export const catPill = (cat) => `<span class="pill cat-pill cat-${esc(cat)}">${esc(lbl(CATEGORIES, cat))}</span>`;
 export const catShort = (cat) => ({ wedding: L('Γάμος', 'Wedding'), baptism: L('Βάπτιση', 'Baptism'), wedding_baptism: L('Γαμοβάπτιση', 'Wed+Bapt.'), promo: 'Promo', other: L('Άλλο', 'Other') }[cat] || cat);
@@ -72,7 +72,7 @@ const BAPTISM_INCLUDED = () => [
 export const isBaptismOffer = (od) => od?.kind === 'baptism';
 /** Έχει drone η εκδήλωση; (μέλος συνεργείου με Drone ή drone μέσα στο πακέτο της προσφοράς) */
 export function eventHasDrone(e, crew = []) {
-  if (crew.some((c) => c.duty === 'drone')) return true;
+  if (crew.some((c) => c.duty === 'drone' || (c.tasks || []).includes('drone'))) return true;
   const od = e?.offer_data;
   if (!od || e.category === 'promo' || e.category === 'other') return false;
   if (isBaptismOffer(od)) return (od.adds || []).includes('Drone στην εκκλησία');
@@ -174,7 +174,44 @@ export function packageNameFrom(od) {
   return parts.join(' ');
 }
 
+/** Αρμοδιότητες συνεργείου (όταν η εκδήλωση έχει 2 συνεργεία) */
+export const CREW_TASKS = [
+  { v: 'houses', el: 'Σπίτι γαμπρού / νύφης', en: 'Groom / bride homes' },
+  { v: 'church', el: 'Εκκλησία', en: 'Church' },
+  { v: 'reception', el: 'Κέντρο', en: 'Reception venue' },
+  { v: 'drone', el: 'Drone', en: 'Drone' },
+];
+const taskList = (tasks) => CREW_TASKS.filter((t) => (tasks || []).includes(t.v)).map((t) => t.el).join(' · ');
+/**
+ * Κείμενο ανάθεσης για κάθε μέλος, από τις επιλογές της εκδήλωσης.
+ * list: [{user_id, duty, team, tasks}] · mode: 'single' | 'double' → { user_id: κείμενο }
+ */
+export function crewBriefTexts(mode, list) {
+  const out = {};
+  const names = (arr) => arr.map((c) => profileName(profileById(c.user_id))).join(', ');
+  list.forEach((c) => {
+    const lines = [];
+    if (mode === 'double') {
+      const mine = list.filter((x) => x.team === c.team && x.user_id !== c.user_id);
+      const other = list.filter((x) => x.team && x.team !== c.team);
+      const otherTasks = other[0]?.tasks || [];
+      lines.push(c.team === 1 ? 'Συνεργείο 1 (βασικό) — η εκδήλωση έχει 2 συνεργεία' : 'Συνεργείο 2 — η εκδήλωση έχει 2 συνεργεία');
+      lines.push(`Αναλαμβάνετε: ${taskList(c.tasks) || '—'}`);
+      lines.push(`Μαζί σου: ${names(mine) || 'κανείς άλλος'}`);
+      if (other.length) lines.push(`Συνεργείο ${c.team === 1 ? 2 : 1}: ${names(other)}${otherTasks.length ? ` (${taskList(otherTasks)})` : ''}`);
+    } else {
+      const others = list.filter((x) => x.user_id !== c.user_id);
+      lines.push('1 συνεργείο (βασικό)');
+      lines.push(`Η ανάθεσή σου: ${dutyLabel(c.duty)}`);
+      if (others.length) lines.push(`Μαζί σου: ${others.map((x) => `${profileName(profileById(x.user_id))} (${dutyLabel(x.duty)})`).join(', ')}`);
+    }
+    out[c.user_id] = lines.join('\n');
+  });
+  return out;
+}
+
 export function crewChips(v) {
   if (!v.crew.length) return `<span class="muted small">${esc(L('Δεν έχει οριστεί συνεργείο', 'No crew assigned'))}</span>`;
+  if (v.e.crew_mode === 'double') return [1, 2].map((t) => { const m = v.crew.filter((c) => c.team === t); return m.length ? `<div class="crew-team"><b>${esc(t === 1 ? L('Συνεργείο 1 (βασικό)', 'Crew 1 (main)') : L('Συνεργείο 2', 'Crew 2'))}</b> <span class="small muted">${esc(taskList(m[0].tasks))}</span><div class="chips mt-s">${m.map((c) => `<span class="chip" style="padding-left:4px">${avatar(c.profile, 'sm')} ${esc(profileName(c.profile))}</span>`).join(' ')}</div></div>` : ''; }).join('');
   return v.crew.map((c) => `<span class="chip" style="padding-left:4px">${avatar(c.profile, 'sm')} ${esc(profileName(c.profile))} · ${esc(dutyEmoji(c.duty))} ${esc(dutyLabel(c.duty))}</span>`).join(' ');
 }
