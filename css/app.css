@@ -1099,3 +1099,12 @@ html, body, button, a, input, select, textarea, label, [role="button"], .row, .c
 .cal-abs .t { opacity: .8; font-variant-numeric: tabular-nums; }
 .cal-dots .abs-dot { background: var(--label-3) !important; }
 @media (max-width: 760px) { .cal-cell .cal-abs { display: none; } }
+
+/* ---------- Ώρα: πεδίο χωρισμένο στη μέση με «Δεν γνωρίζουμε ακόμη» ---------- */
+.time-split { display: grid; grid-template-columns: 1fr 1fr; border-radius: 12px; overflow: hidden; background: var(--fill-2); }
+.time-split .input { border-radius: 0; background: transparent; min-width: 0; }
+.time-split .input:disabled { opacity: .45; }
+.time-split .ts-unknown { border: 0; border-left: 1px solid var(--sep); background: transparent; color: var(--label-2); font: inherit; font-size: 14px; font-weight: 600; padding: 0 10px; cursor: pointer; line-height: 1.2; }
+.time-split .ts-unknown.on { background: var(--accent-soft); color: var(--accent); }
+.time-split:focus-within { box-shadow: 0 0 0 4px var(--accent-soft); }
+.no-time { color: var(--orange); font-weight: 600; }

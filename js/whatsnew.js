@@ -8,6 +8,13 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.5.3', date: '01/11/2026',
+    items: [
+      ['⏰', 'Ώρα εκδήλωσης: δίπλα στο πεδίο της ώρας υπάρχει η επιλογή «Δεν γνωρίζουμε ακόμη». Ισχύει και για τις υπάρχουσες εκδηλώσεις (Επεξεργασία).', 'Event time: next to the time field there is a “Not known yet” option. It also works for existing events (Edit).'],
+      ['🔔', 'Αν μια εκδήλωση δεν έχει ακόμη ώρα 3 μήνες πριν, οι διαχειριστές λαμβάνουν ειδοποίηση για να τη συμπληρώσουν.', 'If an event still has no time 3 months before, admins get a notification to fill it in.'],
+    ],
+  },
+  {
     v: '1.5.1', date: '01/11/2026',
     items: [
       ['🎯', 'Νέα εκδήλωση: επιλογή κάλυψης «Φωτογραφία & βίντεο», «Μόνο φωτογραφία» ή «Μόνο βίντεο». Αλλάζει και από το μεγάλο Excel (στήλη «Κάλυψη»).', 'New event: choose coverage “Photo & video”, “Photo only” or “Video only”. Also editable in the main Excel (“Coverage” column).'],

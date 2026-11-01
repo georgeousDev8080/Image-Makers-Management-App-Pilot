@@ -85,7 +85,7 @@ export function renderEventDetail(root, { id }) {
     ${days >= 0 ? `<div class="countdown"><b>${days}</b><small>${esc(days === 1 ? L('ημέρα', 'day') : L('ημέρες', 'days'))}</small></div>` : ''}
     <div class="hstack">${catPill(e.category)}${e.status === 'cancelled' ? `<span class="pill red">${esc(L('Ακυρωμένη', 'Cancelled'))}</span>` : ''}${(e.coverage || 'both') !== 'both' ? `<span class="pill orange">${esc(e.coverage === 'photo' ? L('📷 Μόνο φωτογραφία', '📷 Photo only') : L('🎥 Μόνο βίντεο', '🎥 Video only'))}</span>` : ''}${e.resolution && e.coverage !== 'photo' ? `<span class="pill blue">${esc(e.resolution === '4k' ? '4K' : 'Full HD')}</span>` : ''}${eventHasDrone(e, v.crew) ? '<span class="pill purple">🚁 Drone</span>' : ''}</div>
     <h1 style="margin-top:10px">${esc(v.title)}</h1>
-    <div class="when"><span>${icon('calendar')} ${esc(fmtDateLong(e.event_date))}</span>${e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(e.event_time))}</span>` : ''}</div>
+    <div class="when"><span>${icon('calendar')} ${esc(fmtDateLong(e.event_date))}</span>${e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(e.event_time))}</span>` : `<span class="no-time">${icon('clock')} ${esc(L('Ώρα: δεν γνωρίζουμε ακόμη', 'Time: not known yet'))}</span>`}</div>
     <div class="quick-actions">
       ${phone ? `<a class="qa" href="${telUrl(phone)}">${icon('phone')}${esc(L('Κλήση', 'Call'))}</a>${admin ? `<a class="qa" href="${smsUrl(phone)}">${icon('sms')}SMS</a>` : ''}` : ''}
       ${email && admin ? `<a class="qa" href="${mailUrl(email)}">${icon('mail')}Email</a>` : ''}

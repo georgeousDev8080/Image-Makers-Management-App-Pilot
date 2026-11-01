@@ -647,7 +647,7 @@ export function icsFor(ev, title, location, description) {
   return [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Image Makers//Studio Manager//EL', 'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT', `UID:${ev.id}@imagemakers`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
-    `DTSTART;TZID=Europe/Athens:${d}T${t}`, `DTEND;TZID=Europe/Athens:${d}T${endH}${t.slice(2)}`,
+    ...(ev.event_time ? [`DTSTART;TZID=Europe/Athens:${d}T${t}`, `DTEND;TZID=Europe/Athens:${d}T${endH}${t.slice(2)}`] : [`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDays(ev.event_date, 1).replace(/-/g, '')}`]), // χωρίς ώρα: ολοήμερο
     `SUMMARY:${escI(title)}`, `LOCATION:${escI(location)}`, `DESCRIPTION:${escI(description)}`,
     'BEGIN:VALARM', 'TRIGGER:-P1D', 'ACTION:DISPLAY', `DESCRIPTION:${escI(title)}`, 'END:VALARM',
     'END:VEVENT', 'END:VCALENDAR',

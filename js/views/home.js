@@ -35,7 +35,7 @@ export function renderHome(root) {
     const count = `<div class="count"><b>${d === 0 || d === 1 ? '' : d}</b><span>${esc(countTxt || L('ημέρες', 'days'))}</span></div>`;
     // Μεγάλα: τύπος εκδήλωσης και τοποθεσία · μικρά από κάτω: όνομα, ημερομηνία, ώρα
     const big = (v) => `${esc(catLabel(v.e.category))}${v.e.church_location ? ` · ${esc(v.e.church_location)}` : ''}`;
-    const meta = (v) => `<div class="meta"><span>${icon('user')} ${esc(v.title)}</span>${group.length > 1 ? '' : `<span>${icon('calendar')} ${esc(fmtDateLong(v.e.event_date))}</span>`}${v.e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(v.e.event_time))}</span>` : ''}</div>`;
+    const meta = (v) => `<div class="meta"><span>${icon('user')} ${esc(v.title)}</span>${group.length > 1 ? '' : `<span>${icon('calendar')} ${esc(fmtDateLong(v.e.event_date))}</span>`}${v.e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(v.e.event_time))}</span>` : `<span>${icon('clock')} ${esc(L('ώρα: δεν γνωρίζουμε ακόμη', 'time: not known yet'))}</span>`}</div>`;
     if (group.length === 1) {
       html += `<a class="hero-card" href="#/event/${next.e.id}">${count}
         <div class="eyebrow">${esc(admin ? L('Επόμενη εκδήλωση', 'Next event') : L('Η επόμενη εκδήλωσή σου', 'Your next event'))}</div>

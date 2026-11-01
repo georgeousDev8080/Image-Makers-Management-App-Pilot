@@ -33,6 +33,7 @@ function freshState(params) {
       if (v.c) s.cust = { name1: v.c.name1 || '', name2: v.c.name2 || '', phone1: v.c.phone1 || '', phone2: v.c.phone2 || '', email1: v.c.email1 || '', email2: v.c.email2 || '' };
       Object.keys(s.ev).forEach((k) => { s.ev[k] = e[k] ?? ''; });
       s.ev.event_time = (e.event_time || '').slice(0, 5);
+      s.timeUnknown = !e.event_time;
       s.fin = { package_price: v.f.package_price ?? '', package_name: v.f.package_name || '', second_crew: !!v.f.second_crew, office_notes: v.f.office_notes || '' };
       s.crew = v.crew.map((c) => ({ user_id: c.user_id, duty: c.duty, team: c.team ?? null, tasks: c.tasks || [] }));
       s.crewMode = e.crew_mode || 'single';
@@ -165,7 +166,8 @@ function validate(root, step) {
   if (step === 1) {
     let ok = true;
     ok = showErr(root, 'event_date', W.ev.event_date ? '' : req) && ok;
-    ok = showErr(root, 'event_time', !W.ev.event_time ? req : normTime(W.ev.event_time) === null ? L('Γράψτε την ώρα ως ΩΩ:ΛΛ, π.χ. 18:00', 'Enter the time as HH:MM, e.g. 18:00') : '') && ok;
+    if (W.timeUnknown) W.ev.event_time = '';
+    ok = showErr(root, 'event_time', W.timeUnknown ? '' : !W.ev.event_time ? req : normTime(W.ev.event_time) === null ? L('Γράψτε την ώρα ως ΩΩ:ΛΛ, π.χ. 18:00', 'Enter the time as HH:MM, e.g. 18:00') : '') && ok;
     if (normTime(W.ev.event_time)) W.ev.event_time = normTime(W.ev.event_time);
     ok = showErr(root, 'church_location', W.ev.church_location ? '' : req) && ok;
     if (!W.ev.category || !W.ev.resolution) ok = false;
@@ -197,7 +199,7 @@ function validateUpTo(root, params, step) {
 }
 function quickValid(step) {
   if (step === 0) return W.custMode === 'existing' ? !!W.customerId : !!(W.cust.name1 && W.cust.phone1 && W.cust.email1);
-  if (step === 1) return !!(W.ev.event_date && W.ev.event_time && W.ev.church_location);
+  if (step === 1) return !!(W.ev.event_date && (W.ev.event_time || W.timeUnknown) && W.ev.church_location);
   return true;
 }
 
@@ -271,7 +273,9 @@ function stepEvent(body, root, params) {
       <div class="field full"><label>${esc(L('Κατηγορία εκδήλωσης', 'Event category'))} <span class="req">*</span></label>
         <div class="chips">${CATEGORIES.map((c) => `<button type="button" class="chip ${W.ev.category === c.v ? 'on' : ''}" data-cat="${c.v}"><span class="cat-dot cat-${c.v}"></span>${esc(L(c.el, c.en))}</button>`).join('')}</div></div>
       ${fld('event_date', L('Ημερομηνία', 'Date'), W.ev.event_date, { req: true, type: 'date' })}
-      ${fld('event_time', simple ? L('Ώρα έναρξης', 'Start time') : L('Ώρα μυστηρίου / έναρξης', 'Ceremony / start time'), W.ev.event_time, { req: true, type: 'time' })}
+      <div class="field"><label>${esc(simple ? L('Ώρα έναρξης', 'Start time') : L('Ώρα μυστηρίου / έναρξης', 'Ceremony / start time'))} <span class="req">*</span></label>
+        <div class="time-split ${W.timeUnknown ? 'unknown' : ''}"><input class="input" name="event_time" ${timeInputAttrs} value="${esc(W.timeUnknown ? '' : fmtTime(W.ev.event_time))}" ${W.timeUnknown ? 'disabled' : ''}><button type="button" class="ts-unknown ${W.timeUnknown ? 'on' : ''}" data-tunk aria-pressed="${W.timeUnknown ? 'true' : 'false'}">${W.timeUnknown ? '✓ ' : ''}${esc(L('Δεν γνωρίζουμε ακόμη', 'Not known yet'))}</button></div>
+        ${W.timeUnknown ? `<div class="help">${esc(L('Θα λάβετε υπενθύμιση 3 μήνες πριν, αν δεν έχει μπει ώρα.', 'You’ll get a reminder 3 months before if no time has been set.'))}</div>` : ''}<div class="err" hidden></div></div>
       <div class="field full" id="sameDay"></div>
       <div class="field full"><label>${esc(L('Κάλυψη', 'Coverage'))} <span class="req">*</span></label>${segmented('cov', COVERAGE.map((c) => ({ v: c.v, label: L(c.el, c.en) })), W.ev.coverage || 'both', { block: true })}</div>
       ${W.ev.coverage === 'photo' ? '' : `<div class="field full"><label>${esc(L('Ανάλυση video', 'Video resolution'))} <span class="req">*</span></label>${segmented('res', RESOLUTIONS.map((r) => ({ v: r.v, label: L(r.el, r.en) })), W.ev.resolution, { block: true })}</div>`}
@@ -284,6 +288,7 @@ function stepEvent(body, root, params) {
       <div class="field full"><label>${esc(simple ? L('Σχόλια', 'Comments') : L('Σημειώσεις εκδήλωσης', 'Event notes'))}</label><textarea class="textarea" name="notes" placeholder="${esc(simple ? L('Περιγραφή, λεπτομέρειες, ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Description, details, anything the crew should know (they can see this)') : L('Ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Anything the crew should know (they can see this)'))}">${esc(W.ev.notes)}</textarea></div>
     </div></div>`;
   bindInputs(body, W.ev);
+  body.querySelector('[data-tunk]')?.addEventListener('click', () => { W.timeUnknown = !W.timeUnknown; if (W.timeUnknown) W.ev.event_time = ''; draw(root, params); if (!W.timeUnknown) setTimeout(() => root.querySelector('[name=event_time]')?.focus(), 50); });
   body.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { if (W.ev.category === b.dataset.cat) return; W.ev.category = b.dataset.cat; draw(root, params); }));
   initSegmented(body, (name, v) => {
     if (name === 'cov') {
@@ -462,7 +467,7 @@ function stepOffer(body, root, params) {
       <div class="field full"><label>${esc(L('Σημειώσεις γραφείου (μόνο για διαχειριστές)', 'Office notes (admins only)'))}</label><textarea class="textarea" name="office_notes" style="min-height:70px">${esc(W.fin.office_notes)}</textarea></div>
     </div></div>
     <div class="card pad mt"><b>${esc(L('Σύνοψη', 'Summary'))}</b>
-      <div class="small mt-s" style="line-height:1.7">${esc(coupleName(c))}<br>${esc(fmtDate(W.ev.event_date))} · ${esc(W.ev.event_time || '—')} · ${esc(W.ev.church_location || '—')}<br>${esc(L('Συνεργείο', 'Crew'))}: ${esc(W.crew.map((x) => profileName(S.profiles.find((p) => p.id === x.user_id))).join(', ') || '—')}</div></div>`;
+      <div class="small mt-s" style="line-height:1.7">${esc(coupleName(c))}<br>${esc(fmtDate(W.ev.event_date))} · ${esc(W.ev.event_time || (W.timeUnknown ? L('ώρα: δεν γνωρίζουμε ακόμη', 'time: not known yet') : '—'))} · ${esc(W.ev.church_location || '—')}<br>${esc(L('Συνεργείο', 'Crew'))}: ${esc(W.crew.map((x) => profileName(S.profiles.find((p) => p.id === x.user_id))).join(', ') || '—')}</div></div>`;
   bindInputs(body, W.fin);
   body.querySelector('[data-builder]')?.addEventListener('click', async () => {
     const kind = offerKind();
@@ -511,7 +516,7 @@ async function save(root, params, btn) {
         busy(btn, true, L('Αποθήκευση…', 'Saving…'));
       }
     }
-    const evRow = { ...W.ev, customer_id: customerId, event_time: W.ev.event_time || null };
+    const evRow = { ...W.ev, customer_id: customerId, event_time: W.timeUnknown ? null : (W.ev.event_time || null) };
     if (W.mode === 'edit') evRow.id = params.id;
     else if (W.savedId) evRow.id = W.savedId; // νέα προσπάθεια μετά από σφάλμα: όχι δεύτερη εκδήλωση
     if (W.offer.data) evRow.offer_data = W.offer.data;

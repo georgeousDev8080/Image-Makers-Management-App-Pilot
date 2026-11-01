@@ -32,7 +32,7 @@ export function editStatusPill(v) {
 export function eventRow(v, { money: showMoney = isAdmin(), compact = false, crewType = false } = {}) {
   const e = v.e;
   const cancelled = e.status === 'cancelled';
-  const sub = [fmtTime(e.event_time), e.church_location].filter(Boolean).join(' · ');
+  const sub = [e.event_time ? fmtTime(e.event_time) : L('ώρα: ;', 'time: ?'), e.church_location].filter(Boolean).join(' · ');
   const crew = v.crew.map((c) => avatar(c.profile, 'sm')).join('');
   let right = '';
   if (showMoney && v.price != null) {
