@@ -195,7 +195,7 @@ const priority = (e) => (e.editing_status === 'done' ? { v: 'done', el: 'Έτο�
   : { v: 'none', el: '—', en: '—', tone: 'grey' });
 function mitsosSheet(body, tab, redraw) {
   if (isVideoAdmin() && (S.profile?.username === 'dimitris' || /^Δημήτρ/.test(S.profile?.full_name || '')) && st.q.trim().toLowerCase() === 'diva') {
-    st.q = ''; import('../diva.js').then((m) => m.showDiva((S.profile?.full_name || 'Dimitris').split(' ')[0]));
+    st.q = ''; import('../diva.js').then((m) => m.showDiva());
   }
   if (!isVideoAdmin()) { body.innerHTML = `<div class="empty">${icon('lock')}<b>${esc(L('Μόνο για Διαχειριστή (Βιντεογράφο)', 'Admin (Videographer) only'))}</b></div>`; return; }
   let views = allEventViews({ year: st.year, includeCancelled: false }).filter((v) => v.e.coverage !== 'photo'); // μόνο φωτογραφία: δεν αφορά το βίντεο

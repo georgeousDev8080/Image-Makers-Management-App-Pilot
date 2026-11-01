@@ -1108,9 +1108,59 @@ html, body, button, a, input, select, textarea, label, [role="button"], .row, .c
 .time-split .ts-unknown.on { background: var(--accent-soft); color: var(--accent); }
 .time-split:focus-within { box-shadow: 0 0 0 4px var(--accent-soft); }
 .no-time { color: var(--orange); font-weight: 600; }
-/* μήνας: τύπος + τοποθεσία σε έως 2 γραμμές */
-.cal-cell .cal-ev { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.3; padding: 3px 6px; }
 .task-box.off { opacity: .45; cursor: not-allowed; background: var(--fill); border-style: dashed; }
 .task-box.off small { font-weight: 500; color: var(--label-2); }
 .task-box input[type="radio"] { width: 20px; height: 20px; accent-color: var(--accent); }
 .busy { color: var(--orange); font-size: 12.5px; font-weight: 600; }
+
+/* ---------- Μήνας σε στυλ Google: εβδομάδες με μπάρες που ενώνουν τις πολυήμερες ---------- */
+.mweek { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: 34px repeat(3, 23px) 22px; position: relative; border-bottom: 1px solid var(--sep); }
+.mweek:last-child { border-bottom: 0; }
+.mweek > .cal-cell { min-height: 0; border-bottom: 0; padding: 6px; }
+.mweek > .cal-cell:nth-child(7) { border-right: 0; }
+.mbar { position: relative; z-index: 1; align-self: center; display: flex; align-items: center; gap: 5px; height: 21px; margin: 0 4px; padding: 0 7px; border: 0; border-radius: 6px; font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; cursor: pointer; min-width: 0; }
+.mbar .t { font-variant-numeric: tabular-nums; opacity: .85; }
+.mbar.one { background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }
+.mbar.one i { flex: 0 0 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+.mbar.span { background: var(--c); color: #fff; }
+.mbar.cl { margin-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.mbar.cr { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.mbar.abs { background: repeating-linear-gradient(45deg, var(--fill), var(--fill) 4px, var(--fill-2) 4px, var(--fill-2) 8px); color: var(--label-2); }
+.mbar.abs.span { background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--label-3) 35%, transparent), color-mix(in srgb, var(--label-3) 35%, transparent) 5px, color-mix(in srgb, var(--label-3) 18%, transparent) 5px, color-mix(in srgb, var(--label-3) 18%, transparent) 10px); color: var(--label); }
+.mbar.cancelled { text-decoration: line-through; opacity: .55; }
+.mbar:hover { filter: brightness(1.05); }
+.mweek .cal-more { position: relative; z-index: 1; align-self: center; justify-self: start; margin-left: 6px; padding: 0 4px; }
+.mweek .cal-dots { display: none; }
+@media (max-width: 760px) {
+  .mweek { grid-template-rows: 40px repeat(3, 7px) 4px; }
+  .mweek > .cal-cell { padding: 4px 2px; }
+  .mbar { height: 5px; padding: 0; margin: 0 2px; font-size: 0; border-radius: 3px; }
+  .mbar.cl { margin-left: 0; } .mbar.cr { margin-right: 0; }
+  .mbar i, .mbar .t { display: none; }
+  .mbar.one { background: var(--c); }
+  .mweek .cal-more { display: none; }
+}
+/* εβδομάδα/ημέρα: ολοήμερη γραμμή με ενωμένες μπάρες */
+.tg-adgrid { grid-column: 2 / -1; display: grid; padding: 3px 0; position: relative; }
+.tg-adgrid .tg-adcol { border-left: 1px solid var(--sep); }
+.tg-adgrid .mbar { margin: 1px 3px; height: 20px; font-size: 11.5px; }
+.tg-adgrid .mbar.cl { margin-left: 0; } .tg-adgrid .mbar.cr { margin-right: 0; }
+@media (max-width: 760px) { .tg-adgrid .mbar { height: 18px; font-size: 10.5px; padding: 0 4px; } .tg-adgrid .mbar i, .tg-adgrid .mbar .t { display: none; } }
+/* ---------- Προβολή «Χρόνος» ---------- */
+.year-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 1180px) { .year-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .year-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+.ym { background: var(--bg-elev); border-radius: 16px; padding: 10px 10px 12px; box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,.08)); min-width: 0; }
+.ym-h { display: flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--label); font: inherit; font-weight: 700; font-size: 15px; text-transform: capitalize; cursor: pointer; padding: 2px 4px 8px; }
+.ym-h:hover { color: var(--accent); }
+.ym-g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; text-align: center; }
+.ym-g .dw { font-size: 10px; font-weight: 700; color: var(--label-3); padding-bottom: 2px; }
+.yd { display: grid; place-items: center; aspect-ratio: 1; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--label); font: inherit; font-size: 12px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.yd:hover { background: var(--fill); }
+.yd.has { background: var(--c); color: #fff; font-weight: 700; }
+.yd.many { box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 35%, transparent); }
+.yd.abs:not(.has) { background: repeating-linear-gradient(45deg, var(--fill), var(--fill) 3px, transparent 3px, transparent 6px); }
+.yd.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (max-width: 760px) { .gc-modes .segmented button { font-size: 12px; padding: 5px 2px; } .yd { font-size: 11px; } }
+@media (max-width: 760px) { .mweek .mbar.abs { background: var(--label-3); opacity: .7; } .gc-modes .segmented button { font-size: 11.5px; } }
+.tg-adrow .tg-gut { font-size: 10px; line-height: 1.15; overflow-wrap: anywhere; }

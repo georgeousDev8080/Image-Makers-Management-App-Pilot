@@ -8,6 +8,13 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.6.1', date: '02/11/2026',
+    items: [
+      ['🗓️', 'Ημερολόγιο: νέα προβολή «Χρόνος» με όλους τους μήνες της χρονιάς· οι ημέρες με εκδηλώσεις είναι χρωματισμένες και πατώντας μια ημέρα ή έναν μήνα ανοίγει.', 'Calendar: new “Year” view with all the months; days with events are coloured and tapping a day or month opens it.'],
+      ['📏', 'Οι πολυήμερες εκδηλώσεις και απουσίες εμφανίζονται όπως στο Google Calendar: μία μπάρα που απλώνεται σε όλες τις ημέρες (Μήνας και Εβδομάδα).', 'Multi-day events and absences show like in Google Calendar: one bar spanning all their days (Month and Week).'],
+    ],
+  },
+  {
     v: '1.6', date: '02/11/2026',
     items: [
       ['📆', 'Πολυήμερες εκδηλώσεις: στη δημιουργία εκδήλωσης ενεργοποιήστε «Πολυήμερη εκδήλωση» και βάλτε την τελευταία ημέρα. Η εκδήλωση εμφανίζεται σε όλες τις ημέρες της στο ημερολόγιο (με 1/3, 2/3 …), στις λίστες, στο Excel (στήλη «Έως»), στο «Στο κινητό» και στους ελέγχους διαθεσιμότητας.', 'Multi-day events: turn on “Multi-day event” when creating an event and set the last day. It shows on all its days in the calendar (1/3, 2/3 …), in lists, in the Excel (“Until” column), in “To phone” and in availability checks.'],

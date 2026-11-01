@@ -1,7 +1,6 @@
 // 💅
-import { esc } from './core.js';
 
-export function showDiva(name = 'Dimitris') {
+export function showDiva() {
   if (document.querySelector('.diva-layer')) return;
   const el = document.createElement('div');
   el.className = 'diva-layer';
@@ -15,8 +14,8 @@ export function showDiva(name = 'Dimitris') {
     .diva-layer .crown{font-size:64px;animation:divaBob 2.2s ease-in-out infinite;filter:drop-shadow(0 6px 18px rgba(255,200,80,.5))}
     .diva-layer h1{margin:4px 0 0;font-family:Georgia,serif;font-size:clamp(72px,22vw,150px);line-height:.95;letter-spacing:.06em;font-weight:800;background:linear-gradient(100deg,#ffd76a 0%,#ff8fd8 30%,#fff 50%,#b48cff 70%,#ffd76a 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:divaShine 2.6s linear infinite;text-shadow:0 0 40px rgba(255,140,220,.25)}
     .diva-layer .sub{margin-top:14px;font-size:clamp(16px,4.6vw,22px);font-weight:700;letter-spacing:.02em}
-    .diva-layer .tiny{margin-top:8px;font-size:13px;opacity:.75;letter-spacing:.12em;text-transform:uppercase}
-    .diva-layer .tap{margin-top:28px;font-size:12px;opacity:.55}
+    .diva-layer .tiny{margin:10px auto 0;max-width:520px;font-size:15px;line-height:1.5;opacity:.85}
+    .diva-layer .tap{margin:30px auto 0;max-width:440px;font-size:12.5px;line-height:1.5;opacity:.6}
     .diva-layer.out{animation:divaOut .3s ease forwards}
     @keyframes divaIn{from{opacity:0;transform:scale(1.08)}to{opacity:1;transform:none}}
     @keyframes divaOut{to{opacity:0;transform:scale(.96)}}
@@ -28,9 +27,9 @@ export function showDiva(name = 'Dimitris') {
   <div style="position:relative">
     <div class="crown">👑</div>
     <h1>DIVA</h1>
-    <div class="sub">Ο ${esc(name)} μπήκε σε DIVA MODE 💅</div>
-    <div class="tiny">Unboxholics vibes · editing με στιλ</div>
-    <div class="tap">πάτα οπουδήποτε για να γυρίσεις στο μοντάζ</div>
+    <div class="sub">Μναιμμμμμ...</div>
+    <div class="tiny">Πως σου ήρθε καν να το γράψεις αυτό; Αλλά είδες που το σκέφτηκα ότι θα το κάνεις;</div>
+    <div class="tap">Πάτα κλικ όπου να ναι τώρα για να φύγεις απ' αυτό το screen, πάνε για μοντάζ</div>
   </div>`;
   document.body.appendChild(el);
   try { navigator.vibrate?.([30, 40, 30, 40, 80]); } catch { /* */ }
