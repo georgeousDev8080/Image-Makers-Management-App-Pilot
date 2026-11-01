@@ -1164,3 +1164,14 @@ html, body, button, a, input, select, textarea, label, [role="button"], .row, .c
 @media (max-width: 760px) { .gc-modes .segmented button { font-size: 12px; padding: 5px 2px; } .yd { font-size: 11px; } }
 @media (max-width: 760px) { .mweek .mbar.abs { background: var(--label-3); opacity: .7; } .gc-modes .segmented button { font-size: 11.5px; } }
 .tg-adrow .tg-gut { font-size: 10px; line-height: 1.15; overflow-wrap: anywhere; }
+/* απουσίες: συμπαγείς μπάρες όπως τα ολοήμερα του Google Calendar */
+.mbar.abs, .mbar.abs.span { background: #6f7f92; color: #fff; }
+.mbar.abs .t { opacity: .9; }
+.mweek { grid-template-rows: 34px repeat(4, 23px) 22px; }
+@media (max-width: 760px) {
+  .mweek { grid-template-rows: 30px repeat(4, 15px) 4px; }
+  .mweek .mbar { height: 13px; font-size: 9px; font-weight: 600; padding: 0 3px; border-radius: 3px; letter-spacing: -.01em; }
+  .mweek .mbar.abs { background: #6f7f92; opacity: 1; }
+  .mweek .mbar.one { background: var(--c); color: #fff; }
+  .mweek .mbar .t { display: none; }
+}

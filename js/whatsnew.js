@@ -8,6 +8,12 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.6.2', date: '02/11/2026',
+    items: [
+      ['🚫', 'Οι απουσίες πολλών ημερών εμφανίζονται πλέον καθαρά στο ημερολόγιο ως συμπαγής μπάρα από την πρώτη έως την τελευταία ημέρα, όπως στο Google Calendar, με το όνομα και τη σημείωση (και στο κινητό).', 'Multi-day absences now show clearly in the calendar as one solid bar from the first to the last day, like in Google Calendar, with the name and note (on mobile too).'],
+    ],
+  },
+  {
     v: '1.6.1', date: '02/11/2026',
     items: [
       ['🗓️', 'Ημερολόγιο: νέα προβολή «Χρόνος» με όλους τους μήνες της χρονιάς· οι ημέρες με εκδηλώσεις είναι χρωματισμένες και πατώντας μια ημέρα ή έναν μήνα ανοίγει.', 'Calendar: new “Year” view with all the months; days with events are coloured and tapping a day or month opens it.'],

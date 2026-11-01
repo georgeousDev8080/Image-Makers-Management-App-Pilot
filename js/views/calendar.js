@@ -111,7 +111,7 @@ function barHTML(sg, row, compact) {
   const cls = `${sg.contL ? 'cl' : ''} ${sg.contR ? 'cr' : ''}`;
   if (sg.kind === 'abs') {
     const g = sg.g;
-    return `<button type="button" class="mbar abs ${sg.multi ? 'span' : ''} ${cls}" style="${style}" data-abs="${g.id}" title="${esc(absenceText(g))}">🚫 ${esc(shortName(g.user_id))}${g.start_time ? ` <span class="t">${esc(absenceWhen([g]))}</span>` : ''}</button>`;
+    return `<button type="button" class="mbar abs ${sg.multi ? 'span' : ''} ${cls}" style="${style}" data-abs="${g.id}" title="${esc(absenceText(g))}">🚫 ${esc(shortName(g.user_id))}${g.start_time ? ` <span class="t">${esc(absenceWhen([g]))}</span>` : ''}${g.note ? ` <span class="t">· ${esc(g.note)}</span>` : ''}</button>`;
   }
   const v = sg.v;
   const time = v.e.event_time && !sg.contL ? `<span class="t">${esc(fmtTime(v.e.event_time))}</span> ` : '';
@@ -124,7 +124,7 @@ function monthGrid(byDate, admin) {
   const first = new Date(y, m, 1);
   const start = toISO(new Date(y, m, 1 - ((first.getDay() + 6) % 7)));
   const today = todayISO();
-  const MAXL = 3; // ορατές λωρίδες ανά εβδομάδα (οι υπόλοιπες: «+Ν ακόμη»)
+  const MAXL = 4; // ορατές λωρίδες ανά εβδομάδα (οι υπόλοιπες: «+Ν ακόμη»)
   const items = spanItems();
   let weeks = '';
   for (let w = 0; w < 6; w++) {
