@@ -2,12 +2,13 @@
 //  Ημερολόγιο — σε στυλ Google Calendar
 //  Προβολές: Ημέρα · Εβδομάδα · Μήνας · Πρόγραμμα (ώρες σε 24ωρη μορφή)
 // =====================================================================
-import { L, esc, icon, toISO, parseISO, todayISO, addDays, monthName, fmtDateLong, fmtTime, LANG, DOW_SHORT_EL, DOW_SHORT_EN, segmented, initSegmented } from '../core.js';
+import { CATEGORIES, L, esc, icon, toISO, parseISO, todayISO, addDays, monthName, fmtDateLong, fmtTime, LANG, DOW_SHORT_EL, DOW_SHORT_EN, segmented, initSegmented } from '../core.js';
 import { S, isAdmin, allEventViews, myEventIds, profileName, absenceWhen } from '../data.js';
 import { openAbsenceSheet, absenceActions, absenceText } from './absences.js';
 import { pageHead } from '../layout.js';
 import { eventRow, catShort } from '../components.js';
 
+const catLabel = (c) => { const o = CATEGORIES.find((x) => x.v === c); return o ? L(o.el, o.en).replace(/\s*\(.*\)$/, '') : ''; };
 const HOUR = 48;          // ύψος μίας ώρας (px) στο πλέγμα ωρών
 const DUR = 120;          // προεπιλεγμένη διάρκεια εμφάνισης (λεπτά) — οι εκδηλώσεις έχουν μόνο ώρα έναρξης
 const st = { sel: todayISO(), mode: 'month', onlyMine: false, anim: '' };
@@ -51,7 +52,7 @@ function timeGrid(days, byDate, admin) {
   const AB = absBy();
   const allDay = days.map((iso) => {
     const list = (byDate[iso] || []).filter((v) => mins(v.e.event_time) == null);
-    return `<div class="tg-ad">${list.map((v) => `<a class="cal-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}">${esc(v.title)}</a>`).join('')}${(AB[iso] || []).map(absChip).join('')}</div>`;
+    return `<div class="tg-ad">${list.map((v) => `<a class="cal-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}" title="${esc(evTip(v))}">${esc(evType(v))}</a>`).join('')}${(AB[iso] || []).map(absChip).join('')}</div>`;
   }).join('');
   const hasAllDay = days.some((iso) => (byDate[iso] || []).some((v) => mins(v.e.event_time) == null) || (AB[iso] || []).length);
   const hours = Array.from({ length: 24 }, (_, h) => `<div class="tg-h"><span>${h ? hhmm(h * 60) : ''}</span></div>`).join('');
@@ -60,8 +61,8 @@ function timeGrid(days, byDate, admin) {
     const blocks = layout(timed).map(({ v, s, col, n }) => {
       const w = 100 / n;
       const loc = v.e.church_location || '';
-      return `<a class="tg-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}" style="top:${(s / 60) * HOUR}px;height:${(DUR / 60) * HOUR - 2}px;left:calc(${col * w}% + 1px);width:calc(${w}% - 3px)" title="${esc(`${hhmm(s)} ${v.title}${loc ? ' · ' + loc : ''}`)}">
-        <b>${esc(v.title)}</b><span>${esc(hhmm(s))}${loc ? ` · ${esc(loc)}` : ''}</span></a>`;
+      return `<a class="tg-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}" style="top:${(s / 60) * HOUR}px;height:${(DUR / 60) * HOUR - 2}px;left:calc(${col * w}% + 1px);width:calc(${w}% - 3px)" title="${esc(evTip(v))}">
+        <b>${esc(evType(v))}</b><span>${esc(hhmm(s))}${loc ? ` · ${esc(loc)}` : ''}</span></a>`;
     }).join('');
     const nowLine = iso === today ? `<div class="tg-now" style="top:${(nowM / 60) * HOUR}px"></div>` : '';
     return `<div class="tg-col ${iso === today ? 'today' : ''}" data-day="${iso}" ${admin ? 'data-slot' : ''}>${blocks}${nowLine}</div>`;
@@ -77,6 +78,9 @@ function timeGrid(days, byDate, admin) {
 const absBy = () => { const m = {}; S.absences.forEach((a) => { (m[a.day] ||= []).push(a); }); return m; };
 const shortName = (id) => (profileName(S.profiles.find((p) => p.id === id) || (id === S.profile?.id ? S.profile : null)) || '').split(' ')[0];
 const absChip = (a) => `<button type="button" class="cal-abs" data-abs="${a.id}" title="${esc(absenceText(a))}">🚫 ${esc(shortName(a.user_id))}${a.start_time ? ` <span class="t">${esc(absenceWhen([a]))}</span>` : ''}</button>`;
+/** Στο ημερολόγιο φαίνεται ο τύπος της εκδήλωσης (το όνομα του πελάτη μένει στο αναδυόμενο κείμενο) */
+const evType = (v) => catLabel(v.e.category);
+const evTip = (v) => [catLabel(v.e.category), v.e.event_time ? fmtTime(v.e.event_time) : '', v.e.church_location, v.title].filter(Boolean).join(' · ');
 function monthGrid(byDate, admin) {
   const AB = absBy();
   const sel = parseISO(st.sel); const y = sel.getFullYear(), m = sel.getMonth();
@@ -92,7 +96,7 @@ function monthGrid(byDate, admin) {
     if (i >= 35 && out && i % 7 === 0) break;
     cells += `<div class="cal-cell ${out ? 'out' : ''} ${iso === today ? 'today' : ''} ${iso === st.sel ? 'sel' : ''}" data-date="${iso}" role="button" tabindex="0" aria-label="${esc(fmtDateLong(iso))}, ${evs.length}">
       <button class="num" data-goday="${iso}" tabindex="-1">${d.getDate()}</button>
-      ${evs.slice(0, 3).map((v) => `<a class="cal-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}" title="${esc(v.title)}"><i></i>${v.e.event_time ? `<span class="t">${esc(fmtTime(v.e.event_time))}</span> ` : ''}${esc(v.title)}</a>`).join('')}
+      ${evs.slice(0, 3).map((v) => `<a class="cal-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}" title="${esc(evTip(v))}"><i></i>${v.e.event_time ? `<span class="t">${esc(fmtTime(v.e.event_time))}</span> ` : ''}${esc(evType(v))}</a>`).join('')}
       ${evs.length > 3 ? `<button class="cal-more" data-goday="${iso}">+${evs.length - 3} ${esc(L('ακόμη', 'more'))}</button>` : ''}
       ${(AB[iso] || []).slice(0, 2).map(absChip).join('')}${(AB[iso] || []).length > 2 ? `<div class="cal-more">+${AB[iso].length - 2} 🚫</div>` : ''}
       <div class="cal-dots">${evs.slice(0, 4).map((v) => `<i class="cat-${v.e.category}" style="background:var(--c)"></i>`).join('')}${(AB[iso] || []).length ? '<i class="abs-dot"></i>' : ''}</div>
@@ -120,7 +124,7 @@ function schedule(views) {
     const first = v.e.event_date !== lastD; lastD = v.e.event_date;
     html += `<div class="sch-row ${first ? 'first' : ''}">
       <div class="sch-date ${v.e.event_date === today ? 'today' : ''}">${first ? `<span class="n">${d.getDate()}</span><span class="w">${esc(wd[(d.getDay() + 6) % 7])}</span>` : ''}</div>
-      <a class="sch-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}"><i></i><span class="sch-t">${esc(v.e.event_time ? fmtTime(v.e.event_time) : L('Χωρίς ώρα', 'No time'))}</span><span class="sch-n"><b>${esc(v.title)}</b>${v.e.church_location ? `<small>${esc(v.e.church_location)}</small>` : ''}</span></a>
+      <a class="sch-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}"><i></i><span class="sch-t">${esc(v.e.event_time ? fmtTime(v.e.event_time) : L('Χωρίς ώρα', 'No time'))}</span><span class="sch-n"><b>${esc(evType(v))}</b>${v.e.church_location ? `<small>${esc(v.e.church_location)}</small>` : ''}</span></a>
     </div>`;
   });
   return html + '</div>';
