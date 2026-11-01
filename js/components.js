@@ -179,6 +179,9 @@ export function packageNameFrom(od) {
 
 /** Αρμοδιότητες συνεργείου (όταν η εκδήλωση έχει 2 συνεργεία) */
 export const CREW_TASKS = [
+  { v: 'all', el: 'Όλη η εκδήλωση', en: 'The whole event' },
+  { v: 'groom_house', el: 'Σπίτι γαμπρού', en: 'Groom’s home' },
+  { v: 'bride_house', el: 'Σπίτι νύφης', en: 'Bride’s home' },
   { v: 'houses', el: 'Σπίτι γαμπρού / νύφης', en: 'Groom / bride homes' },
   { v: 'church', el: 'Εκκλησία', en: 'Church' },
   { v: 'reception', el: 'Κέντρο', en: 'Reception venue' },

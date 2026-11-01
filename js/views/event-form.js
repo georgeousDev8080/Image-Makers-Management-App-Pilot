@@ -362,9 +362,30 @@ function stepCrew(body, root, params) {
     const un = unavailable(p.id);
     return `<div class="row ${disabled ? 'is-off' : ''}"><label class="hstack" style="flex:1;cursor:${disabled ? 'not-allowed' : 'pointer'};flex-wrap:nowrap"><input type="checkbox" data-u="${p.id}" ${on ? 'checked' : ''} ${disabled ? 'disabled' : ''} style="width:22px;height:22px;accent-color:var(--accent)">${avatar(p)}<div class="main-col"><div class="t" style="white-space:normal">${esc(profileName(p))} ${un ? unavailTag(un) : ''}</div></div></label>${extraHtml}</div>`;
   };
-  const taskBoxes = (t) => `<div class="card pad mt"><b>${esc(t === 1 ? L('Τι αναλαμβάνει το συνεργείο 1', 'What crew 1 covers') : L('Τι αναλαμβάνει το συνεργείο 2', 'What crew 2 covers'))}</b>
-      <div class="task-grid mt-s">${CREW_TASKS.filter((k) => k.v !== 'houses' || ['wedding', 'wedding_baptism'].includes(W.ev.category)).map((k) => `<label class="task-box ${W.tasks[t].includes(k.v) ? 'on' : ''}"><input type="checkbox" data-task="${k.v}" ${W.tasks[t].includes(k.v) ? 'checked' : ''}><span>${esc(L(k.el, k.en))}</span></label>`).join('')}</div></div>`;
+  const wedCat = ['wedding', 'wedding_baptism'].includes(W.ev.category);
+  const HOUSES = ['groom_house', 'bride_house'];
+  const opt = (v) => CREW_TASKS.find((k) => k.v === v);
+  // 1ο συνεργείο: πάει σε όλη την εκδήλωση· διαλέγετε μόνο σε ποιο σπίτι (γαμπρού ή νύφης)
+  // 2ο συνεργείο: τα υπόλοιπα· το σπίτι του 1ου συνεργείου είναι γκρι
+  const taskBoxes = (t) => {
+    if (t === 1) {
+      return `<div class="card pad mt"><b>${esc(wedCat ? L('Σε ποιο σπίτι πηγαίνει το συνεργείο 1;', 'Which home does crew 1 go to?') : L('Το συνεργείο 1 πηγαίνει σε όλη την εκδήλωση.', 'Crew 1 covers the whole event.'))}</b>
+        ${wedCat ? `<div class="task-grid mt-s">${HOUSES.map((v) => `<label class="task-box ${W.tasks[1].includes(v) ? 'on' : ''}"><input type="radio" name="t1house" data-house="${v}" ${W.tasks[1].includes(v) ? 'checked' : ''}><span>${esc(L(opt(v).el, opt(v).en))}</span></label>`).join('')}</div>
+        <div class="help mt-s">${esc(L('Εκκλησία και κέντρο τα καλύπτει πάντα το 1ο συνεργείο.', 'Crew 1 always covers the church and the reception.'))}</div>` : ''}</div>`;
+    }
+    const taken = W.tasks[1].filter((x) => HOUSES.includes(x));
+    const list = [...(wedCat ? HOUSES : []), 'church', 'reception', 'drone'];
+    return `<div class="card pad mt"><b>${esc(L('Τι αναλαμβάνει το συνεργείο 2', 'What crew 2 covers'))}</b>
+      <div class="task-grid mt-s">${list.map((v) => { const off = taken.includes(v); const on = !off && W.tasks[2].includes(v); return `<label class="task-box ${on ? 'on' : ''} ${off ? 'off' : ''}"><input type="checkbox" data-task="${v}" ${on ? 'checked' : ''} ${off ? 'disabled' : ''}><span>${esc(L(opt(v).el, opt(v).en))}${off ? ` <small>(${esc(L('συνεργείο 1', 'crew 1'))})</small>` : ''}</span></label>`; }).join('')}</div></div>`;
+  };
   const syncTasks = (t) => { W.crew = W.crew.map((c) => (c.team === t ? { ...c, tasks: [...W.tasks[t]] } : c)); };
+  const bindHouse = () => body.querySelectorAll('[data-house]').forEach((rb) => rb.addEventListener('click', () => {
+    const v = rb.dataset.house;
+    const had = W.tasks[1].includes(v);
+    W.tasks[1] = ['all', ...(had ? [] : [v])]; // ξαναπατώντας το ίδιο σπίτι, ακυρώνεται
+    W.tasks[2] = W.tasks[2].filter((x) => x !== v);
+    syncTasks(1); syncTasks(2); redraw();
+  }));
   const bindTasks = (t) => body.querySelectorAll('[data-task]').forEach((cb) => cb.addEventListener('change', () => {
     const v = cb.dataset.task;
     W.tasks[t] = cb.checked ? [...new Set([...W.tasks[t], v])] : W.tasks[t].filter((x) => x !== v);
@@ -429,15 +450,17 @@ function stepCrew(body, root, params) {
   const t = W.cs === 't1' ? 1 : 2;
   const pool = W.picked.map((u) => team.find((p) => p.id === u)).filter(Boolean)
     .filter((p) => t === 1 || !W.crew.some((c) => c.user_id === p.id && c.team === 1));
-  body.innerHTML = subtitle(t === 1 ? '3' : '4', t === 1 ? L('Επιλέξτε το 1ο συνεργείο (βασικό)', 'Choose crew 1 (main)') : L('Επιλέξτε το 2ο συνεργείο', 'Choose crew 2'), t === 1 ? L('Από τα άτομα που επιλέξατε.', 'From the people you chose.') : L('Από τα άτομα που έμειναν. Όποιος δεν επιλεγεί, δεν θα πάει.', 'From the people left. Anyone not chosen will not go.'))
+  body.innerHTML = subtitle(t === 1 ? '3' : '4', t === 1 ? (['wedding', 'wedding_baptism'].includes(W.ev.category) ? L('Επιλέξτε το 1ο συνεργείο (βασικό) (Πηγαίνει σε όλο τον γάμο)', 'Choose crew 1 (main) (Covers the whole wedding)') : L('Επιλέξτε το 1ο συνεργείο (βασικό) (Πηγαίνει σε όλη την εκδήλωση)', 'Choose crew 1 (main) (Covers the whole event)')) : L('Επιλέξτε το 2ο συνεργείο', 'Choose crew 2'), t === 1 ? L('Από τα άτομα που επιλέξατε.', 'From the people you chose.') : L('Από τα άτομα που έμειναν. Όποιος δεν επιλεγεί, δεν θα πάει.', 'From the people left. Anyone not chosen will not go.'))
     + `<div class="list mt-s">${pool.map((p) => person(p, { on: W.crew.some((c) => c.user_id === p.id && c.team === t) })).join('') || `<div class="row muted">${esc(L('Δεν έμεινε κανείς.', 'Nobody left.'))}</div>`}</div>`
     + taskBoxes(t);
+  if (t === 1 && !W.tasks[1].includes('all')) { W.tasks[1] = ['all', ...W.tasks[1].filter((x) => HOUSES.includes(x))]; syncTasks(1); }
   body.querySelectorAll('[data-u]').forEach((cb) => cb.addEventListener('change', () => {
     const u = cb.dataset.u;
     W.crew = W.crew.filter((c) => c.user_id !== u);
     if (cb.checked) W.crew.push({ user_id: u, duty: defDuty(team.find((p) => p.id === u)), team: t, tasks: [...W.tasks[t]] });
   }));
   bindTasks(t);
+  bindHouse();
 }
 
 // ---------- Βήμα 4: Προσφορά ----------
