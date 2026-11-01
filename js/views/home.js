@@ -65,7 +65,7 @@ export function renderHome(root) {
     if ((S.events.size || S.payments.length || S.appointments.length) && (lbDays === null || lbDays >= 30)) todo.push({ h: '#/settings', i: 'archive', c: 'var(--blue)', t: lbDays === null ? L('Κατεβάστε το πρώτο πλήρες αντίγραφο ασφαλείας (Ρυθμίσεις)', 'Download your first full backup (Settings)') : L(`Τελευταίο αντίγραφο ασφαλείας πριν από ${lbDays} ημέρες · κατεβάστε νέο`, `Last backup ${lbDays} days ago · download a new one`) });
     const pu = pendingUsers().length; if (pu) todo.push({ h: '#/team', i: 'shield', c: 'var(--purple)', t: L(`${pu} νέοι λογαριασμοί περιμένουν ρόλο`, `${pu} new accounts need a role`) });
     if (isVideoAdmin()) {
-      const sos = all.filter((v) => ['lab', 'ready', 'delivered'].includes(v.e.photo_status) && v.e.editing_status !== 'done').length;
+      const sos = all.filter((v) => v.e.coverage !== 'photo' && ['lab', 'ready', 'delivered'].includes(v.e.photo_status) && v.e.editing_status !== 'done').length;
       if (sos) todo.push({ h: '#/sheets/mitsos', i: 'warning', c: 'var(--red)', t: L(`${sos} SOS στο Dimitris — το album πάει για εκτύπωση`, `${sos} SOS in Dimitris — album going to print`) });
     }
     const noCrew = upcoming.filter((v) => daysBetween(today, v.e.event_date) <= 21 && !v.crew.length).length;

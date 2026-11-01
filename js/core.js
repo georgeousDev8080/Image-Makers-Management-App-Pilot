@@ -68,6 +68,14 @@ export function parseISO(s) { if (!s) return null; const [y, m, d] = String(s).s
 export function fmtDate(s, blank = '—') { if (!s) return blank; const [y, m, d] = String(s).slice(0, 10).split('-'); return `${d}/${m}/${y}`; }
 /** Διαφημιστικό και Άλλο δεν έχουν PDF προσφοράς */
 export const needsOffer = (cat) => cat !== 'promo' && cat !== 'other';
+/** Κάλυψη εκδήλωσης */
+export const COVERAGE = [
+  { v: 'both', el: 'Φωτογραφία & βίντεο', en: 'Photo & video', e: '📷🎥' },
+  { v: 'photo', el: 'Μόνο φωτογραφία', en: 'Photo only', e: '📷' },
+  { v: 'video', el: 'Μόνο βίντεο', en: 'Video only', e: '🎥' },
+];
+export const hasVideo = (e) => (e?.coverage || 'both') !== 'photo';
+export const hasPhoto = (e) => (e?.coverage || 'both') !== 'video';
 /** Αρμοδιότητες συνεργείου */
 export const DUTIES = [{ v: 'photo', el: 'Φωτογραφία', en: 'Photo', e: '📷' }, { v: 'video', el: 'Βίντεο', en: 'Video', e: '🎥' }, { v: 'drone', el: 'Drone', en: 'Drone', e: '🚁' }];
 export const dutyLabel = (d) => { const o = DUTIES.find((x) => x.v === d) || DUTIES[0]; return L(o.el, o.en); };

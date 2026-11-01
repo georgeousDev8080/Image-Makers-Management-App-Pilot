@@ -149,7 +149,10 @@ export function crewBriefHTML(e, myDuty) {
   }
   const tag = (w) => (w === P ? '📷' : w === V ? '🎥' : w === D ? '🚁' : '📷🎥');
   const mine = (w) => !myDuty || w === B || w === myDuty || (w === D && myDuty === V);
-  const list = [...items.filter((i) => mine(i.who)), ...items.filter((i) => !mine(i.who))];
+  // κάλυψη μόνο φωτογραφίας / μόνο βίντεο: κρύβουμε ό,τι δεν αφορά την εκδήλωση
+  const cov = e.coverage || 'both';
+  const rel = items.filter((i) => !(cov === 'photo' && i.who === V) && !(cov === 'video' && i.who === P));
+  const list = [...rel.filter((i) => mine(i.who)), ...rel.filter((i) => !mine(i.who))];
   return `${myDuty ? `<div class="small muted" style="margin-bottom:8px">${esc(L('Η ανάθεσή σου', 'Your assignment'))}: <b style="color:var(--label)">${esc(dutyLabel(myDuty))}</b></div>` : ''}
     <ul class="pkg-list">${list.map((i) => `<li style="${mine(i.who) ? '' : 'opacity:.55'}">${esc(i.text)} <span class="tiny">${tag(i.who)}</span></li>`).join('')}</ul>
     ${od ? '' : `<div class="small muted mt-s">${esc(L('Δεν υπάρχουν ακόμη λεπτομέρειες πακέτου· ρωτήστε τον διαχειριστή.', 'No package details yet; ask an admin.'))}</div>`}`;
@@ -186,7 +189,7 @@ const taskList = (tasks) => CREW_TASKS.filter((t) => (tasks || []).includes(t.v)
  * Κείμενο ανάθεσης για κάθε μέλος, από τις επιλογές της εκδήλωσης.
  * list: [{user_id, duty, team, tasks}] · mode: 'single' | 'double' → { user_id: κείμενο }
  */
-export function crewBriefTexts(mode, list) {
+export function crewBriefTexts(mode, list, coverage = 'both') {
   const out = {};
   const names = (arr) => arr.map((c) => profileName(profileById(c.user_id))).join(', ');
   list.forEach((c) => {
@@ -205,6 +208,8 @@ export function crewBriefTexts(mode, list) {
       lines.push(`Η ανάθεσή σου: ${dutyLabel(c.duty)}`);
       if (others.length) lines.push(`Μαζί σου: ${others.map((x) => `${profileName(profileById(x.user_id))} (${dutyLabel(x.duty)})`).join(', ')}`);
     }
+    if (coverage === 'photo') lines.unshift('Κάλυψη: μόνο φωτογραφία');
+    if (coverage === 'video') lines.unshift('Κάλυψη: μόνο βίντεο');
     out[c.user_id] = lines.join('\n');
   });
   return out;

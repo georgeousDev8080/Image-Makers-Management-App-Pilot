@@ -13,7 +13,7 @@ const st = { year: null, q: '', filter: 'active' };
 /** Πόσες ημέρες είναι το έργο στο τρέχον στάδιο και τι χρώμα παίρνει */
 export function wfLevel(e, today = todayISO()) {
   const rule = WF_RULES[e.photo_status];
-  if (!rule || e.status === 'cancelled') return { level: '', days: null };
+  if (!rule || e.status === 'cancelled' || e.coverage === 'video') return { level: '', days: null }; // μόνο βίντεο: χωρίς στάδια φωτογραφιών
   const changed = String(e.photo_status_at || e.updated_at || e.created_at || '').slice(0, 10) || e.event_date;
   const since = e.photo_status === 'samples_todo' ? (changed > e.event_date ? changed : e.event_date) : changed;
   const days = daysBetween(since, today);
@@ -36,9 +36,9 @@ export function renderWorkflow(root) {
   const allRows = lvl(allEventViews({ includeCancelled: false }));
   const yearRows = allRows.filter((r) => String(r.v.e.event_date).startsWith(String(st.year)));
   const f = {
-    active: (r) => r.v.e.photo_status !== 'delivered',
+    active: (r) => (r.v.e.coverage === 'video' ? r.v.e.editing_status !== 'done' : r.v.e.photo_status !== 'delivered'),
     late: (r) => !!r.level,
-    done: (r) => r.v.e.photo_status === 'delivered',
+    done: (r) => (r.v.e.coverage === 'video' ? r.v.e.editing_status === 'done' : r.v.e.photo_status === 'delivered'),
     all: () => true,
   };
   const count = (k) => (byYear(k) ? yearRows : allRows).filter(f[k]).length;
@@ -61,8 +61,8 @@ export function renderWorkflow(root) {
         <span class="wf-month">${esc(monthUp(v.e.event_date))}</span>
         <span class="wf-name"><a href="#/event/${v.e.id}">${esc(v.title)}</a></span>
         <span class="wf-loc">${esc(v.e.church_location || '—')}</span>
-        <span class="wf-sel"><label class="wf-lbl">${esc(L('Φωτογραφίες', 'Photos'))}</label><select class="select" data-ph="${v.e.id}">${options(PHOTO_STATUS, v.e.photo_status)}</select>${days != null && rule ? `<small class="wf-days">${esc(L(`${days} ημ. σε αυτό το στάδιο`, `${days} days in this stage`))}${level ? ` · ${esc(level === 'late' ? L('καθυστέρηση', 'late') : L('προσοχή', 'attention'))}` : ''}</small>` : ''}</span>
-        <span class="wf-sel"><label class="wf-lbl">Video</label><select class="select" data-ed="${v.e.id}">${options(EDIT_STATUS, v.e.editing_status)}</select></span>
+        <span class="wf-sel"><label class="wf-lbl">${esc(L('Φωτογραφίες', 'Photos'))}</label>${v.e.coverage === 'video' ? `<span class="muted small">${esc(L('Μόνο βίντεο', 'Video only'))}</span>` : `<select class="select" data-ph="${v.e.id}">${options(PHOTO_STATUS, v.e.photo_status)}</select>`}${days != null && rule ? `<small class="wf-days">${esc(L(`${days} ημ. σε αυτό το στάδιο`, `${days} days in this stage`))}${level ? ` · ${esc(level === 'late' ? L('καθυστέρηση', 'late') : L('προσοχή', 'attention'))}` : ''}</small>` : ''}</span>
+        <span class="wf-sel"><label class="wf-lbl">Video</label>${v.e.coverage === 'photo' ? `<span class="muted small">${esc(L('Μόνο φωτογραφία', 'Photo only'))}</span>` : `<select class="select" data-ed="${v.e.id}">${options(EDIT_STATUS, v.e.editing_status)}</select>`}</span>
         <span class="wf-act"><button class="btn small" data-mail="${v.e.id}" title="${esc(L('Μήνυμα στον πελάτη', 'Message the client'))}">${icon('mail')}<span class="hide-mobile"> ${esc(L('Μήνυμα', 'Message'))}</span></button>${sent ? `<small class="wf-sent" title="${esc(sent.title || '')}">✓ ${esc(timeAgo(sent.sent_at))}</small>` : ''}</span>
       </div>`;
       }).join('')}

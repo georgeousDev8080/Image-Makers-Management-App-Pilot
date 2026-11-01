@@ -98,7 +98,7 @@ function navItems() {
 }
 function sosCount() {
   let n = 0;
-  S.events.forEach((e) => { if (['lab', 'ready', 'delivered'].includes(e.photo_status) && e.editing_status !== 'done' && e.status !== 'cancelled') n++; });
+  S.events.forEach((e) => { if (e.coverage !== 'photo' && ['lab', 'ready', 'delivered'].includes(e.photo_status) && e.editing_status !== 'done' && e.status !== 'cancelled') n++; });
   return n;
 }
 function tabItems() {

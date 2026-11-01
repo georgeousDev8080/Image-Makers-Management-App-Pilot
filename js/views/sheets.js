@@ -2,7 +2,7 @@
 //  Φύλλα (Excel): Κεντρικό, Πελάτες, Πληρωμές, Φωτογραφίες, Μητρώο,
 //  Έξοδα, Σύνοψη, Dashboard, Έλεγχος δεδομένων, Mitsos
 // =====================================================================
-import { needsOffer, dutyEmoji, L, esc, icon, money, fmtDate, todayISO, daysBetween, sum, matches, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, VIDEO_STATUS, PCS, SHOP_STATUS, FILES_COPIED, STORED_AT, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, MONTHS_EL_UP, monthName, monthShort, toast, confirmBox, actionSheet, segmented, initSegmented } from '../core.js';
+import { needsOffer, dutyEmoji, L, esc, icon, money, fmtDate, todayISO, daysBetween, sum, matches, lbl, COVERAGE, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, VIDEO_STATUS, PCS, SHOP_STATUS, FILES_COPIED, STORED_AT, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, MONTHS_EL_UP, monthName, monthShort, toast, confirmBox, actionSheet, segmented, initSegmented } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, saveCustomer, patchCustomer, patchPayment, patchExpense, patchEvent, saveFinance, savePayment, deletePayment, saveExpense, deleteExpense, openOffer, yearsAvailable, profileName, profileById } from '../data.js';
 import { pageHead, setTopActions } from '../layout.js';
 import { catShort } from '../components.js';
@@ -117,6 +117,7 @@ function eventsSheet(body, tab, redraw) {
   add('couple', { key: 'email1', label: 'Email 1', w: 190, editable: (v) => !!v.c, get: (v) => v.c?.email1, set: (v, val) => updCust(v, 'email1', val) });
   add('couple', { key: 'email2', label: 'Email 2', w: 170, editable: (v) => !!v.c, get: (v) => v.c?.email2, set: (v, val) => updCust(v, 'email2', val) });
   add('cat', { key: 'cat', label: L('Κατηγορία Εκδήλωσης', 'Event category'), w: 130, type: 'select', blank: false, options: CATEGORIES, editable: true, get: (v) => v.e.category, set: (v, val) => patchEvent(v.e.id, { category: val }) });
+  add('cat', { key: 'cov', label: L('Κάλυψη', 'Coverage'), w: 150, type: 'select', blank: false, options: COVERAGE, editable: true, get: (v) => v.e.coverage || 'both', set: (v, val) => patchEvent(v.e.id, { coverage: val || 'both' }) });
   add('cat', { key: 'pdf', label: 'PDF', w: 62, align: 'center', get: (v) => (v.e.offer_path ? 'PDF' : ''), display: (v) => v.e.offer_path ? `<button class="pdf-btn" data-pdf="${v.e.id}" title="${esc(L('Άνοιγμα προσφοράς', 'Open offer'))}">${icon('doc')}PDF</button>` : `<button class="pdf-btn" data-upl="${v.e.id}" style="color:var(--label-3)" title="${esc(L('Ανέβασμα PDF', 'Upload PDF'))}">${icon('upload')}</button>` });
   add('cat', { key: 'second', label: L('Δεύτερο Συνεργείο', 'Second crew'), w: 92, type: 'select', blank: false, options: yesNo, editable: true, get: (v) => (v.f.second_crew ? 'true' : 'false'), set: (v, val) => saveFinance(v.e.id, { second_crew: val === 'true' }) });
   add('cat', { key: 'crew', label: L('Συνεργείο', 'Crew'), w: 170, editable: true, onOpen: (v) => openCrewSheet(v.e.id), get: (v) => v.crew.map((c) => profileName(c.profile)).join(', '), display: (v) => v.crew.length ? esc(v.crew.map((c) => profileName(c.profile).split(' ')[0] + (' ' + dutyEmoji(c.duty))).join(', ')) : `<span class="muted">+ ${esc(L('ανάθεση', 'assign'))}</span>` });
@@ -180,7 +181,7 @@ function eventsSheet(body, tab, redraw) {
 // ---------------------------------------------------------------------
 //  Mitsos (μόνο Διαχειριστής Βιντεογράφος)
 // ---------------------------------------------------------------------
-const isSOS = (e) => ['lab', 'ready', 'delivered'].includes(e.photo_status) && e.editing_status !== 'done' && e.status !== 'cancelled';
+const isSOS = (e) => e.coverage !== 'photo' && ['lab', 'ready', 'delivered'].includes(e.photo_status) && e.editing_status !== 'done' && e.status !== 'cancelled';
 // Χρώματα μηνών (όπως στο φύλλο του Dimitris)
 const MONTH_COLORS = ['#3d6fb6', '#1f6b45', '#4f9a5b', '#bfe3b4', '#a8d67a', '#e6c84f', '#f0a34a', '#e2763d', '#c95b4a', '#9b5bb5', '#6b6fc7', '#5a8fd6'];
 const MONTH_DARK = [true, true, true, false, false, false, false, true, true, true, true, true];
@@ -192,7 +193,7 @@ const priority = (e) => (e.editing_status === 'done' ? { v: 'done', el: 'Έτο�
   : { v: 'none', el: '—', en: '—', tone: 'grey' });
 function mitsosSheet(body, tab, redraw) {
   if (!isVideoAdmin()) { body.innerHTML = `<div class="empty">${icon('lock')}<b>${esc(L('Μόνο για Διαχειριστή (Βιντεογράφο)', 'Admin (Videographer) only'))}</b></div>`; return; }
-  let views = allEventViews({ year: st.year, includeCancelled: false });
+  let views = allEventViews({ year: st.year, includeCancelled: false }).filter((v) => v.e.coverage !== 'photo'); // μόνο φωτογραφία: δεν αφορά το βίντεο
   const counts = { open: views.filter((v) => v.e.editing_status !== 'done').length, sos: views.filter((v) => isSOS(v.e)).length };
   views = views.filter((v) => (st.mitsosFilter === 'all' || (st.mitsosFilter === 'sos' ? isSOS(v.e) : st.mitsosFilter === 'open' ? (v.e.editing_status !== 'done') : true))
     && matches(st.q, v.title, v.e.church_location, fmtDate(v.e.event_date), v.e.video_notes, MONTHS_EL_UP[Number(v.e.event_date.slice(5, 7)) - 1], lbl(VIDEO_STATUS, v.e.video_status), priority(v.e).el));

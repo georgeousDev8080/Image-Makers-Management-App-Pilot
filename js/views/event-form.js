@@ -1,7 +1,7 @@
 // =====================================================================
 //  Νέα εκδήλωση / επεξεργασία (οδηγός σε 4 βήματα)
 // =====================================================================
-import { needsOffer, normTime, timeInputAttrs, fmtTime, L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, initSegmented, toast, toastErr, busy, mapsUrl, money, parseMoney } from '../core.js';
+import { COVERAGE, needsOffer, normTime, timeInputAttrs, fmtTime, L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, initSegmented, toast, toastErr, busy, mapsUrl, money, parseMoney } from '../core.js';
 import { S, coupleName, profileName, saveCustomer, saveEvent, saveFinance, setCrew, crewDiffers, absencesOn, absenceWhen, uploadOffer, eventView, updateRequest, saveAppointment, copyOfferToEvent } from '../data.js';
 import { pageHead, go, backBtn } from '../layout.js';
 import { avatar, packageNameFrom, offerSummaryHTML, CREW_TASKS, crewBriefTexts } from '../components.js';
@@ -16,7 +16,7 @@ function freshState(params) {
     step: params.id && params.step ? Math.min(3, Math.max(0, Number(params.step) || 0)) : 0, mode: params.id ? 'edit' : 'new',
     custMode: 'existing', customerId: null, cq: '',
     cust: { name1: '', name2: '', phone1: '', phone2: '', email1: '', email2: '' },
-    ev: { category: 'wedding', event_date: params.date || '', event_time: normTime(params.time) || '', resolution: '1080', church_location: '', bride_house: '', groom_house: '', reception_location: '', church_geo: '', bride_geo: '', groom_geo: '', reception_geo: '', notes: '', extra_crew: '' },
+    ev: { category: 'wedding', coverage: 'both', event_date: params.date || '', event_time: normTime(params.time) || '', resolution: '1080', church_location: '', bride_house: '', groom_house: '', reception_location: '', church_geo: '', bride_geo: '', groom_geo: '', reception_geo: '', notes: '', extra_crew: '' },
     fin: { package_price: '', package_name: '', second_crew: false, office_notes: '' },
     crew: [], crewMode: null, cs: 'mode', tasks: { 1: [], 2: [] }, picked: [],
     offer: { pdf: null, pdfName: '', data: null, existingPath: null },
@@ -273,7 +273,8 @@ function stepEvent(body, root, params) {
       ${fld('event_date', L('Ημερομηνία', 'Date'), W.ev.event_date, { req: true, type: 'date' })}
       ${fld('event_time', simple ? L('Ώρα έναρξης', 'Start time') : L('Ώρα μυστηρίου / έναρξης', 'Ceremony / start time'), W.ev.event_time, { req: true, type: 'time' })}
       <div class="field full" id="sameDay"></div>
-      <div class="field full"><label>${esc(L('Ανάλυση video', 'Video resolution'))} <span class="req">*</span></label>${segmented('res', RESOLUTIONS.map((r) => ({ v: r.v, label: L(r.el, r.en) })), W.ev.resolution, { block: true })}</div>
+      <div class="field full"><label>${esc(L('Κάλυψη', 'Coverage'))} <span class="req">*</span></label>${segmented('cov', COVERAGE.map((c) => ({ v: c.v, label: L(c.el, c.en) })), W.ev.coverage || 'both', { block: true })}</div>
+      ${W.ev.coverage === 'photo' ? '' : `<div class="field full"><label>${esc(L('Ανάλυση video', 'Video resolution'))} <span class="req">*</span></label>${segmented('res', RESOLUTIONS.map((r) => ({ v: r.v, label: L(r.el, r.en) })), W.ev.resolution, { block: true })}</div>`}
       ${simple ? locFld('church_location', 'church_geo', L('Τοποθεσία', 'Location'), { req: true, ph: L('π.χ. Κεντρική πλατεία, Λάρισα', 'e.g. Central square, Larissa') })
         : locFld('church_location', 'church_geo', L('Εκκλησία / τοποθεσία μυστηρίου', 'Church / ceremony location'), { req: true, ph: L('π.χ. Ι.Ν. Αγίου Αχιλλείου, Λάρισα', 'e.g. St. Achilleios Church, Larissa') })}
       ${wed ? locFld('bride_house', 'bride_geo', L('Σπίτι νύφης', 'Bride’s home'), { ph: L('Διεύθυνση, περιοχή', 'Address, area') }) : ''}
@@ -284,7 +285,16 @@ function stepEvent(body, root, params) {
     </div></div>`;
   bindInputs(body, W.ev);
   body.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { if (W.ev.category === b.dataset.cat) return; W.ev.category = b.dataset.cat; draw(root, params); }));
-  initSegmented(body, (_, v) => { W.ev.resolution = v; });
+  initSegmented(body, (name, v) => {
+    if (name === 'cov') {
+      W.ev.coverage = v;
+      // βάζουμε τις αρμοδιότητες του συνεργείου σε συμφωνία με την κάλυψη
+      if (v === 'photo') W.crew = W.crew.map((c) => (c.duty === 'video' ? { ...c, duty: 'photo' } : c));
+      if (v === 'video') W.crew = W.crew.map((c) => (c.duty === 'photo' ? { ...c, duty: 'video' } : c));
+      draw(root, params); return;
+    }
+    W.ev.resolution = v;
+  });
   body.querySelectorAll('[data-pin]').forEach((b) => b.addEventListener('click', async () => {
     const key = b.dataset.pin; const field = b.dataset.field;
     const near = W.ev.church_geo || W.ev.reception_geo || W.ev.bride_geo || W.ev.groom_geo || null;
@@ -308,7 +318,8 @@ function stepEvent(body, root, params) {
 // ---------- Βήμα 3: Συνεργείο ----------
 // Συνεργείο: 1 συνεργείο (όπως πάντα) ή 2 συνεργεία (επιλογή ατόμων → συνεργείο 1 → συνεργείο 2)
 const crewTeam = () => S.profiles.filter((p) => p.role && p.active).sort((a, b) => profileName(a).localeCompare(profileName(b)));
-const defDuty = (p) => (['videographer', 'admin_video'].includes(p?.role) ? 'video' : 'photo');
+const defDuty = (p) => (W.ev.coverage === 'photo' ? 'photo' : W.ev.coverage === 'video' ? 'video' : ['videographer', 'admin_video'].includes(p?.role) ? 'video' : 'photo');
+const dutyOpts = () => [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }, { v: 'drone', label: 'Drone' }].filter((o) => !(W.ev.coverage === 'photo' && o.v === 'video') && !(W.ev.coverage === 'video' && o.v === 'photo'));
 /** Δεν είναι διαθέσιμος/η την ημέρα της εκδήλωσης; → κείμενο ωρών, αλλιώς '' */
 const unavailable = (uid) => (W.ev.event_date ? absenceWhen(absencesOn(uid, W.ev.event_date)) : '');
 const unavailTag = (txt) => `<span class="unavail">(${esc(L('δεν είναι διαθέσιμος/η', 'not available'))}: ${esc(txt)})</span>`;
@@ -384,7 +395,7 @@ function stepCrew(body, root, params) {
     body.innerHTML = subtitle('1', L('1 συνεργείο (βασικό)', '1 crew (main)'), L('Όσοι επιλεγούν θα λάβουν ειδοποίηση με τα στοιχεία της εκδήλωσης και την αρμοδιότητά τους (χωρίς οικονομικά).', 'Selected members get a notification with the event details and their duty (no finances).'))
       + `<div class="list mt-s">${team.map((p) => {
         const on = sel.has(p.id); const un = unavailable(p.id);
-        return person(p, { on, disabled: !!un && !on, extraHtml: on ? segmented('d_' + p.id, [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }, { v: 'drone', label: 'Drone' }], sel.get(p.id)) : '' });
+        return person(p, { on, disabled: !!un && !on, extraHtml: on ? segmented('d_' + p.id, dutyOpts(), sel.get(p.id)) : '' });
       }).join('') || `<div class="row muted">${esc(L('Δεν υπάρχουν ακόμα μέλη ομάδας με ρόλο.', 'No team members with a role yet.'))}</div>`}</div>` + extra;
     body.querySelectorAll('[data-u]').forEach((cb) => cb.addEventListener('change', () => {
       const p = team.find((x) => x.id === cb.dataset.u);
@@ -531,7 +542,7 @@ async function save(root, params, btn) {
     const cur = S.crew.filter((c) => c.event_id === ev.id);
     const configChanged = prevMode !== mode || cur.length !== list.length || list.some((l) => { const c = cur.find((x) => x.user_id === l.user_id); return !c || c.duty !== l.duty || (c.team ?? null) !== l.team || JSON.stringify([...(c.tasks || [])].sort()) !== JSON.stringify([...l.tasks].sort()); });
     if (configChanged) {
-      const texts = crewBriefTexts(mode, list);
+      const texts = crewBriefTexts(mode, list, W.ev.coverage);
       const withBriefs = list.map((l) => ({ ...l, brief: texts[l.user_id] || null }));
       if (crewDiffers(ev.id, withBriefs)) await setCrew(ev.id, withBriefs);
     }

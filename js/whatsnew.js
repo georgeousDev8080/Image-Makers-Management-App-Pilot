@@ -8,6 +8,13 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.5.1', date: '01/11/2026',
+    items: [
+      ['🎯', 'Νέα εκδήλωση: επιλογή κάλυψης «Φωτογραφία & βίντεο», «Μόνο φωτογραφία» ή «Μόνο βίντεο». Αλλάζει και από το μεγάλο Excel (στήλη «Κάλυψη»).', 'New event: choose coverage “Photo & video”, “Photo only” or “Video only”. Also editable in the main Excel (“Coverage” column).'],
+      ['⚙️', 'Οι εκδηλώσεις «Μόνο φωτογραφία» δεν μπαίνουν στο φύλλο Dimitris και δεν βγάζουν SOS βίντεο· οι «Μόνο βίντεο» δεν έχουν στάδια φωτογραφιών στην Κατάσταση Εργασιών. Η αρμοδιότητα του συνεργείου ακολουθεί την κάλυψη.', '“Photo only” events don’t appear in the Dimitris sheet and raise no video SOS; “Video only” events have no photo stages in Work status. Crew duties follow the coverage.'],
+    ],
+  },
+  {
     v: '1.5', date: '01/11/2026',
     items: [
       ['👥', 'Νέα εκδήλωση: επιλογή «1 συνεργείο (βασικό)» ή «2 συνεργεία». Με 2 συνεργεία επιλέγετε τα άτομα, τα χωρίζετε σε συνεργείο 1 και 2 και ορίζετε τι αναλαμβάνει το καθένα (Σπίτι γαμπρού/νύφης, Εκκλησία, Κέντρο, Drone).', 'New event: choose “1 crew (main)” or “2 crews”. With 2 crews you pick the people, split them into crew 1 and 2 and set what each covers (Groom/bride homes, Church, Reception, Drone).'],

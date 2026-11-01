@@ -83,7 +83,7 @@ export function renderEventDetail(root, { id }) {
   let html = backBtn('#/events');
   html += `<div class="ev-hero cat-${e.category}" style="--c:var(--cat-${e.category})">
     ${days >= 0 ? `<div class="countdown"><b>${days}</b><small>${esc(days === 1 ? L('ημέρα', 'day') : L('ημέρες', 'days'))}</small></div>` : ''}
-    <div class="hstack">${catPill(e.category)}${e.status === 'cancelled' ? `<span class="pill red">${esc(L('Ακυρωμένη', 'Cancelled'))}</span>` : ''}${e.resolution ? `<span class="pill blue">${esc(e.resolution === '4k' ? '4K' : 'Full HD')}</span>` : ''}${eventHasDrone(e, v.crew) ? '<span class="pill purple">🚁 Drone</span>' : ''}</div>
+    <div class="hstack">${catPill(e.category)}${e.status === 'cancelled' ? `<span class="pill red">${esc(L('Ακυρωμένη', 'Cancelled'))}</span>` : ''}${(e.coverage || 'both') !== 'both' ? `<span class="pill orange">${esc(e.coverage === 'photo' ? L('📷 Μόνο φωτογραφία', '📷 Photo only') : L('🎥 Μόνο βίντεο', '🎥 Video only'))}</span>` : ''}${e.resolution && e.coverage !== 'photo' ? `<span class="pill blue">${esc(e.resolution === '4k' ? '4K' : 'Full HD')}</span>` : ''}${eventHasDrone(e, v.crew) ? '<span class="pill purple">🚁 Drone</span>' : ''}</div>
     <h1 style="margin-top:10px">${esc(v.title)}</h1>
     <div class="when"><span>${icon('calendar')} ${esc(fmtDateLong(e.event_date))}</span>${e.event_time ? `<span>${icon('clock')} ${esc(fmtTime(e.event_time))}</span>` : ''}</div>
     <div class="quick-actions">
@@ -288,7 +288,7 @@ function editBrief(eventId, userId) {
   body.querySelector('[data-regen]').addEventListener('click', () => {
     const e = S.events.get(eventId);
     const list = S.crew.filter((x) => x.event_id === eventId);
-    ta.value = crewBriefTexts(e?.crew_mode || 'single', list)[userId] || '';
+    ta.value = crewBriefTexts(e?.crew_mode || 'single', list, e?.coverage)[userId] || '';
   });
   s.root.querySelector('[data-save]').addEventListener('click', async (ev) => {
     const btn = ev.currentTarget; busy(btn, true);
@@ -300,6 +300,7 @@ export function openCrewSheet(eventId, { onSave, initial } = {}) {
   // 2 συνεργεία: η σύνθεση αλλάζει από τον οδηγό της εκδήλωσης (βήμα «Συνεργείο»)
   if (!onSave && S.events.get(eventId)?.crew_mode === 'double') { go(`#/event/${eventId}/edit?step=2`); return; }
   const day = S.events.get(eventId)?.event_date;
+  const cov = S.events.get(eventId)?.coverage || 'both';
   const team = S.profiles.filter((p) => p.role && p.active).sort((a, b) => profileName(a).localeCompare(profileName(b)));
   const cur = initial || S.crew.filter((c) => c.event_id === eventId).map((c) => ({ user_id: c.user_id, duty: c.duty }));
   const sel = new Map(cur.map((c) => [c.user_id, c.duty]));
@@ -313,7 +314,7 @@ export function openCrewSheet(eventId, { onSave, initial } = {}) {
         const un = day ? absenceWhen(absencesOn(p.id, day)) : '';
         const off = !!un && !on;
         return `<div class="row ${off ? 'is-off' : ''}"><label class="hstack" style="flex:1;cursor:${off ? 'not-allowed' : 'pointer'};flex-wrap:nowrap"><input type="checkbox" data-u="${p.id}" ${on ? 'checked' : ''} ${off ? 'disabled' : ''} style="width:22px;height:22px;accent-color:var(--accent)">${avatar(p)}<div class="main-col"><div class="t" style="white-space:normal">${esc(profileName(p))}${un ? ` <span class="unavail">(${esc(L('δεν είναι διαθέσιμος/η', 'not available'))}: ${esc(un)})</span>` : ''}</div><div class="s">${esc(lbl([{ v: 'admin_photo', el: 'Διαχειριστής · Φωτογράφος', en: 'Admin · Photographer' }, { v: 'admin_video', el: 'Διαχειριστής · Βιντεογράφος', en: 'Admin · Videographer' }, { v: 'photographer', el: 'Φωτογράφος', en: 'Photographer' }, { v: 'videographer', el: 'Βιντεογράφος', en: 'Videographer' }], p.role))}</div></div></label>
-          ${on ? segmented('d_' + p.id, [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }, { v: 'drone', label: 'Drone' }], sel.get(p.id)) : ''}</div>`;
+          ${on ? segmented('d_' + p.id, [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }, { v: 'drone', label: 'Drone' }].filter((o) => !(cov === 'photo' && o.v === 'video') && !(cov === 'video' && o.v === 'photo')), sel.get(p.id)) : ''}</div>`;
       }).join('') || `<div class="row muted">${esc(L('Δεν υπάρχουν μέλη με ρόλο.', 'No team members with a role.'))}</div>`}</div>`;
     body.querySelectorAll('[data-u]').forEach((cb) => cb.addEventListener('change', () => {
       const p = team.find((x) => x.id === cb.dataset.u);
@@ -333,7 +334,7 @@ export function openCrewSheet(eventId, { onSave, initial } = {}) {
     if (onSave) { onSave(list); s.close(); return; }
     busy(_btn, true);
     try {
-      const texts = crewBriefTexts('single', list);
+      const texts = crewBriefTexts('single', list, S.events.get(eventId)?.coverage);
       const cur = S.crew.filter((c) => c.event_id === eventId);
       // κρατάμε τα κείμενα που δεν άλλαξαν (π.χ. χειροκίνητες αλλαγές) όταν η σύνθεση μένει ίδια
       const same = cur.length === list.length && list.every((l) => cur.some((c) => c.user_id === l.user_id && c.duty === l.duty && !c.team));
