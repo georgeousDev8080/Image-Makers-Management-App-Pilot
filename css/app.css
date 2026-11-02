@@ -1180,3 +1180,67 @@ html, body, button, a, input, select, textarea, label, [role="button"], .row, .c
 .event-card .ev-when { display: flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 15px; font-weight: 650; color: var(--accent); }
 .event-card .ev-when svg { width: 15px; height: 15px; }
 .event-card .ev-big + .ev-when + .s { margin-top: 2px; font-size: 13px; }
+
+/* ---------- v1.7: «+» μενού, προγραμματισμένα ραντεβού, Next day / Ευχολόγιο ---------- */
+.x-appt { --c: #e0a800; } .x-next_day { --c: #12937f; } .x-blessing { --c: #8e5bd6; }
+.cat-sess-next_day { --c: #12937f; } .cat-sess-blessing { --c: #8e5bd6; }
+button.tg-ev, button.sch-ev { border: 0; font: inherit; text-align: left; cursor: pointer; width: 100%; }
+button.sch-ev { background: none; }
+button.tg-ev { width: auto; }
+.mbar.x-appt, .tg-ev.x-appt { background: #ffd84d; color: #3b2f00; }
+.mbar.x-appt i { background: #b88a00; }
+.mbar.x-done, .tg-ev.x-done { opacity: .6; }
+.sch-ev small { display: block; font-size: 12px; color: var(--label-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yd.xhas { box-shadow: inset 0 0 0 2px var(--c); font-weight: 700; }
+.row-icon.x-appt { background: #ffd84d; color: #3b2f00; }
+.row-icon.x-next_day, .row-icon.x-blessing { background: color-mix(in srgb, var(--c) 18%, transparent); font-size: 17px; }
+.row-icon.sess-ic { background: var(--fill-2); font-size: 17px; }
+@media (max-width: 760px) { .mweek .mbar.x-appt { background: #ffd84d; color: #3b2f00; } }
+
+/* Μεγάλο «+» στο ημερολόγιο */
+.cal-plus { width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: 50%; display: inline-grid; place-items: center; box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent); transition: transform .18s ease; }
+.cal-plus svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; transition: transform .2s ease; }
+.cal-plus[aria-expanded="true"] svg { transform: rotate(45deg); }
+.cal-plus:active { transform: scale(.94); }
+.plus-menu { position: absolute; z-index: 400; padding: 6px; border-radius: 16px; background: var(--bg-elev); box-shadow: 0 18px 48px rgba(0,0,0,.22), 0 0 0 1px var(--sep, rgba(0,0,0,.08)); opacity: 0; transform: translateY(-6px) scale(.98); transform-origin: top right; transition: opacity .15s ease, transform .15s ease; }
+.plus-menu.on { opacity: 1; transform: none; }
+.plus-menu button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 10px; border: 0; border-radius: 11px; background: none; color: var(--label); font: inherit; text-align: left; cursor: pointer; }
+.plus-menu button:hover, .plus-menu button:focus-visible { background: var(--fill-2); outline: none; }
+.plus-menu b { display: block; font-size: 15px; font-weight: 650; }
+.plus-menu small { display: block; font-size: 12.5px; color: var(--label-2); line-height: 1.3; }
+.pm-ic { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; background: var(--fill-2); }
+.pm-ic svg { width: 20px; height: 20px; }
+.pm-event { background: var(--accent); color: #fff; }
+.pm-appt { background: #ffd84d; color: #3b2f00; }
+.pm-next_day { background: color-mix(in srgb, #12937f 18%, transparent); }
+.pm-blessing { background: color-mix(in srgb, #8e5bd6 18%, transparent); }
+
+/* Κίτρινα προγραμματισμένα ραντεβού */
+.banner.yellow { background: #fff4c2; color: #3b2f00; }
+.banner.yellow span { color: #5c4a00; }
+[data-theme="dark"] .banner.yellow { background: #3a3000; color: #ffe58a; }
+[data-theme="dark"] .banner.yellow span { color: #f5dc7a; }
+.appt-mode .am-stats i.sched { background: #fff1b0; color: #6b5300; }
+[data-theme="dark"] .appt-mode .am-stats i.sched { background: #3a3000; color: #ffd84d; }
+.sched-list { display: grid; gap: 8px; margin: 0 0 16px; }
+.sched-card { position: relative; display: flex; align-items: center; gap: 10px; padding: 12px 8px 12px 14px; border-radius: 14px; background: #fff6cc; border: 1px solid #f2d65c; color: #3b2f00; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
+.sched-card:hover { box-shadow: 0 4px 14px rgba(224,168,0,.18); }
+.sched-card:active { transform: scale(.995); }
+.sched-card.today { background: #ffe066; border-color: #e0a800; box-shadow: 0 6px 20px rgba(224,168,0,.28); }
+.sched-card .sc-main { flex: 1; min-width: 0; }
+.sched-card .sc-t { font-size: 15px; line-height: 1.35; }
+.sched-card .sc-t b { font-weight: 750; }
+.sched-card .sc-d { margin-top: 3px; font-size: 13px; color: #5c4a00; }
+.sched-card .sc-d a { color: inherit; font-weight: 650; }
+.sched-card .sc-go { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 700; color: #6b5300; white-space: nowrap; }
+.sched-card .sc-go svg { width: 18px; height: 18px; }
+.sched-card .sc-more { color: #6b5300; }
+.sc-tag { display: inline-block; margin-right: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .04em; vertical-align: 1px; }
+.sc-tag.now { background: #3b2f00; color: #ffe066; }
+.sc-tag.late { background: #f3c3b8; color: #8a1c00; }
+[data-theme="dark"] .sched-card { background: #2e2700; border-color: #6b5600; color: #ffe58a; }
+[data-theme="dark"] .sched-card.today { background: #4a3d00; border-color: #e0a800; }
+[data-theme="dark"] .sched-card .sc-d, [data-theme="dark"] .sched-card .sc-go, [data-theme="dark"] .sched-card .sc-more { color: #f5dc7a; }
+.todo-yellow { background: #fff6cc; }
+[data-theme="dark"] .todo-yellow { background: #2e2700; }
+.sess-parent { line-height: 1.45; }

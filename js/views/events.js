@@ -8,6 +8,7 @@ import { crewBriefTexts, eventHasDrone, eventRow, catPill, offerSummaryHTML, cre
 import { openIncomeForm } from './money.js';
 import { pickLocation, geoUrl } from '../mappicker.js';
 import { editOfferForEvent, uploadPdfForEvent } from '../offer.js';
+import { sessionsSectionHTML, bindSessionsSection } from './sessions.js';
 
 const st = { q: '', when: 'upcoming', cat: '' };
 
@@ -136,6 +137,9 @@ export function renderEventDetail(root, { id }) {
     html += `<div class="group-label">${esc(L('Η ανάθεσή σου', 'Your assignment'))}</div><div class="card pad brief-text">${esc(me.brief)}</div>`;
   }
 
+  // Next day / Ευχολόγιο
+  html += sessionsSectionHTML(id);
+
   // Πακέτο / Προσφορά
   const withOffer = needsOffer(e.category);
   html += `<div class="group-label">${esc(admin ? (withOffer ? L('Πακέτο & προσφορά', 'Package & offer') : L('Πακέτο', 'Package')) : L('Τι περιλαμβάνει η κάλυψη', 'What the coverage includes'))}</div>`;
@@ -205,6 +209,7 @@ export function renderEventDetail(root, { id }) {
   }
 
   root.innerHTML = html;
+  bindSessionsSection(root, id);
 
   // ---- ενέργειες ----
   root.querySelector('[data-act="ics"]')?.addEventListener('click', () => {

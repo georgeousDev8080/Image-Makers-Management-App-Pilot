@@ -351,11 +351,18 @@ export const WF_RULES = {
   changes: { warn: 20, late: 30, next: 'lab' },
   ready: { warn: 7, late: 14, next: 'delivered' },
 };
+/** Next day / Ευχολόγιο — συνδέονται με μια εκδήλωση */
+export const SESSION_KINDS = [
+  { v: 'next_day', el: 'Next day', en: 'Next day', emoji: '🌅' },
+  { v: 'blessing', el: 'Ευχολόγιο', en: 'Blessing', emoji: '🕯️' },
+];
+export const sessionLabel = (k) => { const o = SESSION_KINDS.find((x) => x.v === k); return o ? L(o.el, o.en) : k; };
 export const APPT_MODES = [
   { v: 'store', el: 'Παρουσίαση στο μαγαζί', en: 'In-store presentation', icon: 'store' },
   { v: 'online', el: 'Ηλεκτρονική παρουσίαση', en: 'Online presentation', icon: 'link' },
 ];
 export const APPT_STATUS = [
+  { v: 'scheduled', el: 'Προγραμματισμένο', en: 'Scheduled' },
   { v: 'pending', el: 'Σε αναμονή', en: 'Pending' },
   { v: 'confirmed', el: 'Confirmed', en: 'Confirmed' },
   { v: 'rejected', el: 'Rejected', en: 'Rejected' },

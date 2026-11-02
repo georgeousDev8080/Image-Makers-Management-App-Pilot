@@ -7,6 +7,9 @@ import { S, isAdmin, allEventViews, myEventIds, profileName, absenceWhen } from 
 import { openAbsenceSheet, absenceActions, absenceText, groupAbsences } from './absences.js';
 import { pageHead } from '../layout.js';
 import { eventRow, catShort } from '../components.js';
+import { openSessionSheet, sessionActions, sessionTitle, sessionTip, sessionEmoji } from './sessions.js';
+import { openScheduleSheet, scheduledActions, apptFor, apptName, openAppointment } from './appointments.js';
+import { go } from '../layout.js';
 
 const catLabel = (c) => { const o = CATEGORIES.find((x) => x.v === c); return o ? L(o.el, o.en).replace(/\s*\(.*\)$/, '') : ''; };
 const HOUR = 48;          // ύψος μίας ώρας (px) στο πλέγμα ωρών
@@ -57,9 +60,10 @@ function timeGrid(days, byDate, admin) {
   const allDay = `<div class="tg-adgrid" style="grid-template-columns:repeat(${days.length}, minmax(0, 1fr));grid-template-rows:repeat(${Math.max(1, adLanes)}, 24px)">${days.map((_, c) => `<span class="tg-adcol" style="grid-column:${c + 1};grid-row:1 / -1"></span>`).join('')}${adSegs.map((sg) => barHTML(sg, sg.lane + 1, false)).join('')}</div>`;
   const hours = Array.from({ length: 24 }, (_, h) => `<div class="tg-h"><span>${h ? hhmm(h * 60) : ''}</span></div>`).join('');
   const cols = days.map((iso) => {
-    const timed = (byDate[iso] || []).filter((v) => mins(v.e.event_time) != null && v.dayN === 1);
+    const timed = [...(byDate[iso] || []).filter((v) => mins(v.e.event_time) != null && v.dayN === 1), ...(XBY[iso] || []).filter((x) => x.time).map((x) => ({ x, e: { event_time: x.time } }))];
     const blocks = layout(timed).map(({ v, s, col, n }) => {
       const w = 100 / n;
+      if (v.x) return `<button type="button" class="tg-ev ${xCls(v.x)}" data-x="${v.x.key}" style="top:${(s / 60) * HOUR}px;height:${(DUR / 60) * HOUR - 2}px;left:calc(${col * w}% + 1px);width:calc(${w}% - 3px)" title="${esc(v.x.tip)}"><b>${esc(v.x.label)}</b><span>${esc(hhmm(s))}</span></button>`;
       const loc = v.e.church_location || '';
       return `<a class="tg-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}" style="top:${(s / 60) * HOUR}px;height:${(DUR / 60) * HOUR - 2}px;left:calc(${col * w}% + 1px);width:calc(${w}% - 3px)" title="${esc(evTip(v))}">
         <b>${esc(evType(v))}</b><span>${esc(hhmm(s))}</span></a>`;
@@ -81,11 +85,39 @@ const absChip = (a) => `<button type="button" class="cal-abs" data-abs="${a.id}"
 /** Στο ημερολόγιο φαίνεται ο τύπος της εκδήλωσης (το όνομα του πελάτη μένει στο αναδυόμενο κείμενο) */
 const evType = (v) => `${v.dayIdx > 0 ? '↳ ' : ''}${[catLabel(v.e.category), v.e.church_location].filter(Boolean).join(' · ')}${v.dayN > 1 ? ` (${(v.dayIdx || 0) + 1}/${v.dayN})` : ''}`;
 const evTip = (v) => [catLabel(v.e.category), v.e.event_time ? fmtTime(v.e.event_time) : '', v.e.church_location, v.title].filter(Boolean).join(' · ');
+/** Next day / Ευχολόγιο και ραντεβού (μόνο διαχειριστές) — «extra» στοιχεία του ημερολογίου */
+let XS = []; let XBY = {};
+function buildExtras(admin, onlyMine, mine) {
+  const out = [];
+  S.sessions.forEach((x) => {
+    const e = S.events.get(x.event_id);
+    if (!e || e.status === 'cancelled') return;
+    if (admin && onlyMine && !mine.has(x.event_id)) return;
+    out.push({ key: 's:' + x.id, sub: 'sess', kind2: x.kind, ref: x, date: x.day, time: x.start_time ? String(x.start_time).slice(0, 5) : '', label: `${sessionEmoji(x.kind)} ${sessionTitle(x)}`, tip: sessionTip(x), cat: e.category });
+  });
+  if (admin) S.appointments.filter((a) => a.appt_time && a.appt_date).forEach((a) => {
+    const t = String(a.appt_time).slice(0, 5);
+    out.push({ key: 'a:' + a.id, sub: 'appt', ref: a, date: a.appt_date, time: t, label: `${apptFor(a.category)} ${t}`, tip: `${apptFor(a.category)} ${t} · ${apptName(a)}${a.phone ? ' · ' + a.phone : ''}`, done: a.status !== 'scheduled' });
+  });
+  XS = out; XBY = {};
+  out.forEach((x) => { (XBY[x.date] ||= []).push(x); });
+  Object.values(XBY).forEach((l) => l.sort((a, b) => (a.time || '').localeCompare(b.time || '')));
+}
+const xCls = (x) => `x-${x.sub} ${x.kind2 ? 'x-' + x.kind2 : ''} ${x.done ? 'x-done' : ''}`;
+function xClick(key) {
+  const x = XS.find((y) => y.key === key); if (!x) return;
+  if (x.sub === 'sess') sessionActions(x.ref);
+  else if (x.ref.status === 'scheduled') scheduledActions(x.ref);
+  else openAppointment(x.ref);
+}
+const xRow = (x) => `<button class="row has-icon" data-x="${x.key}"><span class="row-icon ${xCls(x)}">${x.sub === 'appt' ? icon('handshake') : sessionEmoji(x.kind2)}</span><div class="main-col"><div class="t">${esc(x.sub === 'appt' ? x.label : x.label.replace(/^\S+\s/, ''))}</div><div class="s">${esc(x.sub === 'appt' ? x.tip.split(' · ').slice(1).join(' · ') : [x.time || L('ώρα: δεν έχει οριστεί', 'time: not set'), x.tip.split(' · ').slice(-2).join(' · ')].join(' · '))}</div></div>${icon('chevR', 'chev')}</button>`;
+
 /** Όλα τα στοιχεία του ημερολογίου ως διαστήματα ημερών (εκδηλώσεις + απουσίες, οι πολυήμερες ενωμένες) */
 let VIEWS = [];
 function spanItems() {
   const out = VIEWS.map((v) => ({ kind: 'ev', v, start: v.e.event_date, end: evEnd(v.e), multi: isMultiDay(v.e), t: mins(v.e.event_time) }));
   groupAbsences(S.absences).forEach((g) => out.push({ kind: 'abs', g, start: g.from, end: g.to, multi: g.from !== g.to, t: mins(g.start_time) }));
+  XS.forEach((x) => out.push({ kind: 'x', x, start: x.date, end: x.date, multi: false, t: mins(x.time) }));
   return out;
 }
 /** Τοποθέτηση σε «λωρίδες» για μια σειρά ημερών (όπως το Google Calendar): πρώτα οι πολυήμερες, μετά οι μονοήμερες */
@@ -109,6 +141,11 @@ function laneLayout(days, items) {
 function barHTML(sg, row, compact) {
   const style = `grid-column:${sg.c0 + 1} / ${sg.c1 + 2};grid-row:${row}`;
   const cls = `${sg.contL ? 'cl' : ''} ${sg.contR ? 'cr' : ''}`;
+  if (sg.kind === 'x') {
+    const x = sg.x;
+    const time = x.time && x.sub !== 'appt' ? `<span class="t">${esc(x.time)}</span> ` : '';
+    return `<button type="button" class="mbar one ${xCls(x)}" style="${style}" data-x="${x.key}" title="${esc(x.tip)}"><i></i>${compact ? '' : `${time}${esc(x.label)}`}</button>`;
+  }
   if (sg.kind === 'abs') {
     const g = sg.g;
     return `<button type="button" class="mbar abs ${sg.multi ? 'span' : ''} ${cls}" style="${style}" data-abs="${g.id}" title="${esc(absenceText(g))}">🚫 ${esc(shortName(g.user_id))}${g.start_time ? ` <span class="t">${esc(absenceWhen([g]))}</span>` : ''}${g.note ? ` <span class="t">· ${esc(g.note)}</span>` : ''}</button>`;
@@ -138,7 +175,7 @@ function monthGrid(byDate, admin) {
       const evs = byDate[iso] || [];
       return `<div class="cal-cell ${out ? 'out' : ''} ${iso === today ? 'today' : ''} ${iso === st.sel ? 'sel' : ''}" style="grid-column:${c + 1};grid-row:1 / -1" data-date="${iso}" role="button" tabindex="0" aria-label="${esc(fmtDateLong(iso))}, ${evs.length}">
         <button class="num" data-goday="${iso}" tabindex="-1">${d.getDate()}</button>
-        <div class="cal-dots">${evs.slice(0, 4).map((v) => `<i class="cat-${v.e.category}" style="background:var(--c)"></i>`).join('')}${(AB[iso] || []).length ? '<i class="abs-dot"></i>' : ''}</div></div>`;
+        <div class="cal-dots">${evs.slice(0, 4).map((v) => `<i class="cat-${v.e.category}" style="background:var(--c)"></i>`).join('')}${(XBY[iso] || []).slice(0, 3).map((x) => `<i class="${xCls(x)} xdot"></i>`).join('')}${(AB[iso] || []).length ? '<i class="abs-dot"></i>' : ''}</div></div>`;
     }).join('');
     const bars = segs.filter((sg) => sg.lane < MAXL).map((sg) => barHTML(sg, sg.lane + 2, false)).join('');
     const more = hidden.map((n, c) => (n ? `<button class="cal-more" style="grid-column:${c + 1};grid-row:${MAXL + 2}" data-goday="${days[c]}">+${n} ${esc(L('ακόμη', 'more'))}</button>` : '')).join('');
@@ -146,8 +183,10 @@ function monthGrid(byDate, admin) {
   }
   let html = `<div class="cal" id="cal"><div class="cal-dow">${dows().map((d) => `<div>${esc(d)}</div>`).join('')}</div><div class="mweeks ${st.anim}">${weeks}</div></div>`;
   const dayEvs = byDate[st.sel] || [];
-  html += `<div class="section-title cal-daylist"><h2 style="text-transform:capitalize">${esc(fmtDateLong(st.sel))}</h2>${admin ? `<a class="btn small" href="#/new-event?date=${st.sel}">${icon('plus')} ${esc(L('Νέα', 'New'))}</a>` : ''}</div>`;
-  html += `<div class="cal-daylist">${dayEvs.length ? `<div class="list">${dayEvs.map((v) => eventRow(v)).join('')}</div>` : `<div class="card pad muted center small">${esc(L('Καμία εκδήλωση αυτή την ημέρα.', 'No events on this day.'))}</div>`}</div>`;
+  html += `<div class="section-title cal-daylist"><h2 style="text-transform:capitalize">${esc(fmtDateLong(st.sel))}</h2>${admin ? `<button class="btn small" data-plus="${st.sel}">${icon('plus')} ${esc(L('Νέα', 'New'))}</button>` : ''}</div>`;
+  const dayX = XBY[st.sel] || [];
+  if (dayX.length) html += `<div class="cal-daylist"><div class="list">${dayX.map(xRow).join('')}</div></div>`;
+  html += `<div class="cal-daylist">${dayEvs.length || dayX.length ? `<div class="list">${dayEvs.map((v) => eventRow(v)).join('')}</div>` : dayX.length ? '' : `<div class="card pad muted center small">${esc(L('Καμία εκδήλωση αυτή την ημέρα.', 'No events on this day.'))}</div>`}</div>`;
   const dayAbs = AB[st.sel] || [];
   if (dayAbs.length) html += `<div class="cal-daylist"><div class="group-label">${esc(L('Απουσίες', 'Absences'))}</div><div class="list">${dayAbs.map((a) => `<button class="row has-icon" data-abs="${a.id}"><span class="row-icon" style="background:var(--label-3)">🚫</span><div class="main-col"><div class="t">${esc(absenceText(a))}</div></div></button>`).join('')}</div></div>`;
   return html;
@@ -164,7 +203,8 @@ function yearGrid(byDate) {
     for (let d = 1; d <= n; d++) {
       const iso = toISO(new Date(y, m, d)); const evs = byDate[iso] || []; const ab = (AB[iso] || []).length;
       const c = evs[0] ? `cat-${evs[0].e.category}` : '';
-      cells += `<button type="button" class="yd ${c} ${evs.length ? 'has' : ''} ${evs.length > 1 ? 'many' : ''} ${ab ? 'abs' : ''} ${iso === today ? 'today' : ''}" data-yday="${iso}" title="${esc(`${fmtDateLong(iso)}${evs.length ? ` · ${evs.length} ${L('εκδηλώσεις', 'events')}` : ''}${ab ? ` · ${ab} ${L('απουσίες', 'absences')}` : ''}`)}">${d}</button>`;
+      const xs = XBY[iso] || [];
+      cells += `<button type="button" class="yd ${c} ${!evs.length && xs.length ? 'xhas ' + xCls(xs[0]) : ''} ${evs.length ? 'has' : ''} ${evs.length > 1 ? 'many' : ''} ${ab ? 'abs' : ''} ${iso === today ? 'today' : ''}" data-yday="${iso}" title="${esc(`${fmtDateLong(iso)}${evs.length ? ` · ${evs.length} ${L('εκδηλώσεις', 'events')}` : ''}${ab ? ` · ${ab} ${L('απουσίες', 'absences')}` : ''}${xs.length ? ` · ${xs.map((x) => x.label).join(', ')}` : ''}`)}">${d}</button>`;
     }
     const count = Object.keys(byDate).filter((k) => k.startsWith(`${y}-${String(m + 1).padStart(2, '0')}`)).reduce((a, k) => a + byDate[k].filter((v) => !v.dayIdx).length, 0);
     return `<div class="ym"><button type="button" class="ym-h" data-ymonth="${m}">${esc(monthName(m))}${count ? ` <span class="pill accent">${count}</span>` : ''}</button>
@@ -175,21 +215,63 @@ function yearGrid(byDate) {
 
 function schedule(views) {
   const from = st.sel < todayISO() ? st.sel : todayISO();
-  const list = views.filter((v) => evEnd(v.e) >= from).sort((a, b) => a.e.event_date.localeCompare(b.e.event_date) || (mins(a.e.event_time) ?? -1) - (mins(b.e.event_time) ?? -1));
-  if (!list.length) return `<div class="card pad muted center">${esc(L('Καμία εκδήλωση από εδώ και πέρα.', 'No events from here on.'))}</div>`;
+  const items = [
+    ...views.filter((v) => evEnd(v.e) >= from).map((v) => ({ date: v.e.event_date, t: mins(v.e.event_time) ?? -1, v })),
+    ...XS.filter((x) => x.date >= from).map((x) => ({ date: x.date, t: mins(x.time) ?? -1, x })),
+  ].sort((a, b) => a.date.localeCompare(b.date) || a.t - b.t);
+  if (!items.length) return `<div class="card pad muted center">${esc(L('Καμία εκδήλωση από εδώ και πέρα.', 'No events from here on.'))}</div>`;
   const today = todayISO(); const wd = dows();
   let html = '<div class="sch">'; let lastM = '', lastD = '';
-  list.forEach((v) => {
-    const mk = v.e.event_date.slice(0, 7);
+  items.forEach((it) => {
+    const mk = it.date.slice(0, 7);
     if (mk !== lastM) { const [yy, mm] = mk.split('-').map(Number); html += `<div class="sch-month">${esc(monthName(mm - 1))} ${yy}</div>`; lastM = mk; }
-    const d = parseISO(v.e.event_date);
-    const first = v.e.event_date !== lastD; lastD = v.e.event_date;
-    html += `<div class="sch-row ${first ? 'first' : ''}">
-      <div class="sch-date ${v.e.event_date === today ? 'today' : ''}">${first ? `<span class="n">${d.getDate()}</span><span class="w">${esc(wd[(d.getDay() + 6) % 7])}</span>` : ''}</div>
+    const d = parseISO(it.date);
+    const first = it.date !== lastD; lastD = it.date;
+    const dateCol = `<div class="sch-date ${it.date === today ? 'today' : ''}">${first ? `<span class="n">${d.getDate()}</span><span class="w">${esc(wd[(d.getDay() + 6) % 7])}</span>` : ''}</div>`;
+    if (it.x) {
+      const x = it.x;
+      html += `<div class="sch-row ${first ? 'first' : ''}">${dateCol}<button type="button" class="sch-ev ${xCls(x)}" data-x="${x.key}"><i></i><span class="sch-t">${esc(x.time || L('Χωρίς ώρα', 'No time'))}</span><span class="sch-n"><b>${esc(x.label)}</b><small>${esc(x.tip)}</small></span></button></div>`;
+      return;
+    }
+    const v = it.v;
+    html += `<div class="sch-row ${first ? 'first' : ''}">${dateCol}
       <a class="sch-ev cat-${v.e.category} ${v.e.status === 'cancelled' ? 'cancelled' : ''}" href="#/event/${v.e.id}"><i></i><span class="sch-t">${esc(v.e.event_time ? fmtTime(v.e.event_time) : L('Χωρίς ώρα', 'No time'))}</span><span class="sch-n"><b>${esc(evType(v))}</b>${isMultiDay(v.e) ? `<small>${esc(L(`έως ${fmtDate(v.e.end_date)}`, `until ${fmtDate(v.e.end_date)}`))}</small>` : ''}</span></a>
     </div>`;
   });
   return html + '</div>';
+}
+
+/** Μενού του «+»: νέα εκδήλωση · προγραμματισμός ραντεβού · Next day · Ευχολόγιο */
+function openPlusMenu(anchor, date) {
+  document.querySelector('.plus-menu')?.remove();
+  const items = [
+    { v: 'event', ic: 'events', t: L('Νέα εκδήλωση', 'New event'), s: L('Όπως μέχρι τώρα', 'As before') },
+    { v: 'appt', ic: 'handshake', t: L('Προγραμματισμός ραντεβού', 'Schedule appointment'), s: L('Παρουσίαση στο μαγαζί σε συγκεκριμένη ημέρα & ώρα', 'In-store presentation on a set day & time') },
+    { v: 'next_day', emoji: '🌅', t: 'Next day', s: L('Συνδέεται με υπάρχουσα εκδήλωση', 'Linked to an existing event') },
+    { v: 'blessing', emoji: '🕯️', t: L('Ευχολόγιο', 'Blessing'), s: L('Συνδέεται με υπάρχουσα εκδήλωση', 'Linked to an existing event') },
+  ];
+  const m = document.createElement('div');
+  m.className = 'plus-menu'; m.setAttribute('role', 'menu');
+  m.innerHTML = items.map((it) => `<button type="button" role="menuitem" data-pm="${it.v}"><span class="pm-ic pm-${it.v}">${it.emoji || icon(it.ic)}</span><span><b>${esc(it.t)}</b><small>${esc(it.s)}</small></span></button>`).join('');
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect();
+  const w = Math.min(320, window.innerWidth - 24);
+  m.style.width = `${w}px`;
+  m.style.top = `${r.bottom + 8 + window.scrollY}px`;
+  m.style.left = `${Math.max(12, Math.min(window.innerWidth - w - 12, r.right - w)) + window.scrollX}px`;
+  anchor.setAttribute('aria-expanded', 'true');
+  requestAnimationFrame(() => m.classList.add('on'));
+  const close = () => { m.remove(); anchor.setAttribute('aria-expanded', 'false'); document.removeEventListener('pointerdown', out, true); document.removeEventListener('keydown', esc_); window.removeEventListener('hashchange', close); };
+  const out = (e) => { if (!m.contains(e.target) && !anchor.contains(e.target)) close(); };
+  const esc_ = (e) => { if (e.key === 'Escape') close(); };
+  setTimeout(() => { document.addEventListener('pointerdown', out, true); document.addEventListener('keydown', esc_); window.addEventListener('hashchange', close); });
+  const picked = date && date !== todayISO() ? date : '';
+  m.querySelectorAll('[data-pm]').forEach((b) => b.addEventListener('click', () => {
+    const v = b.dataset.pm; close();
+    if (v === 'event') go(`#/new-event?date=${date || todayISO()}`);
+    if (v === 'appt') openScheduleSheet({ date: date || todayISO() });
+    if (v === 'next_day' || v === 'blessing') openSessionSheet({ kind: v, day: picked });
+  }));
 }
 
 export function renderCalendar(root) {
@@ -200,9 +282,10 @@ export function renderCalendar(root) {
   // πολυήμερες: εμφανίζονται σε κάθε ημέρα τους (dayIdx / dayN)
   views.forEach((v) => { const ds = evDays(v.e); ds.forEach((d, i) => { (byDate[d] ||= []).push({ ...v, dayIdx: i, dayN: ds.length }); }); });
   VIEWS = views;
+  buildExtras(admin, st.onlyMine, mine);
 
   const modes = [{ v: 'day', label: L('Ημέρα', 'Day') }, { v: 'week', label: L('Εβδομάδα', 'Week') }, { v: 'month', label: L('Μήνας', 'Month') }, { v: 'year', label: L('Χρόνος', 'Year') }, { v: 'list', label: L('Πρόγραμμα', 'Schedule') }];
-  const actions = `<button class="btn" data-absence>🚫 <span class="hide-mobile">${esc(L('Δήλωση απουσίας', 'Declare absence'))}</span></button>${admin ? `<a class="btn primary" href="#/new-event?date=${st.sel}">${icon('plus')} <span class="hide-mobile">${esc(L('Νέα εκδήλωση', 'New event'))}</span></a>` : ''}`;
+  const actions = `<button class="btn" data-absence>🚫 <span class="hide-mobile">${esc(L('Δήλωση απουσίας', 'Declare absence'))}</span></button>${admin ? `<button class="btn primary cal-plus" data-plus="${st.sel}" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(L('Νέο', 'New'))}" title="${esc(L('Νέα εκδήλωση, ραντεβού, Next day, Ευχολόγιο', 'New event, appointment, Next day, blessing'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v15M4.5 12h15"/></svg></button>` : ''}`;
   let html = pageHead(L('Ημερολόγιο', 'Calendar'), { actions });
 
   html += `<div class="gc-bar">
@@ -226,6 +309,8 @@ export function renderCalendar(root) {
 
   root.innerHTML = html;
   initSegmented(root, (_, v) => { st.mode = v; renderCalendar(root); });
+  root.querySelectorAll('[data-plus]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); if (document.querySelector('.plus-menu')) { document.querySelector('.plus-menu').remove(); b.setAttribute('aria-expanded', 'false'); return; } openPlusMenu(b, b.dataset.plus); }));
+  root.querySelectorAll('[data-x]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); xClick(b.dataset.x); }));
   root.querySelector('[data-absence]')?.addEventListener('click', () => openAbsenceSheet({ day: st.sel }));
   root.querySelectorAll('[data-abs]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); absenceActions(S.absences.find((a) => a.id === b.dataset.abs)); }));
   root.querySelectorAll('[data-yday]').forEach((b) => b.addEventListener('click', () => { st.sel = b.dataset.yday; st.mode = 'day'; renderCalendar(root); }));
@@ -247,7 +332,7 @@ export function renderCalendar(root) {
   }));
   root.querySelectorAll('.cal-cell').forEach((c) => {
     c.addEventListener('click', (e) => {
-      if (e.target.closest('a,.cal-more')) return;
+      if (e.target.closest('a,.cal-more,[data-x],[data-abs]')) return;
       const prevM = st.sel.slice(0, 7);
       st.sel = c.dataset.date;
       if (st.sel.slice(0, 7) !== prevM) st.anim = st.sel > prevM ? 'cal-anim-next' : 'cal-anim-prev';
@@ -258,7 +343,7 @@ export function renderCalendar(root) {
   });
   // κλικ σε κενή ώρα → νέα εκδήλωση εκείνη την ώρα (στρογγυλοποίηση στο μισάωρο)
   root.querySelectorAll('[data-slot]').forEach((col) => col.addEventListener('click', (e) => {
-    if (e.target.closest('a')) return;
+    if (e.target.closest('a,button')) return;
     const y = e.clientY - col.getBoundingClientRect().top;
     const m = Math.max(0, Math.min(23 * 60 + 30, Math.floor((y / HOUR) * 2) * 30));
     location.hash = `#/new-event?date=${col.dataset.day}&time=${hhmm(m)}`;

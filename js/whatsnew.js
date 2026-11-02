@@ -8,6 +8,14 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.7', date: '02/11/2026',
+    items: [
+      ['➕', 'Ημερολόγιο: το κουμπί «Νέα εκδήλωση» έγινε ένα μεγάλο «+». Πατώντας το ανοίγει μενού με «Νέα εκδήλωση», «Προγραμματισμός ραντεβού», «Next day» και «Ευχολόγιο».', 'Calendar: the “New event” button is now a big “+”. Tapping it opens a menu with “New event”, “Schedule appointment”, “Next day” and “Blessing”.'],
+      ['🟡', 'Προγραμματισμός ραντεβού: τύπος εκδήλωσης, ονοματεπώνυμο, ημερομηνία & ώρα ραντεβού, τηλέφωνο και πότε είναι η εκδήλωση. Εμφανίζεται κίτρινο στο «Παρουσίαση στο μαγαζί» («Ραντεβού για Γάμο αναμένεται στις: …») και στο ημερολόγιο («Ραντεβού για Γάμο 18:30»). Την ημέρα του ραντεβού βγαίνει πρώτο (και στην Αρχική) και με ένα πάτημα ξεκινά η παρουσίαση στο μαγαζί κανονικά.', 'Schedule appointment: event type, full name, appointment date & time, phone and when the event is. Shows in yellow under “In-store presentation” and in the calendar. On the day it comes first (also on Home) and one tap starts the in-store presentation as usual.'],
+      ['🌅', 'Next day και Ευχολόγιο: διαλέγετε από ποια εκδήλωση είναι και την ημερομηνία (υποχρεωτικά)· ώρα και τοποθεσία προαιρετικά. Πελάτης και συνεργείο παίρνονται από την εκδήλωση, το συνεργείο ειδοποιείται και εμφανίζονται στο ημερολόγιο, στην Αρχική και μέσα στην καρτέλα της εκδήλωσης.', 'Next day and Blessing: choose which event it belongs to and the date (required); time and location are optional. Client and crew come from the event, the crew is notified, and they show in the calendar, on Home and inside the event card.'],
+    ],
+  },
+  {
     v: '1.6.3', date: '02/11/2026',
     items: [
       ['🏠', 'Αρχική · «Οι επόμενες εκδηλώσεις μου»: σε έμφαση πλέον ο τύπος της εκδήλωσης, η τοποθεσία και η ώρα· το όνομα του πελάτη και τα υπόλοιπα ακολουθούν από κάτω.', 'Home · “My upcoming events”: the event type, location and time are now emphasised; the client name and the rest follow below.'],

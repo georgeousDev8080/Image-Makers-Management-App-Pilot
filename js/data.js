@@ -21,6 +21,7 @@ export const S = {
   finance: new Map(),
   crew: [],
   absences: [],
+  sessions: [],
   payments: [],
   expenses: [],
   notifications: [],
@@ -97,6 +98,7 @@ const loaders = {
   customers: async () => { S.customers = new Map((await fetchAll('customers')).map((r) => [r.id, r])); },
   events: async () => { S.events = new Map((await fetchAll('events', (x) => x, 'event_date')).map((r) => [r.id, r])); },
   event_crew: async () => { S.crew = await fetchAll('event_crew'); },
+  event_sessions: async () => { try { S.sessions = await fetchAll('event_sessions', (x) => x, 'day'); } catch (e) { console.warn('event_sessions', e); S.sessions = []; } },
   absences: async () => { try { S.absences = await fetchAll('absences', (x) => x, 'day'); } catch (e) { console.warn('absences', e); S.absences = []; } },
   event_finance: async () => { S.finance = isAdmin() ? new Map((await fetchAll('event_finance', (x) => x, 'event_id')).map((r) => [r.event_id, r])) : new Map(); },
   payments: async () => { S.payments = isAdmin() ? await fetchAll('payments') : []; },
@@ -153,7 +155,7 @@ let onNewNotification = null;
 export function setNotificationHandler(fn) { onNewNotification = fn; }
 export function startRealtime() {
   stopRealtime();
-  const tables = ['notifications', 'events', 'event_crew', 'absences', 'event_finance', 'payments', 'expenses', 'customers', 'message_queue', 'offer_requests', 'profiles', 'appointments', 'workflow_templates'];
+  const tables = ['notifications', 'events', 'event_crew', 'absences', 'event_sessions', 'event_finance', 'payments', 'expenses', 'customers', 'message_queue', 'offer_requests', 'profiles', 'appointments', 'workflow_templates'];
   channel = sb.channel('im-db');
   tables.forEach((t) => {
     channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, (payload) => {
@@ -370,6 +372,19 @@ export async function deleteAbsence(id) {
   await q(sb.from('absences').delete().eq('id', id));
   S.absences = S.absences.filter((a) => a.id !== id); emit('absences');
 }
+// ---------- Next day / Ευχολόγιο ----------
+/** Οι συνδεδεμένες ημέρες (Next day / Ευχολόγιο) μιας εκδήλωσης */
+export const sessionsOf = (eventId) => S.sessions.filter((x) => x.event_id === eventId).sort((a, b) => a.day.localeCompare(b.day));
+export async function saveSession(x) {
+  const row = { event_id: x.event_id, kind: x.kind, day: x.day, start_time: x.start_time || null, location: (x.location || '').trim() || null, notes: (x.notes || '').trim() || null };
+  const data = x.id ? await q(sb.from('event_sessions').update(row).eq('id', x.id).select().single()) : await q(sb.from('event_sessions').insert(row).select().single());
+  S.sessions = [...S.sessions.filter((y) => y.id !== data.id), data]; emit('event_sessions');
+  return data;
+}
+export async function deleteSession(id) {
+  await q(sb.from('event_sessions').delete().eq('id', id));
+  S.sessions = S.sessions.filter((y) => y.id !== id); emit('event_sessions');
+}
 export async function savePayment(p) {
   const row = { event_id: p.event_id || null, category: p.category || 'other', kind: p.kind || 'installment', label: p.label || null, amount: p.amount, paid_on: p.paid_on || todayISO(), method: p.method || null, description: p.description || null, notes: p.notes || null };
   let data;
@@ -491,7 +506,7 @@ export async function updateRequest(id, patch) {
 }
 
 // Προσφορές / Ραντεβού
-const APPT_FIELDS = ['mode', 'appt_date', 'category', 'name1', 'name2', 'phone', 'email', 'event_date', 'church', 'church_time', 'reception', 'reception_time', 'notes', 'offer_path', 'offer_data', 'selections', 'total', 'status', 'status_at', 'reason', 'comments', 'customer_id', 'event_id', 'handled_by'];
+const APPT_FIELDS = ['appt_time', 'mode', 'appt_date', 'category', 'name1', 'name2', 'phone', 'email', 'event_date', 'church', 'church_time', 'reception', 'reception_time', 'notes', 'offer_path', 'offer_data', 'selections', 'total', 'status', 'status_at', 'reason', 'comments', 'customer_id', 'event_id', 'handled_by'];
 export async function saveAppointment(a) {
   const row = {};
   APPT_FIELDS.forEach((k) => { if (k in a) row[k] = a[k] === '' ? null : a[k]; });

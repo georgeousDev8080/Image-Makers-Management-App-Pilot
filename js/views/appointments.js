@@ -4,7 +4,7 @@
 //  · Ηλεκτρονική παρουσίαση (το ζευγάρι συμπληρώνει τη σελίδα προσφοράς)
 //  Confirm → δημιουργία εκδήλωσης · Reject → μένει ως στατιστικό
 // =====================================================================
-import { L, esc, icon, money, fmtDate, todayISO, daysBetween, matches, lbl, sum, CATEGORIES, APPT_MODES, REJECT_REASONS, MONTHS_EL_UP, monthShort, sheet, actionSheet, confirmBox, toast, toastErr, busy, copyText, smsUrl, mailUrl, waUrl, viberUrl, telUrl, segmented, initSegmented, parseMoney } from '../core.js';
+import { fmtDateLong, fmtTime, normTime, timeInputAttrs, L, esc, icon, money, fmtDate, todayISO, daysBetween, matches, lbl, sum, CATEGORIES, APPT_MODES, REJECT_REASONS, MONTHS_EL_UP, monthShort, sheet, actionSheet, confirmBox, toast, toastErr, busy, copyText, smsUrl, mailUrl, waUrl, viberUrl, telUrl, segmented, initSegmented, parseMoney } from '../core.js';
 import { S, isStaleAppt, STALE_DAYS, saveAppointment, deleteAppointment, uploadAppointmentOffer, openOffer, offerUrl, business, eventView } from '../data.js';
 import { pageHead, emptyState, setTopActions, go, backBtn } from '../layout.js';
 import { catPill, catShort, packageNameFrom, offerSummaryHTML } from '../components.js';
@@ -14,6 +14,11 @@ import { barPairs, hbars, bindTips } from '../charts.js';
 
 const st = { mode: 'store', view: 'list', status: 'all', q: '', year: null };
 
+/** «Ραντεβού για Γάμο» — ο τύπος της εκδήλωσης σε αιτιατική */
+const CAT_ACC = { wedding: ['Γάμο', 'a wedding'], baptism: ['Βάπτιση', 'a baptism'], wedding_baptism: ['Γαμοβάπτιση', 'a wedding & baptism'], promo: ['Διαφημιστικό', 'a promotional'], other: ['Άλλο', 'other'] };
+export const apptFor = (cat) => { const x = CAT_ACC[cat] || CAT_ACC.other; return L(`Ραντεβού για ${x[0]}`, `Appointment for ${x[1]}`); };
+export const isScheduled = (a) => a.status === 'scheduled';
+const tm = (t) => (t ? String(t).slice(0, 5) : '');
 export const apptName = (a) => [a.name1, a.name2].filter(Boolean).join(' & ') || L('Χωρίς όνομα', 'No name');
 const ageDays = (a) => Math.floor((Date.now() - new Date(a.status_at).getTime()) / 864e5);
 
@@ -41,7 +46,8 @@ export function renderAppointments(root) {
 
   // Τα δύο μεγάλα παράθυρα
   html += `<div class="appt-modes">${APPT_MODES.map((m) => {
-    const list = S.appointments.filter((a) => a.mode === m.v);
+    const list = S.appointments.filter((a) => a.mode === m.v && !isScheduled(a));
+    const sched = S.appointments.filter((a) => a.mode === m.v && isScheduled(a)).length;
     const c = (s) => list.filter((a) => a.status === s).length;
     const decided = c('confirmed') + c('rejected');
     const stale = list.filter(isStaleAppt).length;
@@ -49,13 +55,13 @@ export function renderAppointments(root) {
       <span class="am-ic">${icon(m.icon)}</span>
       <span class="am-t">${esc(L(m.el, m.en))}</span>
       <span class="am-n">${list.length}<small>${esc(L('ραντεβού', 'appointments'))}</small></span>
-      <span class="am-stats"><i class="ok">${c('confirmed')} confirmed</i><i class="no">${c('rejected')} rejected</i><i class="wait">${c('pending')} ${esc(L('σε αναμονή', 'pending'))}</i>${stale ? `<i class="stale">${stale} ${esc(L('χωρίς απάντηση', 'no answer'))}</i>` : ''}</span>
+      <span class="am-stats"><i class="ok">${c('confirmed')} confirmed</i><i class="no">${c('rejected')} rejected</i><i class="wait">${c('pending')} ${esc(L('σε αναμονή', 'pending'))}</i>${stale ? `<i class="stale">${stale} ${esc(L('χωρίς απάντηση', 'no answer'))}</i>` : ''}${sched ? `<i class="sched">${sched} ${esc(L('προγραμματισμένα', 'scheduled'))}</i>` : ''}</span>
       <span class="am-rate">${decided ? Math.round((c('confirmed') / decided) * 100) + '%' : '—'}<small>${esc(L('κλείσιμο', 'win rate'))}</small></span>
     </button>`;
   }).join('')}</div>`;
 
   html += `<div class="spread mb" style="flex-wrap:wrap;gap:10px">${segmented('v', [{ v: 'list', label: L('Λίστα ραντεβού', 'Appointments') }, { v: 'stats', label: L('Στατιστικά', 'Statistics') }], st.view)}
-    ${st.mode === 'online' ? `<button class="btn small" data-link>${icon('link')} ${esc(L('Αποστολή link σε πελάτη', 'Send link to client'))}</button>` : `<button class="btn small" data-store>${icon('plus')} ${esc(L('Νέα παρουσίαση στο μαγαζί', 'New in-store presentation'))}</button>`}</div>`;
+    ${st.mode === 'online' ? `<button class="btn small" data-link>${icon('link')} ${esc(L('Αποστολή link σε πελάτη', 'Send link to client'))}</button>` : `<span class="hstack" style="gap:8px;flex-wrap:wrap"><button class="btn small" data-sched>${icon('calendar')} ${esc(L('Προγραμματισμός ραντεβού', 'Schedule appointment'))}</button><button class="btn small" data-store>${icon('plus')} ${esc(L('Νέα παρουσίαση στο μαγαζί', 'New in-store presentation'))}</button></span>`}</div>`;
   html += '<div id="apBody"></div>';
   root.innerHTML = html;
 
@@ -67,15 +73,105 @@ export function renderAppointments(root) {
   document.querySelector('[data-new]')?.addEventListener('click', () => newAppointmentChooser());
   root.querySelector('[data-link]')?.addEventListener('click', () => openSendLink());
   root.querySelector('[data-store]')?.addEventListener('click', () => go('#/appointment-new'));
+  root.querySelector('[data-sched]')?.addEventListener('click', () => openScheduleSheet());
 }
 
 export async function newAppointmentChooser() {
   const v = await actionSheet({ title: L('Νέο ραντεβού / προσφορά', 'New appointment / offer'), actions: [
     { label: L('Παρουσίαση από κοντά (στο μαγαζί)', 'In-person presentation (in store)'), icon: 'store', value: 'store' },
+    { label: L('Προγραμματισμός ραντεβού (για αργότερα)', 'Schedule an appointment (for later)'), icon: 'calendar', value: 'sched' },
     { label: L('Αποστολή ηλεκτρονικά (link στον πελάτη)', 'Send online (link to the client)'), icon: 'link', value: 'online' },
   ] });
   if (v === 'store') go('#/appointment-new');
   if (v === 'online') openSendLink();
+  if (v === 'sched') openScheduleSheet();
+}
+
+// ---------------------------------------------------------------------
+//  Προγραμματισμένα ραντεβού (κίτρινα): «Ραντεβού για Γάμο αναμένεται στις …»
+//  Όταν έρθει η ημέρα βγαίνουν πρώτα· με ένα πάτημα ξεκινά η παρουσίαση στο μαγαζί.
+// ---------------------------------------------------------------------
+export const scheduledAppts = () => S.appointments.filter(isScheduled).sort((a, b) => a.appt_date.localeCompare(b.appt_date) || tm(a.appt_time).localeCompare(tm(b.appt_time)));
+export const apptWhen = (a) => `${fmtDateLong(a.appt_date)}${a.appt_time ? ` · ${tm(a.appt_time)}` : ''}`;
+
+export function openScheduleSheet({ date = '', appt = null } = {}) {
+  const today = todayISO();
+  const f = appt ? { category: appt.category, name1: appt.name1 || '', appt_date: appt.appt_date, appt_time: tm(appt.appt_time), phone: appt.phone || '', event_date: appt.event_date || '', notes: appt.notes || '' }
+    : { category: 'wedding', name1: '', appt_date: date && date >= today ? date : today, appt_time: '', phone: '', event_date: '', notes: '' };
+  const fld = (n, l, { req = false, type = 'text', ph = '', im = '', extra = '' } = {}) => `<div class="field"><label>${esc(l)}${req ? ' <span class="req">*</span>' : ''}</label><input class="input" name="${n}" type="${type}" ${im ? `inputmode="${im}"` : ''} ${extra} value="${esc(f[n] ?? '')}" placeholder="${esc(ph)}"></div>`;
+  const body = document.createElement('div');
+  body.innerHTML = `<div class="form">
+    <div class="banner yellow">${icon('calendar')}<div><b>${esc(L('Ραντεβού για παρουσίαση στο μαγαζί', 'Appointment for an in-store presentation'))}</b><span>${esc(L('Εμφανίζεται κίτρινο στις «Προσφορές / Ραντεβού» και στο ημερολόγιο. Την ημέρα του ραντεβού βγαίνει πρώτο και με ένα πάτημα ξεκινάτε την παρουσίαση.', 'Shows in yellow in “Offers / Appointments” and in the calendar. On the day it comes first and one tap starts the presentation.'))}</span></div></div>
+    <div class="field"><label>${esc(L('Τύπος εκδήλωσης', 'Event type'))} <span class="req">*</span></label><div class="chips">${CATEGORIES.map((c) => `<button type="button" class="chip ${f.category === c.v ? 'on' : ''}" data-cat="${c.v}"><span class="cat-dot cat-${c.v}"></span>${esc(L(c.el, c.en))}</button>`).join('')}</div></div>
+    ${fld('name1', L('Ονοματεπώνυμο', 'Full name'), { req: true, ph: L('π.χ. Μαρία Παπαδοπούλου', 'e.g. Maria Papadopoulou') })}
+    <div class="form-grid">
+      ${fld('appt_date', L('Ημερομηνία ραντεβού', 'Appointment date'), { req: true, type: 'date' })}
+      ${fld('appt_time', L('Ώρα ραντεβού', 'Appointment time'), { req: true, ph: '18:00', extra: timeInputAttrs })}
+      ${fld('phone', L('Τηλέφωνο', 'Phone'), { req: true, type: 'tel', im: 'tel', ph: '69XXXXXXXX' })}
+      ${fld('event_date', L('Πότε είναι η εκδήλωση', 'When the event is'), { req: true, type: 'date' })}
+    </div>
+    <div class="field"><label>${esc(L('Σημειώσεις (προαιρετικά)', 'Notes (optional)'))}</label><textarea class="textarea" name="notes" style="min-height:60px">${esc(f.notes)}</textarea></div>
+  </div>`;
+  body.querySelectorAll('[name]').forEach((i) => i.addEventListener('input', () => { f[i.name] = i.value; i.classList.remove('invalid'); }));
+  body.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { f.category = b.dataset.cat; body.querySelectorAll('[data-cat]').forEach((x) => x.classList.toggle('on', x === b)); }));
+  const s = sheet({ title: appt ? L('Αλλαγή ραντεβού', 'Edit appointment') : L('Προγραμματισμός ραντεβού', 'Schedule appointment'), body, right: `<button class="btn plain" data-save><b>${esc(L('Αποθήκευση', 'Save'))}</b></button>` });
+  s.root.querySelector('[data-save]').addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    let ok = true;
+    const bad = (n) => { body.querySelector(`[name=${n}]`)?.classList.add('invalid'); ok = false; };
+    const t = normTime(f.appt_time);
+    if (!f.name1.trim()) bad('name1');
+    if (!f.appt_date) bad('appt_date');
+    if (!t) bad('appt_time');
+    if (String(f.phone).replace(/\D/g, '').length < 10) bad('phone');
+    if (!f.event_date) bad('event_date');
+    if (!ok) return toastErr(L('Συμπληρώστε σωστά τα υποχρεωτικά πεδία', 'Fill in the required fields correctly'), L('Η ώρα γράφεται ως ΩΩ:ΛΛ και το τηλέφωνο με 10 ψηφία.', 'Time as HH:MM and a 10-digit phone.'));
+    busy(btn, true);
+    try {
+      await saveAppointment({ ...(appt ? { id: appt.id } : { mode: 'store', status: 'scheduled' }), category: f.category, name1: f.name1.trim(), appt_date: f.appt_date, appt_time: t, phone: f.phone.trim(), event_date: f.event_date, notes: f.notes.trim() || null });
+      toast(appt ? L('Το ραντεβού άλλαξε', 'Appointment updated') : L('Το ραντεβού προγραμματίστηκε', 'Appointment scheduled'), { body: `${apptFor(f.category)} · ${fmtDate(f.appt_date)} ${t}` });
+      st.mode = 'store'; st.view = 'list';
+      s.close();
+    } catch (e) { console.error(e); busy(btn, false); }
+  });
+}
+
+/** Έναρξη της παρουσίασης από προγραμματισμένο ραντεβού */
+export const startPresentation = (a) => go(`#/appointment/${a.id}/edit`);
+
+export async function scheduledActions(a) {
+  if (!a) return;
+  const r = await actionSheet({ title: `${apptFor(a.category)} · ${apptWhen(a)} · ${apptName(a)}`, actions: [
+    { label: L('Έναρξη παρουσίασης στο μαγαζί', 'Start in-store presentation'), value: 'go', icon: 'store' },
+    { label: L('Αλλαγή ημερομηνίας / στοιχείων', 'Change date / details'), value: 'edit', icon: 'edit' },
+    ...(a.phone ? [{ label: L(`Κλήση ${a.phone}`, `Call ${a.phone}`), value: 'call', icon: 'phone' }] : []),
+    { label: L('Ακύρωση ραντεβού (διαγραφή)', 'Cancel appointment (delete)'), value: 'del', icon: 'trash', destructive: true },
+  ] });
+  if (r === 'go') startPresentation(a);
+  if (r === 'edit') openScheduleSheet({ appt: a });
+  if (r === 'call') location.href = telUrl(a.phone);
+  if (r === 'del') { if (!await confirmBox(L('Ακύρωση ραντεβού;', 'Cancel appointment?'), `${apptFor(a.category)} · ${apptWhen(a)} · ${apptName(a)}`, { ok: L('Διαγραφή', 'Delete'), destructive: true })) return; await deleteAppointment(a.id); toast(L('Το ραντεβού διαγράφηκε', 'Appointment deleted')); }
+}
+
+function scheduledBlock() {
+  const today = todayISO();
+  const list = scheduledAppts().filter((a) => matches(st.q, a.name1, a.phone, a.notes, fmtDate(a.event_date), fmtDate(a.appt_date)));
+  if (!list.length) return '';
+  // πρώτα τα σημερινά, μετά όσα πέρασαν χωρίς παρουσίαση, μετά τα επόμενα
+  const rank = (a) => (a.appt_date === today ? 0 : a.appt_date < today ? 1 : 2);
+  list.sort((a, b) => rank(a) - rank(b) || a.appt_date.localeCompare(b.appt_date) || tm(a.appt_time).localeCompare(tm(b.appt_time)));
+  return `<div class="sched-list">${list.map((a) => {
+    const r = rank(a);
+    const tag = r === 0 ? `<span class="sc-tag now">${esc(L('ΣΗΜΕΡΑ', 'TODAY'))}</span>` : r === 1 ? `<span class="sc-tag late">${esc(L('Πέρασε η ημέρα', 'Date passed'))}</span>` : '';
+    return `<div class="sched-card ${r === 0 ? 'today' : ''}" role="button" tabindex="0" data-present="${a.id}">
+      <div class="sc-main">
+        <div class="sc-t">${tag}${esc(apptFor(a.category))} ${esc(L('αναμένεται στις:', 'expected on:'))} <b>${esc(apptWhen(a))}</b></div>
+        <div class="sc-d">${esc(apptName(a))}${a.phone ? ` · <a href="${telUrl(a.phone)}" data-stop>${esc(a.phone)}</a>` : ''}${a.event_date ? ` · ${esc(L('Εκδήλωση', 'Event'))}: ${esc(fmtDate(a.event_date))}` : ''}${a.notes ? ` · 💬 ${esc(a.notes.slice(0, 80))}` : ''}</div>
+      </div>
+      <span class="sc-go">${r === 0 ? `${esc(L('Παρουσίαση', 'Present'))} ` : ''}${icon('chevR')}</span>
+      <button class="icon-btn sc-more" data-schedmore="${a.id}" aria-label="${esc(L('Επιλογές', 'Options'))}" data-stop>${icon('more')}</button>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 // ---------------------------------------------------------------------
@@ -89,7 +185,7 @@ function rowState(a) {
 }
 
 function listView(body, redraw) {
-  const all = S.appointments.filter((a) => a.mode === st.mode);
+  const all = S.appointments.filter((a) => a.mode === st.mode && !isScheduled(a));
   const n = (f) => all.filter(f).length;
   let list = all.filter((a) => (st.status === 'all' || (st.status === 'stale' ? isStaleAppt(a) : a.status === st.status))
     && matches(st.q, a.name1, a.name2, a.phone, a.email, a.church, a.reception, a.comments, a.notes, fmtDate(a.event_date), fmtDate(a.appt_date)));
@@ -101,6 +197,7 @@ function listView(body, redraw) {
   ];
   let html = `<div class="sheet-toolbar"><div class="search">${icon('search')}<input class="input" id="aq" type="search" placeholder="${esc(L('Αναζήτηση (όνομα, κινητό, εκκλησία…)', 'Search (name, phone, church…)'))}" value="${esc(st.q)}"></div>
     <div class="chips">${chips.map(([v, t, c]) => `<button class="chip ${st.status === v ? 'on' : ''}" data-st="${v}">${esc(t)} <b>${c}</b></button>`).join('')}</div></div>`;
+  if (st.mode === 'store') html += scheduledBlock();
   if (!list.length) {
     html += emptyState(st.mode === 'online' ? 'link' : 'store', L('Δεν υπάρχουν ραντεβού εδώ', 'No appointments here'),
       st.mode === 'online' ? L('Στείλτε το link της προσφοράς στο ζευγάρι. Μόλις το συμπληρώσει, εμφανίζεται εδώ αυτόματα με ειδοποίηση.', 'Send the offer link to the couple. When they fill it in, it appears here automatically with a notification.')
@@ -135,6 +232,11 @@ function listView(body, redraw) {
   body.querySelectorAll('[data-st]').forEach((b) => b.addEventListener('click', () => { st.status = b.dataset.st; redraw(); }));
   body.querySelectorAll('[data-stop]').forEach((x) => x.addEventListener('click', (e) => e.stopPropagation()));
   body.querySelectorAll('[data-open]').forEach((r) => r.addEventListener('click', () => openAppointment(find(r.dataset.open))));
+  body.querySelectorAll('[data-present]').forEach((r) => {
+    r.addEventListener('click', () => startPresentation(find(r.dataset.present)));
+    r.addEventListener('keydown', (e) => { if (e.key === 'Enter') startPresentation(find(r.dataset.present)); });
+  });
+  body.querySelectorAll('[data-schedmore]').forEach((b) => b.addEventListener('click', () => scheduledActions(find(b.dataset.schedmore))));
   body.querySelectorAll('[data-conf]').forEach((b) => b.addEventListener('click', () => confirmAppt(find(b.dataset.conf))));
   body.querySelectorAll('[data-rej]').forEach((b) => b.addEventListener('click', () => rejectAppt(find(b.dataset.rej))));
   body.querySelectorAll('[data-mkev]').forEach((b) => b.addEventListener('click', () => go(`#/new-event?appointment=${b.dataset.mkev}`)));
@@ -211,6 +313,7 @@ export function rejectAppt(a) {
 // ---------------------------------------------------------------------
 export function openAppointment(a) {
   if (!a) return;
+  if (isScheduled(a)) return scheduledActions(a);
   const s0 = rowState(a);
   const ev = a.event_id ? eventView(a.event_id) : null;
   const sel = a.offer_data || (a.selections ? requestToOfferState(apptToRequest(a)) : null);
@@ -304,13 +407,15 @@ export function renderAppointmentForm(root, params = {}) {
   if (!F || fKey !== k || params._fresh) {
     params._fresh = false;
     const a = params.id ? find(params.id) : null;
-    F = a ? { ...a, pdf: null, pdfName: '' } : { mode: 'store', appt_date: todayISO(), category: 'wedding', name1: '', name2: '', phone: '', email: '', event_date: '', church: '', reception: '', notes: '', total: '', offer_data: null, pdf: null, pdfName: '' };
+    F = a ? { ...a, pdf: null, pdfName: '', ...(isScheduled(a) ? { appt_date: todayISO(), _from: a } : {}) } : { mode: 'store', appt_date: todayISO(), category: 'wedding', name1: '', name2: '', phone: '', email: '', event_date: '', church: '', reception: '', notes: '', total: '', offer_data: null, pdf: null, pdfName: '' };
     fKey = k;
   }
   const edit = !!params.id;
+  const presenting = F.status === 'scheduled';
   const fld = (n, l, { req = false, type = 'text', ph = '', full = false, im = '' } = {}) => `<div class="field ${full ? 'full' : ''}"><label>${esc(l)}${req ? ' <span class="req">*</span>' : ''}</label><input class="input" name="${n}" type="${type}" ${im ? `inputmode="${im}"` : ''} value="${esc(F[n] ?? '')}" placeholder="${esc(ph)}"><div class="err" hidden></div></div>`;
   const has = F.pdf || F.offer_path;
-  root.innerHTML = backBtn('#/appointments') + pageHead(edit ? L('Επεξεργασία ραντεβού', 'Edit appointment') : L('Νέα παρουσίαση στο μαγαζί', 'New in-store presentation'), { sub: esc(L('Συμπληρώστε τα στοιχεία και φτιάξτε την προσφορά μαζί με το ζευγάρι.', 'Fill in the details and build the offer together with the couple.')) })
+  root.innerHTML = backBtn('#/appointments') + pageHead(edit && !presenting ? L('Επεξεργασία ραντεβού', 'Edit appointment') : L('Νέα παρουσίαση στο μαγαζί', 'New in-store presentation'), { sub: esc(L('Συμπληρώστε τα στοιχεία και φτιάξτε την προσφορά μαζί με το ζευγάρι.', 'Fill in the details and build the offer together with the couple.')) })
+    + (presenting ? `<div class="banner yellow">${icon('calendar')}<div><b>${esc(apptFor(F._from.category))} · ${esc(apptWhen(F._from))}</b><span>${esc(L('Από το προγραμματισμένο ραντεβού. Μόλις αποθηκεύσετε, περνά στις παρουσιάσεις σε αναμονή απάντησης.', 'From the scheduled appointment. Once saved, it moves to presentations waiting for an answer.'))}</span></div></div>` : '')
     + `<div class="card pad"><div class="form-grid">
       ${fld('appt_date', L('Ημερομηνία ραντεβού', 'Appointment date'), { req: true, type: 'date' })}
       ${fld('event_date', L('Ημερομηνία εκδήλωσης', 'Event date'), { type: 'date' })}
@@ -333,7 +438,7 @@ export function renderAppointmentForm(root, params = {}) {
       ${F.offer_data ? `<div class="mt">${offerSummaryHTML(F.offer_data)}</div>` : ''}
       <div class="field mt"><label>${esc(L('Αξία προσφοράς (€)', 'Offer value (€)'))}</label><div class="input-wrap"><input class="input" name="total" inputmode="decimal" value="${esc(F.total ?? '')}" placeholder="2800"><span class="suffix">€</span></div><div class="help">${esc(L('Συμπληρώνεται αυτόματα από τον Οδηγό.', 'Filled automatically by the builder.'))}</div></div>
     </div>
-    <div class="wizard-foot"><span></span><button class="btn primary large" data-save>${icon('check')} ${esc(edit ? L('Αποθήκευση αλλαγών', 'Save changes') : L('Αποθήκευση ραντεβού', 'Save appointment'))}</button></div>`;
+    <div class="wizard-foot"><span></span><button class="btn primary large" data-save>${icon('check')} ${esc(edit && !presenting ? L('Αποθήκευση αλλαγών', 'Save changes') : L('Αποθήκευση ραντεβού', 'Save appointment'))}</button></div>`;
   root.querySelectorAll('[name]').forEach((i) => i.addEventListener('input', () => { F[i.name] = i.value; i.classList.remove('invalid'); }));
   root.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { F.category = b.dataset.cat; root.querySelectorAll('[data-cat]').forEach((x) => x.classList.toggle('on', x === b)); }));
   root.querySelector('[data-builder]').addEventListener('click', async () => {
@@ -369,9 +474,9 @@ export function renderAppointmentForm(root, params = {}) {
         busy(_btn, true, L('Αποθήκευση…', 'Saving…'));
       }
       const total = parseMoney(F.total);
-      let a = await saveAppointment({ id: F.id, mode: 'store', appt_date: F.appt_date, category: F.category, name1: F.name1.trim(), name2: (F.name2 || '').trim() || null, phone: F.phone.trim(), email: (F.email || '').trim() || null, event_date: F.event_date || null, church: F.church || null, reception: F.reception || null, notes: F.notes || null, offer_data: F.offer_data || null, total });
+      let a = await saveAppointment({ id: F.id, ...(presenting ? { status: 'pending' } : {}), mode: 'store', appt_date: F.appt_date, category: F.category, name1: F.name1.trim(), name2: (F.name2 || '').trim() || null, phone: F.phone.trim(), email: (F.email || '').trim() || null, event_date: F.event_date || null, church: F.church || null, reception: F.reception || null, notes: F.notes || null, offer_data: F.offer_data || null, total });
       if (F.pdf) { const path = await uploadAppointmentOffer(a.id, F.pdf); a = await saveAppointment({ id: a.id, offer_path: path }); }
-      toast(edit ? L('Οι αλλαγές αποθηκεύτηκαν', 'Changes saved') : L('Το ραντεβού καταχωρήθηκε', 'Appointment saved'), { body: L('Όταν σας απαντήσουν, πατήστε Confirm ή Reject.', 'When they answer, tap Confirm or Reject.') });
+      toast(edit && !presenting ? L('Οι αλλαγές αποθηκεύτηκαν', 'Changes saved') : L('Το ραντεβού καταχωρήθηκε', 'Appointment saved'), { body: L('Όταν σας απαντήσουν, πατήστε Confirm ή Reject.', 'When they answer, tap Confirm or Reject.') });
       F = null; fKey = ''; st.mode = 'store'; st.view = 'list';
       go('#/appointments');
     } catch (err) { console.error(err); busy(_btn, false); }
@@ -383,7 +488,7 @@ export function renderAppointmentForm(root, params = {}) {
 // ---------------------------------------------------------------------
 export function apptStats(year) {
   const y = String(year);
-  const list = S.appointments.filter((a) => a.appt_date.startsWith(y));
+  const list = S.appointments.filter((a) => a.appt_date.startsWith(y) && !isScheduled(a));
   const pack = (arr) => {
     const conf = arr.filter((a) => a.status === 'confirmed'), rej = arr.filter((a) => a.status === 'rejected'), pend = arr.filter((a) => a.status === 'pending');
     const decided = conf.length + rej.length;

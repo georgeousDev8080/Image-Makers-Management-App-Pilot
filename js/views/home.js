@@ -4,7 +4,8 @@
 import { evEnd, fmtRange, isMultiDay, CATEGORIES, needsOffer, L, vocative, esc, icon, money, fmtDateLong, fmtTime, todayISO, daysBetween, sum, addDays, isIOS, isStandalone } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, profileName, myEventIds, pendingAppointments, staleAppointments, pendingMessages, pendingUsers, unreadCount } from '../data.js';
 import { wfLevel } from './workflow.js';
-import { newAppointmentChooser } from './appointments.js';
+import { newAppointmentChooser, scheduledAppts, apptFor, apptName } from './appointments.js';
+import { sessionRow } from './sessions.js';
 import { pageHead } from '../layout.js';
 import { eventRow } from '../components.js';
 import { openIncomeForm, openExpenseForm } from './money.js';
@@ -58,6 +59,8 @@ export function renderHome(root) {
   if (admin) {
     // Χρειάζεται προσοχή
     const todo = [];
+    // Σημερινά προγραμματισμένα ραντεβού (κίτρινα) → πάτημα = παρουσίαση στο μαγαζί
+    scheduledAppts().filter((a) => a.appt_date === today).forEach((a) => todo.push({ h: `#/appointment/${a.id}/edit`, i: 'handshake', c: '#e0a800', y: true, t: L(`Σήμερα ${apptFor(a.category).replace('Ραντεβού', 'ραντεβού')} στις ${String(a.appt_time || '').slice(0, 5)} · ${apptName(a)}`, `Today ${apptFor(a.category).toLowerCase()} at ${String(a.appt_time || '').slice(0, 5)} · ${apptName(a)}`) }));
     const sa = staleAppointments().length; if (sa) todo.push({ h: '#/appointments', i: 'handshake', c: 'var(--orange)', t: L(`${sa} ραντεβού χωρίς απάντηση πάνω από 10 ημέρες`, `${sa} appointments without an answer for 10+ days`) });
     const pa = pendingAppointments().length - sa; if (pa > 0) todo.push({ h: '#/appointments', i: 'handshake', c: 'var(--blue)', t: L(`${pa} προσφορές σε αναμονή απάντησης`, `${pa} offers waiting for an answer`) });
     const wl = all.filter((v) => wfLevel(v.e, today).level === 'late').length; if (wl) todo.push({ h: '#/workflow', i: 'flow', c: 'var(--red)', t: L(`${wl} εργασίες με μεγάλη καθυστέρηση (φωτογραφίες)`, `${wl} jobs with a long delay (photos)`) });
@@ -78,7 +81,7 @@ export function renderHome(root) {
     const noOffer = upcoming.filter((v) => !v.e.offer_path && needsOffer(v.e.category)).length;
     if (noOffer) todo.push({ h: '#/sheets/checks', i: 'doc', c: 'var(--label-2)', t: L(`${noOffer} μελλοντικές εκδηλώσεις χωρίς PDF προσφοράς`, `${noOffer} upcoming events without an offer PDF`) });
     if (todo.length) {
-      html += `<div class="section-title"><h2>${esc(L('Χρειάζονται προσοχή', 'Needs attention'))}</h2></div><div class="list">${todo.map((x) => `<a class="row has-icon" href="${x.h}"><span class="row-icon" style="background:${x.c}">${icon(x.i)}</span><div class="main-col"><div class="t">${esc(x.t)}</div></div>${icon('chevR', 'chev')}</a>`).join('')}</div>`;
+      html += `<div class="section-title"><h2>${esc(L('Χρειάζονται προσοχή', 'Needs attention'))}</h2></div><div class="list">${todo.map((x) => `<a class="row has-icon ${x.y ? 'todo-yellow' : ''}" href="${x.h}"><span class="row-icon" style="background:${x.c}">${icon(x.i)}</span><div class="main-col"><div class="t">${esc(x.t)}</div></div>${icon('chevR', 'chev')}</a>`).join('')}</div>`;
     }
 
     // Γρήγορες ενέργειες
@@ -112,9 +115,11 @@ export function renderHome(root) {
     if (un) html += `<div class="list mt"><a class="row has-icon" href="#/notifications"><span class="row-icon" style="background:var(--blue)">${icon('bell')}</span><div class="main-col"><div class="t">${esc(L(`${un} νέες ειδοποιήσεις`, `${un} new notifications`))}</div></div>${icon('chevR', 'chev')}</a></div>`;
   }
 
-  const list = upcoming.slice(0, admin ? 8 : 20);
+  const sess = S.sessions.filter((x) => x.day >= today && S.events.get(x.event_id)?.status !== 'cancelled' && (admin || mine.has(x.event_id)));
+  const list = [...upcoming.slice(0, admin ? 8 : 20).map((v) => ({ d: v.e.event_date, t: String(v.e.event_time || ''), v })), ...sess.map((x) => ({ d: x.day, t: String(x.start_time || ''), x }))]
+    .sort((a, b) => a.d.localeCompare(b.d) || a.t.localeCompare(b.t)).slice(0, admin ? 10 : 24);
   html += `<div class="section-title"><h2>${esc(admin ? L('Επόμενες εκδηλώσεις', 'Upcoming events') : L('Οι επόμενες εκδηλώσεις μου', 'My upcoming events'))}</h2><a href="#/calendar" class="small">${esc(L('Ημερολόγιο', 'Calendar'))} ${icon('chevR')}</a></div>`;
-  html += list.length ? `<div class="list">${list.map((v) => eventRow(v, { money: false, crewType: true, typeFirst: true })).join('')}</div>` : `<div class="card pad muted center">${esc(L('Καμία επερχόμενη εκδήλωση.', 'No upcoming events.'))}</div>`;
+  html += list.length ? `<div class="list">${list.map((it) => (it.x ? sessionRow(it.x) : eventRow(it.v, { money: false, crewType: true, typeFirst: true }))).join('')}</div>` : `<div class="card pad muted center">${esc(L('Καμία επερχόμενη εκδήλωση.', 'No upcoming events.'))}</div>`;
 
   root.innerHTML = html;
   root.querySelector('[data-act="appt"]')?.addEventListener('click', () => newAppointmentChooser());
