@@ -6,6 +6,7 @@ import { S, isAdmin, isVideoAdmin, allEventViews, profileName, myEventIds, pendi
 import { wfLevel } from './workflow.js';
 import { newAppointmentChooser, scheduledAppts, apptFor, apptName } from './appointments.js';
 import { sessionRow } from './sessions.js';
+import { meetingRow, meetingActions } from './meetings.js';
 import { pageHead } from '../layout.js';
 import { eventRow } from '../components.js';
 import { openIncomeForm, openExpenseForm } from './money.js';
@@ -116,12 +117,13 @@ export function renderHome(root) {
   }
 
   const sess = S.sessions.filter((x) => x.day >= today && S.events.get(x.event_id)?.status !== 'cancelled' && (admin || mine.has(x.event_id)));
-  const list = [...upcoming.slice(0, admin ? 8 : 20).map((v) => ({ d: v.e.event_date, t: String(v.e.event_time || ''), v })), ...sess.map((x) => ({ d: x.day, t: String(x.start_time || ''), x }))]
+  const list = [...upcoming.slice(0, admin ? 8 : 20).map((v) => ({ d: v.e.event_date, t: String(v.e.event_time || ''), v })), ...sess.map((x) => ({ d: x.day, t: String(x.start_time || ''), x })), ...S.meetings.filter((m) => m.day >= today && (m.participants || []).includes(S.profile?.id)).map((m) => ({ d: m.day, t: String(m.start_time), m }))]
     .sort((a, b) => a.d.localeCompare(b.d) || a.t.localeCompare(b.t)).slice(0, admin ? 10 : 24);
   html += `<div class="section-title"><h2>${esc(admin ? L('Επόμενες εκδηλώσεις', 'Upcoming events') : L('Οι επόμενες εκδηλώσεις μου', 'My upcoming events'))}</h2><a href="#/calendar" class="small">${esc(L('Ημερολόγιο', 'Calendar'))} ${icon('chevR')}</a></div>`;
-  html += list.length ? `<div class="list">${list.map((it) => (it.x ? sessionRow(it.x) : eventRow(it.v, { money: false, crewType: true, typeFirst: true }))).join('')}</div>` : `<div class="card pad muted center">${esc(L('Καμία επερχόμενη εκδήλωση.', 'No upcoming events.'))}</div>`;
+  html += list.length ? `<div class="list">${list.map((it) => (it.m ? meetingRow(it.m) : it.x ? sessionRow(it.x) : eventRow(it.v, { money: false, crewType: true, typeFirst: true }))).join('')}</div>` : `<div class="card pad muted center">${esc(L('Καμία επερχόμενη εκδήλωση.', 'No upcoming events.'))}</div>`;
 
   root.innerHTML = html;
+  root.querySelectorAll('[data-meeting]').forEach((b) => b.addEventListener('click', () => meetingActions(S.meetings.find((m) => m.id === b.dataset.meeting))));
   root.querySelector('[data-act="appt"]')?.addEventListener('click', () => newAppointmentChooser());
   root.querySelector('[data-act="income"]')?.addEventListener('click', () => openIncomeForm({}));
   root.querySelector('[data-act="expense"]')?.addEventListener('click', () => openExpenseForm({}));

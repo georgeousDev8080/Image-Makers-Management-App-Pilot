@@ -10,6 +10,7 @@ import { eventRow, catShort } from '../components.js';
 import { openSessionSheet, sessionActions, sessionTitle, sessionTip, sessionEmoji } from './sessions.js';
 import { openScheduleSheet, scheduledActions, apptFor, apptName, openAppointment } from './appointments.js';
 import { go } from '../layout.js';
+import { openMeetingSheet, meetingActions, meetingTitle, meetingTip } from './meetings.js';
 import { openCalNoteSheet, calNoteActions, calNoteTitle, calNoteTip } from './calnotes.js';
 
 const catLabel = (c) => { const o = CATEGORIES.find((x) => x.v === c); return o ? L(o.el, o.en).replace(/\s*\(.*\)$/, '') : ''; };
@@ -96,6 +97,11 @@ function buildExtras(admin, onlyMine, mine) {
     if (admin && onlyMine && !mine.has(x.event_id)) return;
     out.push({ key: 's:' + x.id, sub: 'sess', kind2: x.kind, ref: x, date: x.day, time: x.start_time ? String(x.start_time).slice(0, 5) : '', label: `${sessionEmoji(x.kind)} ${sessionTitle(x)}`, tip: sessionTip(x), cat: e.category });
   });
+  S.meetings.forEach((m) => {
+    if (admin && onlyMine && !(m.participants || []).includes(S.profile?.id)) return;
+    const t = String(m.start_time).slice(0, 5);
+    out.push({ key: 'm:' + m.id, sub: 'meet', ref: m, date: m.day, time: t, label: `👥 ${meetingTitle(m)}`, tip: meetingTip(m) });
+  });
   S.calNotes.forEach((n) => {
     out.push({ key: 'n:' + n.id, sub: 'note', ref: n, date: n.day, time: n.start_time ? String(n.start_time).slice(0, 5) : '', label: `📌 ${calNoteTitle(n)}`, tip: calNoteTip(n) });
   });
@@ -112,10 +118,11 @@ function xClick(key) {
   const x = XS.find((y) => y.key === key); if (!x) return;
   if (x.sub === 'sess') sessionActions(x.ref);
   else if (x.sub === 'note') calNoteActions(x.ref);
+  else if (x.sub === 'meet') meetingActions(x.ref);
   else if (x.ref.status === 'scheduled') scheduledActions(x.ref);
   else openAppointment(x.ref);
 }
-const xRow = (x) => `<button class="row has-icon" data-x="${x.key}"><span class="row-icon ${xCls(x)}">${x.sub === 'appt' ? icon('handshake') : x.sub === 'note' ? '📌' : sessionEmoji(x.kind2)}</span><div class="main-col"><div class="t">${esc(x.sub === 'appt' ? x.label : x.label.replace(/^\S+\s/, ''))}</div><div class="s">${esc(x.sub === 'appt' ? x.tip.split(' · ').slice(1).join(' · ') : x.sub === 'note' ? ([x.time, x.ref.notes].filter(Boolean).join(' · ') || L('Χωρίς ώρα', 'No time')) : [x.time || L('ώρα: δεν έχει οριστεί', 'time: not set'), x.tip.split(' · ').slice(-2).join(' · ')].join(' · '))}</div></div>${icon('chevR', 'chev')}</button>`;
+const xRow = (x) => `<button class="row has-icon" data-x="${x.key}"><span class="row-icon ${xCls(x)}">${x.sub === 'appt' ? icon('handshake') : x.sub === 'note' ? '📌' : x.sub === 'meet' ? '👥' : sessionEmoji(x.kind2)}</span><div class="main-col"><div class="t">${esc(x.sub === 'appt' ? x.label : x.label.replace(/^\S+\s/, ''))}</div><div class="s">${esc(x.sub === 'appt' ? x.tip.split(' · ').slice(1).join(' · ') : x.sub === 'note' ? ([x.time, x.ref.notes].filter(Boolean).join(' · ') || L('Χωρίς ώρα', 'No time')) : x.sub === 'meet' ? [x.time, (x.ref.reasons || []).join(', ')].join(' · ') : [x.time || L('ώρα: δεν έχει οριστεί', 'time: not set'), x.tip.split(' · ').slice(-2).join(' · ')].join(' · '))}</div></div>${icon('chevR', 'chev')}</button>`;
 
 /** Όλα τα στοιχεία του ημερολογίου ως διαστήματα ημερών (εκδηλώσεις + απουσίες, οι πολυήμερες ενωμένες) */
 let VIEWS = [];
@@ -254,6 +261,7 @@ function openPlusMenu(anchor, date) {
     { v: 'appt', ic: 'handshake', t: L('Προγραμματισμός ραντεβού', 'Schedule appointment'), s: L('Παρουσίαση στο μαγαζί σε συγκεκριμένη ημέρα & ώρα', 'In-store presentation on a set day & time') },
     { v: 'next_day', emoji: '🌅', t: 'Next day', s: L('Συνδέεται με υπάρχουσα εκδήλωση', 'Linked to an existing event') },
     { v: 'blessing', emoji: '🕯️', t: L('Ευχολόγιο', 'Blessing'), s: L('Συνδέεται με υπάρχουσα εκδήλωση', 'Linked to an existing event') },
+    { v: 'meeting', emoji: '👥', t: 'Meeting', s: L('Ώρα, τοποθεσία, άτομα & λόγοι · ειδοποιούνται όσοι αφορά', 'Time, place, people & reasons · everyone involved is notified') },
     { v: 'note', emoji: '📌', t: L('Άλλο', 'Other'), s: L('Ελεύθερη καταχώρηση: τίτλος, ώρα, τοποθεσία, σημειώσεις', 'Free entry: title, time, location, notes') },
   ];
   const m = document.createElement('div');
@@ -277,11 +285,12 @@ function openPlusMenu(anchor, date) {
     if (v === 'event') go(`#/new-event?date=${date || todayISO()}`);
     if (v === 'appt') openScheduleSheet({ date: date || todayISO() });
     if (v === 'next_day' || v === 'blessing') openSessionSheet({ kind: v, day: picked });
+    if (v === 'meeting') openMeetingSheet({ day: date || todayISO() });
     if (v === 'note') openCalNoteSheet({ day: date || todayISO() });
   }));
 }
 
-export function renderCalendar(root) {
+export function renderCalendar(root, params = {}) {
   const admin = isAdmin();
   const mine = myEventIds();
   const views = allEventViews().filter((v) => (!admin || !st.onlyMine || mine.has(v.e.id)));
@@ -289,10 +298,15 @@ export function renderCalendar(root) {
   // πολυήμερες: εμφανίζονται σε κάθε ημέρα τους (dayIdx / dayN)
   views.forEach((v) => { const ds = evDays(v.e); ds.forEach((d, i) => { (byDate[d] ||= []).push({ ...v, dayIdx: i, dayN: ds.length }); }); });
   VIEWS = views;
+  // από ειδοποίηση: #/calendar?meeting=… → πάμε στην ημέρα του και ανοίγουν οι λεπτομέρειες
+  if (params.meeting && params._fresh !== false && !params._handled) {
+    const m = S.meetings.find((x) => x.id === params.meeting);
+    if (m) { params._handled = true; st.sel = m.day; if (st.mode === 'year' || st.mode === 'list') st.mode = 'month'; setTimeout(() => meetingActions(m), 350); }
+  }
   buildExtras(admin, st.onlyMine, mine);
 
   const modes = [{ v: 'day', label: L('Ημέρα', 'Day') }, { v: 'week', label: L('Εβδομάδα', 'Week') }, { v: 'month', label: L('Μήνας', 'Month') }, { v: 'year', label: L('Χρόνος', 'Year') }, { v: 'list', label: L('Πρόγραμμα', 'Schedule') }];
-  const actions = `<button class="btn" data-absence>🚫 <span class="hide-mobile">${esc(L('Δήλωση απουσίας', 'Declare absence'))}</span></button>${admin ? `<button class="btn primary cal-plus" data-plus="${st.sel}" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(L('Νέο', 'New'))}" title="${esc(L('Νέα εκδήλωση, ραντεβού, Next day, Ευχολόγιο, Άλλο', 'New event, appointment, Next day, blessing, other'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v15M4.5 12h15"/></svg></button>` : ''}`;
+  const actions = `<button class="btn" data-absence>🚫 <span class="hide-mobile">${esc(L('Δήλωση απουσίας', 'Declare absence'))}</span></button>${admin ? `<button class="btn primary cal-plus" data-plus="${st.sel}" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(L('Νέο', 'New'))}" title="${esc(L('Νέα εκδήλωση, ραντεβού, Next day, Ευχολόγιο, Meeting, Άλλο', 'New event, appointment, Next day, blessing, meeting, other'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v15M4.5 12h15"/></svg></button>` : ''}`;
   let html = pageHead(L('Ημερολόγιο', 'Calendar'), { actions });
 
   html += `<div class="gc-bar">

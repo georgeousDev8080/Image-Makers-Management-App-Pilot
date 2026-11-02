@@ -8,6 +8,13 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.7.2', date: '02/11/2026',
+    items: [
+      ['👥', 'Ημερολόγιο → «+» → «Meeting»: ημερομηνία, ώρα, τοποθεσία, ποιους αφορά (με γρήγορες επιλογές «Όλοι», «Διαχειριστές», «Φωτογράφοι», «Βιντεογράφοι») και λόγοι. Οι έτοιμοι λόγοι προστίθενται, αλλάζουν ή αφαιρούνται από το «Επεξεργασία λόγων».', 'Calendar → “+” → “Meeting”: date, time, place, who it concerns (with quick picks “Everyone”, “Admins”, “Photographers”, “Videographers”) and reasons. The ready reasons can be added, edited or removed via “Edit reasons”.'],
+      ['🔔', 'Μόλις δημιουργηθεί ένα meeting, όσοι το αφορά παίρνουν ειδοποίηση· το ίδιο όταν αλλάξει ή ακυρωθεί. Το meeting εμφανίζεται στο ημερολόγιο και στην Αρχική τους.', 'Once a meeting is created, everyone it concerns is notified; the same when it changes or is cancelled. It shows in their calendar and on Home.'],
+    ],
+  },
+  {
     v: '1.7.1', date: '02/11/2026',
     items: [
       ['📌', 'Ημερολόγιο → «+» → «Άλλο»: ελεύθερη καταχώρηση στο ημερολόγιο. Υποχρεωτικός μόνο ο τίτλος· προαιρετικά ώρα, τοποθεσία και σημειώσεις. Μπορεί να το βλέπει όλη η ομάδα ή μόνο οι διαχειριστές.', 'Calendar → “+” → “Other”: a free calendar entry. Only the title is required; time, location and notes are optional. It can be visible to the whole team or to admins only.'],

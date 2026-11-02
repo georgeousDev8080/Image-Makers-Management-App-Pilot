@@ -1248,3 +1248,18 @@ button.tg-ev { width: auto; }
 .x-note { --c: #5b6b80; }
 .row-icon.x-note { background: color-mix(in srgb, #5b6b80 16%, transparent); font-size: 16px; }
 .pm-note { background: color-mix(in srgb, #5b6b80 16%, transparent); }
+
+.x-meet, .cat-meet { --c: #4c5fd5; }
+.row-icon.x-meet { background: color-mix(in srgb, #4c5fd5 16%, transparent); font-size: 16px; }
+.pm-meeting { background: color-mix(in srgb, #4c5fd5 16%, transparent); }
+.people-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+.pp { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 10px; border-radius: 12px; border: 1.5px solid transparent; background: var(--fill-2); color: var(--label); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.pp > span:not(.avatar) { flex: 1; min-width: 0; line-height: 1.2; }
+.pp > .avatar { flex: 0 0 auto; }
+.pp small { display: block; font-size: 11.5px; }
+.pp.on { border-color: #4c5fd5; background: color-mix(in srgb, #4c5fd5 12%, transparent); font-weight: 650; }
+.pp .pp-ck { width: 18px; height: 18px; color: #4c5fd5; }
+.reason-row { gap: 8px; }
+.reason-row .input { flex: 1; min-height: 40px; }
+.mb-s { margin-bottom: 8px; }
+button.meet-row { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
