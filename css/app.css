@@ -1175,3 +1175,8 @@ html, body, button, a, input, select, textarea, label, [role="button"], .row, .c
   .mweek .mbar.one { background: var(--c); color: #fff; }
   .mweek .mbar .t { display: none; }
 }
+
+.event-card .ev-big { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.event-card .ev-when { display: flex; align-items: center; gap: 5px; margin-top: 2px; font-size: 15px; font-weight: 650; color: var(--accent); }
+.event-card .ev-when svg { width: 15px; height: 15px; }
+.event-card .ev-big + .ev-when + .s { margin-top: 2px; font-size: 13px; }

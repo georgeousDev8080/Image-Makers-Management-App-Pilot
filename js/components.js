@@ -29,7 +29,7 @@ export function editStatusPill(v) {
 }
 
 /** Γραμμή εκδήλωσης για λίστες */
-export function eventRow(v, { money: showMoney = isAdmin(), compact = false, crewType = false } = {}) {
+export function eventRow(v, { money: showMoney = isAdmin(), compact = false, crewType = false, typeFirst = false } = {}) {
   const e = v.e;
   const cancelled = e.status === 'cancelled';
   const sub = [isMultiDay(e) ? L(`έως ${fmtDate(e.end_date).slice(0, 5)}`, `until ${fmtDate(e.end_date).slice(0, 5)}`) : '', e.event_time ? fmtTime(e.event_time) : L('ώρα: ;', 'time: ?'), e.church_location].filter(Boolean).join(' · ');
@@ -44,9 +44,16 @@ export function eventRow(v, { money: showMoney = isAdmin(), compact = false, cre
   return `<a class="row event-card" href="#/event/${e.id}" style="${cancelled ? 'opacity:.55' : ''}">
     ${dateTile(e.event_date, e.category)}
     <div class="main-col">
-      <div class="t">${esc(v.title)} ${cancelled ? `<span class="pill red">${esc(L('Ακυρώθηκε', 'Cancelled'))}</span>` : ''}</div>
-      <div class="s">${esc(sub || '—')}</div>
-      ${compact ? '' : `<div class="hstack" style="margin-top:5px;gap:6px">${catPill(e.category)}${crewType && v.f ? `<span class="pill ${v.f.second_crew ? 'purple' : ''}">${esc(v.f.second_crew ? L('Διπλό συνεργείο', 'Double crew') : L('Μονό συνεργείο', 'Single crew'))}</span>` : ''}${days >= 0 && days <= 30 ? `<span class="pill accent">${esc(relDays(e.event_date))}</span>` : ''}${e.resolution === '4k' ? '<span class="pill blue">4K</span>' : ''}${crew ? `<span class="avatars">${crew}</span>` : ''}</div>`}
+      ${typeFirst ? (() => {
+        const co = CATEGORIES.find((x) => x.v === e.category);
+        const type = co ? L(co.el, co.en).replace(/\s*\(.*\)$/, '') : '';
+        const when = [e.event_time ? fmtTime(e.event_time) : L('ώρα: ;', 'time: ?'), isMultiDay(e) ? L(`έως ${fmtDate(e.end_date).slice(0, 5)}`, `until ${fmtDate(e.end_date).slice(0, 5)}`) : ''].filter(Boolean).join(' · ');
+        return `<div class="t ev-big">${esc([type, e.church_location].filter(Boolean).join(' · ') || v.title)} ${cancelled ? `<span class="pill red">${esc(L('Ακυρώθηκε', 'Cancelled'))}</span>` : ''}</div>
+      <div class="ev-when">${icon('clock')} ${esc(when)}</div>
+      <div class="s">${esc(v.title)}</div>`;
+      })() : `<div class="t">${esc(v.title)} ${cancelled ? `<span class="pill red">${esc(L('Ακυρώθηκε', 'Cancelled'))}</span>` : ''}</div>
+      <div class="s">${esc(sub || '—')}</div>`}
+      ${compact ? '' : `<div class="hstack" style="margin-top:5px;gap:6px">${typeFirst ? '' : catPill(e.category)}${crewType && v.f ? `<span class="pill ${v.f.second_crew ? 'purple' : ''}">${esc(v.f.second_crew ? L('Διπλό συνεργείο', 'Double crew') : L('Μονό συνεργείο', 'Single crew'))}</span>` : ''}${days >= 0 && days <= 30 ? `<span class="pill accent">${esc(relDays(e.event_date))}</span>` : ''}${e.resolution === '4k' ? '<span class="pill blue">4K</span>' : ''}${crew ? `<span class="avatars">${crew}</span>` : ''}</div>`}
     </div>
     ${right}
     ${icon('chevR', 'chev')}

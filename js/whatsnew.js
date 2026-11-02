@@ -8,6 +8,12 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.6.3', date: '02/11/2026',
+    items: [
+      ['🏠', 'Αρχική · «Οι επόμενες εκδηλώσεις μου»: σε έμφαση πλέον ο τύπος της εκδήλωσης, η τοποθεσία και η ώρα· το όνομα του πελάτη και τα υπόλοιπα ακολουθούν από κάτω.', 'Home · “My upcoming events”: the event type, location and time are now emphasised; the client name and the rest follow below.'],
+    ],
+  },
+  {
     v: '1.6.2', date: '02/11/2026',
     items: [
       ['🚫', 'Οι απουσίες πολλών ημερών εμφανίζονται πλέον καθαρά στο ημερολόγιο ως συμπαγής μπάρα από την πρώτη έως την τελευταία ημέρα, όπως στο Google Calendar, με το όνομα και τη σημείωση (και στο κινητό).', 'Multi-day absences now show clearly in the calendar as one solid bar from the first to the last day, like in Google Calendar, with the name and note (on mobile too).'],
