@@ -1263,3 +1263,16 @@ button.tg-ev { width: auto; }
 .reason-row .input { flex: 1; min-height: 40px; }
 .mb-s { margin-bottom: 8px; }
 button.meet-row { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+
+/* Αναζήτηση στον χάρτη */
+.mp-search { display: flex; gap: 8px; align-items: center; }
+.mp-search .search { flex: 1; min-width: 0; }
+.mp-results { margin-top: 8px; border-radius: 12px; background: var(--bg-elev); box-shadow: 0 0 0 1px var(--sep); max-height: 230px; overflow-y: auto; }
+.mp-r { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--sep); background: none; color: var(--label); font: inherit; text-align: left; cursor: pointer; }
+.mp-r:last-child { border-bottom: 0; }
+button.mp-r:hover { background: var(--fill-2); }
+.mp-r svg { flex: 0 0 18px; width: 18px; height: 18px; margin-top: 2px; color: var(--red); }
+.mp-r b { display: block; font-size: 14.5px; }
+.mp-r small { display: block; font-size: 12px; color: var(--label-2); line-height: 1.35; }
+.mp-r.muted { font-size: 13px; color: var(--label-2); align-items: center; }
+.spinner.sm { display: inline-block; width: 16px; height: 16px; border-width: 2px; margin: 0; border-color: var(--fill-strong); border-top-color: var(--accent); }

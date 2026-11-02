@@ -8,6 +8,12 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.7.4', date: '02/11/2026',
+    items: [
+      ['🔎', 'Χάρτης (pin): νέα αναζήτηση. Γράψτε εκκλησία, κτήμα, διεύθυνση ή χωριό και διαλέξτε από τα αποτελέσματα· το pin μπαίνει μόνο του και μπορείτε να το σύρετε για διόρθωση. Αν έχετε ήδη γράψει την τοποθεσία στην εκδήλωση, η αναζήτηση γίνεται αυτόματα. Δέχεται και συντεταγμένες ή σύνδεσμο Google Maps.', 'Map (pin): new search. Type a church, venue, address or village and pick from the results; the pin is placed automatically and can be dragged to adjust. If the event already has the location typed, the search runs automatically. Coordinates or a Google Maps link also work.'],
+    ],
+  },
+  {
     v: '1.7.2', date: '02/11/2026',
     items: [
       ['👥', 'Ημερολόγιο → «+» → «Meeting»: ημερομηνία, ώρα, τοποθεσία, ποιους αφορά (με γρήγορες επιλογές «Όλοι», «Διαχειριστές», «Φωτογράφοι», «Βιντεογράφοι») και λόγοι. Οι έτοιμοι λόγοι προστίθενται, αλλάζουν ή αφαιρούνται από το «Επεξεργασία λόγων».', 'Calendar → “+” → “Meeting”: date, time, place, who it concerns (with quick picks “Everyone”, “Admins”, “Photographers”, “Videographers”) and reasons. The ready reasons can be added, edited or removed via “Edit reasons”.'],
