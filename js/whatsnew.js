@@ -8,6 +8,12 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.7.1', date: '02/11/2026',
+    items: [
+      ['📌', 'Ημερολόγιο → «+» → «Άλλο»: ελεύθερη καταχώρηση στο ημερολόγιο. Υποχρεωτικός μόνο ο τίτλος· προαιρετικά ώρα, τοποθεσία και σημειώσεις. Μπορεί να το βλέπει όλη η ομάδα ή μόνο οι διαχειριστές.', 'Calendar → “+” → “Other”: a free calendar entry. Only the title is required; time, location and notes are optional. It can be visible to the whole team or to admins only.'],
+    ],
+  },
+  {
     v: '1.7', date: '02/11/2026',
     items: [
       ['➕', 'Ημερολόγιο: το κουμπί «Νέα εκδήλωση» έγινε ένα μεγάλο «+». Πατώντας το ανοίγει μενού με «Νέα εκδήλωση», «Προγραμματισμός ραντεβού», «Next day» και «Ευχολόγιο».', 'Calendar: the “New event” button is now a big “+”. Tapping it opens a menu with “New event”, “Schedule appointment”, “Next day” and “Blessing”.'],

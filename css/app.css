@@ -1244,3 +1244,7 @@ button.tg-ev { width: auto; }
 .todo-yellow { background: #fff6cc; }
 [data-theme="dark"] .todo-yellow { background: #2e2700; }
 .sess-parent { line-height: 1.45; }
+
+.x-note { --c: #5b6b80; }
+.row-icon.x-note { background: color-mix(in srgb, #5b6b80 16%, transparent); font-size: 16px; }
+.pm-note { background: color-mix(in srgb, #5b6b80 16%, transparent); }

@@ -22,6 +22,7 @@ export const S = {
   crew: [],
   absences: [],
   sessions: [],
+  calNotes: [],
   payments: [],
   expenses: [],
   notifications: [],
@@ -98,6 +99,7 @@ const loaders = {
   customers: async () => { S.customers = new Map((await fetchAll('customers')).map((r) => [r.id, r])); },
   events: async () => { S.events = new Map((await fetchAll('events', (x) => x, 'event_date')).map((r) => [r.id, r])); },
   event_crew: async () => { S.crew = await fetchAll('event_crew'); },
+  calendar_notes: async () => { try { S.calNotes = await fetchAll('calendar_notes', (x) => x, 'day'); } catch (e) { console.warn('calendar_notes', e); S.calNotes = []; } },
   event_sessions: async () => { try { S.sessions = await fetchAll('event_sessions', (x) => x, 'day'); } catch (e) { console.warn('event_sessions', e); S.sessions = []; } },
   absences: async () => { try { S.absences = await fetchAll('absences', (x) => x, 'day'); } catch (e) { console.warn('absences', e); S.absences = []; } },
   event_finance: async () => { S.finance = isAdmin() ? new Map((await fetchAll('event_finance', (x) => x, 'event_id')).map((r) => [r.event_id, r])) : new Map(); },
@@ -155,7 +157,7 @@ let onNewNotification = null;
 export function setNotificationHandler(fn) { onNewNotification = fn; }
 export function startRealtime() {
   stopRealtime();
-  const tables = ['notifications', 'events', 'event_crew', 'absences', 'event_sessions', 'event_finance', 'payments', 'expenses', 'customers', 'message_queue', 'offer_requests', 'profiles', 'appointments', 'workflow_templates'];
+  const tables = ['notifications', 'events', 'event_crew', 'absences', 'event_sessions', 'calendar_notes', 'event_finance', 'payments', 'expenses', 'customers', 'message_queue', 'offer_requests', 'profiles', 'appointments', 'workflow_templates'];
   channel = sb.channel('im-db');
   tables.forEach((t) => {
     channel.on('postgres_changes', { event: '*', schema: 'public', table: t }, (payload) => {
@@ -384,6 +386,17 @@ export async function saveSession(x) {
 export async function deleteSession(id) {
   await q(sb.from('event_sessions').delete().eq('id', id));
   S.sessions = S.sessions.filter((y) => y.id !== id); emit('event_sessions');
+}
+// ---------- «Άλλο» στο ημερολόγιο ----------
+export async function saveCalNote(x) {
+  const row = { day: x.day, start_time: x.start_time || null, title: x.title.trim(), location: (x.location || '').trim() || null, notes: (x.notes || '').trim() || null, team_visible: x.team_visible !== false };
+  const data = x.id ? await q(sb.from('calendar_notes').update(row).eq('id', x.id).select().single()) : await q(sb.from('calendar_notes').insert(row).select().single());
+  S.calNotes = [...S.calNotes.filter((y) => y.id !== data.id), data]; emit('calendar_notes');
+  return data;
+}
+export async function deleteCalNote(id) {
+  await q(sb.from('calendar_notes').delete().eq('id', id));
+  S.calNotes = S.calNotes.filter((y) => y.id !== id); emit('calendar_notes');
 }
 export async function savePayment(p) {
   const row = { event_id: p.event_id || null, category: p.category || 'other', kind: p.kind || 'installment', label: p.label || null, amount: p.amount, paid_on: p.paid_on || todayISO(), method: p.method || null, description: p.description || null, notes: p.notes || null };
