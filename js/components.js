@@ -1,7 +1,7 @@
 // =====================================================================
 //  Κοινά κομμάτια UI (κάρτες εκδηλώσεων, πακέτο προσφοράς κ.λπ.)
 // =====================================================================
-import { isMultiDay, fmtDate, dutyLabel, dutyEmoji, safeColor, L, esc, icon, fmtTime, parseISO, monthShort, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, money, initials, colorFor, relDays, daysBetween, todayISO, LANG } from './core.js';
+import { crewDutyText, crewDutyEmoji, segmented, isMultiDay, fmtDate, dutyLabel, dutyEmoji, safeColor, L, esc, icon, fmtTime, parseISO, monthShort, lbl, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, money, initials, colorFor, relDays, daysBetween, todayISO, LANG } from './core.js';
 import { isAdmin, profileName, profileById } from './data.js';
 
 export const catPill = (cat) => `<span class="pill cat-pill cat-${esc(cat)}">${esc(lbl(CATEGORIES, cat))}</span>`;
@@ -79,7 +79,7 @@ const BAPTISM_INCLUDED = () => [
 export const isBaptismOffer = (od) => od?.kind === 'baptism';
 /** Έχει drone η εκδήλωση; (μέλος συνεργείου με Drone ή drone μέσα στο πακέτο της προσφοράς) */
 export function eventHasDrone(e, crew = []) {
-  if (crew.some((c) => c.duty === 'drone' || (c.tasks || []).includes('drone'))) return true;
+  if (crew.some((c) => c.duty === 'drone' || c.drone || (c.tasks || []).includes('drone'))) return true;
   const od = e?.offer_data;
   if (!od || e.category === 'promo' || e.category === 'other') return false;
   if (isBaptismOffer(od)) return (od.adds || []).includes('Drone στην εκκλησία');
@@ -128,6 +128,7 @@ export function offerSummaryHTML(od) {
 }
 /** Τι χρειάζεται να ξέρει το συνεργείο για την κάλυψη (χωρίς album, εκτυπώσεις, τιμές) */
 export function crewBriefHTML(e, myDuty) {
+  const me = myDuty && typeof myDuty === 'object' ? myDuty : (myDuty ? { duty: myDuty } : null);
   const od = e.offer_data || null;
   const removes = od?.removes || [], adds = od?.adds || [];
   const hours = 3 + (Number(od?.extraHours) || 0);
@@ -155,12 +156,12 @@ export function crewBriefHTML(e, myDuty) {
   }
   }
   const tag = (w) => (w === P ? '📷' : w === V ? '🎥' : w === D ? '🚁' : '📷🎥');
-  const mine = (w) => !myDuty || w === B || w === myDuty || (w === D && myDuty === V);
+  const mine = (w) => !me || w === B || w === me.duty || (w === D && (me.duty === V || me.drone));
   // κάλυψη μόνο φωτογραφίας / μόνο βίντεο: κρύβουμε ό,τι δεν αφορά την εκδήλωση
   const cov = e.coverage || 'both';
   const rel = items.filter((i) => !(cov === 'photo' && i.who === V) && !(cov === 'video' && i.who === P));
   const list = [...rel.filter((i) => mine(i.who)), ...rel.filter((i) => !mine(i.who))];
-  return `${myDuty ? `<div class="small muted" style="margin-bottom:8px">${esc(L('Η ανάθεσή σου', 'Your assignment'))}: <b style="color:var(--label)">${esc(dutyLabel(myDuty))}</b></div>` : ''}
+  return `${myDuty ? `<div class="small muted" style="margin-bottom:8px">${esc(L('Η ανάθεσή σου', 'Your assignment'))}: <b style="color:var(--label)">${esc(crewDutyText(me))}</b></div>` : ''}
     <ul class="pkg-list">${list.map((i) => `<li style="${mine(i.who) ? '' : 'opacity:.55'}">${esc(i.text)} <span class="tiny">${tag(i.who)}</span></li>`).join('')}</ul>
     ${od ? '' : `<div class="small muted mt-s">${esc(L('Δεν υπάρχουν ακόμη λεπτομέρειες πακέτου· ρωτήστε τον διαχειριστή.', 'No package details yet; ask an admin.'))}</div>`}`;
 }
@@ -215,8 +216,8 @@ export function crewBriefTexts(mode, list, coverage = 'both') {
     } else {
       const others = list.filter((x) => x.user_id !== c.user_id);
       lines.push('1 συνεργείο (βασικό)');
-      lines.push(`Η ανάθεσή σου: ${dutyLabel(c.duty)}`);
-      if (others.length) lines.push(`Μαζί σου: ${others.map((x) => `${profileName(profileById(x.user_id))} (${dutyLabel(x.duty)})`).join(', ')}`);
+      lines.push(`Η ανάθεσή σου: ${crewDutyText(c)}`);
+      if (others.length) lines.push(`Μαζί σου: ${others.map((x) => `${profileName(profileById(x.user_id))} (${crewDutyText(x)})`).join(', ')}`);
     }
     if (coverage === 'photo') lines.unshift('Κάλυψη: μόνο φωτογραφία');
     if (coverage === 'video') lines.unshift('Κάλυψη: μόνο βίντεο');
@@ -228,5 +229,13 @@ export function crewBriefTexts(mode, list, coverage = 'both') {
 export function crewChips(v) {
   if (!v.crew.length) return `<span class="muted small">${esc(L('Δεν έχει οριστεί συνεργείο', 'No crew assigned'))}</span>`;
   if (v.e.crew_mode === 'double') return [1, 2].map((t) => { const m = v.crew.filter((c) => c.team === t); return m.length ? `<div class="crew-team"><b>${esc(t === 1 ? L('Συνεργείο 1 (βασικό)', 'Crew 1 (main)') : L('Συνεργείο 2', 'Crew 2'))}</b> <span class="small muted">${esc(taskList(m[0].tasks))}</span><div class="chips mt-s">${m.map((c) => `<span class="chip" style="padding-left:4px">${avatar(c.profile, 'sm')} ${esc(profileName(c.profile))}</span>`).join(' ')}</div></div>` : ''; }).join('');
-  return v.crew.map((c) => `<span class="chip" style="padding-left:4px">${avatar(c.profile, 'sm')} ${esc(profileName(c.profile))} · ${esc(dutyEmoji(c.duty))} ${esc(dutyLabel(c.duty))}</span>`).join(' ');
+  return v.crew.map((c) => `<span class="chip" style="padding-left:4px">${avatar(c.profile, 'sm')} ${esc(profileName(c.profile))} · ${esc(crewDutyEmoji(c))} ${esc(crewDutyText(c))}</span>`).join(' ');
+}
+
+/** Επιλογή αρμοδιότητας μέλους: Φωτο / Βίντεο + κουμπί «+ Drone» (η παλιά «Μόνο drone» μένει όπου υπάρχει) */
+export function dutyPicker(uid, duty, drone, coverage = 'both') {
+  const opts = [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }]
+    .filter((o) => !(coverage === 'photo' && o.v === 'video') && !(coverage === 'video' && o.v === 'photo'));
+  if (duty === 'drone') opts.push({ v: 'drone', label: L('Μόνο drone', 'Drone only') });
+  return `<div class="duty-pick">${segmented('d_' + uid, opts, duty)}${duty === 'drone' ? '' : `<button type="button" class="drone-tg ${drone ? 'on' : ''}" data-drone="${uid}" aria-pressed="${drone ? 'true' : 'false'}">${drone ? '✓ ' : '+ '}Drone</button>`}</div>`;
 }

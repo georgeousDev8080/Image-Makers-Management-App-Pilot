@@ -8,6 +8,16 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.7.5', date: '02/11/2026',
+    items: [
+      ['👥', 'Βάπτιση: στο βήμα «Συνεργείο» δεν υπάρχει πλέον επιλογή μονού / διπλού συνεργείου· η βάπτιση έχει πάντα 1 συνεργείο.', 'Baptism: the “Crew” step no longer offers single / double crew; a baptism always has 1 crew.'],
+      ['🚁', 'Συνεργείο: το Drone έγινε κουμπί «+ Drone» δίπλα σε Φωτο / Βίντεο, ώστε κάποιος να κάνει π.χ. Βίντεο + Drone.', 'Crew: Drone is now a “+ Drone” button next to Photo / Video, so someone can do e.g. Video + Drone.'],
+      ['⛪', 'Νέα βάπτιση: αφαιρέθηκε το πεδίο «Χώρος δεξίωσης».', 'New baptism: the “Reception venue” field was removed.'],
+      ['🚫', 'Δήλωση απουσίας: αφαιρέθηκε η λίστα «Επόμενες απουσίες» από τη φόρμα (οι απουσίες φαίνονται στο ημερολόγιο).', 'Declare absence: the “Upcoming absences” list was removed from the form (absences show in the calendar).'],
+      ['🔽', 'Προσφορές / Ραντεβού: τα φίλτρα μαζεύτηκαν σε ένα dropdown δίπλα στην αναζήτηση.', 'Offers / Appointments: the filters are now one dropdown next to the search.'],
+    ],
+  },
+  {
     v: '1.7.4', date: '02/11/2026',
     items: [
       ['🔎', 'Χάρτης (pin): νέα αναζήτηση. Γράψτε εκκλησία, κτήμα, διεύθυνση ή χωριό και διαλέξτε από τα αποτελέσματα· το pin μπαίνει μόνο του και μπορείτε να το σύρετε για διόρθωση. Αν έχετε ήδη γράψει την τοποθεσία στην εκδήλωση, η αναζήτηση γίνεται αυτόματα. Δέχεται και συντεταγμένες ή σύνδεσμο Google Maps.', 'Map (pin): new search. Type a church, venue, address or village and pick from the results; the pin is placed automatically and can be dragged to adjust. If the event already has the location typed, the search runs automatically. Coordinates or a Google Maps link also work.'],

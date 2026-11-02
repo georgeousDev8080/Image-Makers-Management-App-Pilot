@@ -95,6 +95,9 @@ export const hasPhoto = (e) => (e?.coverage || 'both') !== 'video';
 export const DUTIES = [{ v: 'photo', el: 'Φωτογραφία', en: 'Photo', e: '📷' }, { v: 'video', el: 'Βίντεο', en: 'Video', e: '🎥' }, { v: 'drone', el: 'Drone', en: 'Drone', e: '🚁' }];
 export const dutyLabel = (d) => { const o = DUTIES.find((x) => x.v === d) || DUTIES[0]; return L(o.el, o.en); };
 export const dutyEmoji = (d) => (DUTIES.find((x) => x.v === d) || DUTIES[0]).e;
+/** Αρμοδιότητα μέλους με το «+ Drone»: «Βίντεο + Drone» */
+export const crewDutyText = (c) => `${dutyLabel(c?.duty)}${c?.drone && c?.duty !== 'drone' ? ' + Drone' : ''}`;
+export const crewDutyEmoji = (c) => `${dutyEmoji(c?.duty)}${c?.drone && c?.duty !== 'drone' ? '🚁' : ''}`;
 export function fmtTime(s) { return s ? String(s).slice(0, 5) : ''; }
 /** Ώρα πάντα σε 24ωρη μορφή ΩΩ:ΛΛ (π.χ. «930» → «09:30», «18» → «18:00»). null αν δεν είναι έγκυρη. */
 export function normTime(v) {

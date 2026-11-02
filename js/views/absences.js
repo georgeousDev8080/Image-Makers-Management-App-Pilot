@@ -49,7 +49,6 @@ export function openAbsenceSheet({ day = todayISO(), userId = null } = {}) {
   const people = admin ? S.profiles.filter((p) => p.role && p.active).sort((a, b) => profileName(a).localeCompare(profileName(b))) : [S.profile];
   const f = { user_id: userId || S.profile?.id, from: day < todayISO() ? todayISO() : day, to: '', allDay: true, start: '', end: '', note: '' };
   const body = document.createElement('div');
-  const upcoming = () => groupAbsences(S.absences.filter((a) => a.day >= todayISO() && (admin || a.user_id === S.profile?.id))).slice(0, 40);
   const draw = () => {
     body.innerHTML = `<div class="form">
       ${admin ? `<div class="field"><label>${esc(L('Ποιος δεν θα είναι διαθέσιμος', 'Who will be unavailable'))}</label><select class="select" name="user_id">${people.map((p) => `<option value="${p.id}" ${p.id === f.user_id ? 'selected' : ''}>${esc(profileName(p))}</option>`).join('')}</select></div>`
@@ -64,15 +63,12 @@ export function openAbsenceSheet({ day = todayISO(), userId = null } = {}) {
         <div class="field"><label>${esc(L('Έως ώρα', 'To'))}</label><input class="input" name="end" ${timeInputAttrs} value="${esc(f.end)}"></div>
       </div>`}
       <div class="field"><label>${esc(L('Σημείωση (προαιρετικά)', 'Note (optional)'))}</label><input class="input" name="note" maxlength="300" value="${esc(f.note)}" placeholder="${esc(L('π.χ. ταξίδι, άλλη υποχρέωση', 'e.g. travel, other commitment'))}"></div>
-    </div>
-    <div class="section-title"><h2>${esc(admin ? L('Επόμενες απουσίες', 'Upcoming absences') : L('Οι απουσίες μου', 'My absences'))}</h2></div>
-    <div class="list">${upcoming().map((a) => `<button class="row" data-abs="${a.id}"><div class="main-col"><div class="t">${esc(groupWhen(a))}${a.ids.length > 1 ? ` <span class="pill">${esc(L(`${a.ids.length} ημέρες`, `${a.ids.length} days`))}</span>` : ''}</div><div class="s">${esc(absenceText(a))}</div></div>${canEdit(a) ? icon('trash', 'chev') : ''}</button>`).join('') || `<div class="row muted small">${esc(L('Δεν υπάρχουν δηλωμένες απουσίες.', 'No absences declared.'))}</div>`}</div>`;
+    </div>`;
     body.querySelectorAll('[name]').forEach((i) => i.addEventListener(i.type === 'checkbox' || i.tagName === 'SELECT' ? 'change' : 'input', () => {
       if (i.type === 'checkbox') { f[i.name] = i.checked; draw(); return; }
       f[i.name] = i.value;
       if (i.name === 'from' && f.to && f.to < f.from) { f.to = ''; draw(); }
     }));
-    body.querySelectorAll('[data-abs]').forEach((b) => b.addEventListener('click', async () => { await absenceActions(S.absences.find((a) => a.id === b.dataset.abs)); draw(); }));
   };
   draw();
   const s = sheet({ title: L('Δήλωση απουσίας', 'Declare absence'), body, right: `<button class="btn plain" data-save><b>${esc(L('Αποθήκευση', 'Save'))}</b></button>` });

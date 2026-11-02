@@ -195,8 +195,8 @@ function listView(body, redraw) {
     ['stale', L(`Χωρίς απάντηση ${STALE_DAYS}+ ημ.`, `No answer ${STALE_DAYS}+ days`), n(isStaleAppt)],
     ['confirmed', 'Confirmed', n((a) => a.status === 'confirmed')], ['rejected', 'Rejected', n((a) => a.status === 'rejected')],
   ];
-  let html = `<div class="sheet-toolbar"><div class="search">${icon('search')}<input class="input" id="aq" type="search" placeholder="${esc(L('Αναζήτηση (όνομα, κινητό, εκκλησία…)', 'Search (name, phone, church…)'))}" value="${esc(st.q)}"></div>
-    <div class="chips">${chips.map(([v, t, c]) => `<button class="chip ${st.status === v ? 'on' : ''}" data-st="${v}">${esc(t)} <b>${c}</b></button>`).join('')}</div></div>`;
+  let html = `<div class="sheet-toolbar appt-toolbar"><div class="search">${icon('search')}<input class="input" id="aq" type="search" placeholder="${esc(L('Αναζήτηση (όνομα, κινητό, εκκλησία…)', 'Search (name, phone, church…)'))}" value="${esc(st.q)}"></div>
+    <label class="appt-filter ${st.status !== 'all' ? 'on' : ''}">${icon('filter')}<select class="select" id="ast" aria-label="${esc(L('Φίλτρο', 'Filter'))}">${chips.map(([v, t, c]) => `<option value="${v}" ${st.status === v ? 'selected' : ''}>${esc(t)} (${c})</option>`).join('')}</select></label></div>`;
   if (st.mode === 'store') html += scheduledBlock();
   if (!list.length) {
     html += emptyState(st.mode === 'online' ? 'link' : 'store', L('Δεν υπάρχουν ραντεβού εδώ', 'No appointments here'),
@@ -229,7 +229,7 @@ function listView(body, redraw) {
   body.innerHTML = html;
   const aq = body.querySelector('#aq');
   aq.addEventListener('input', () => { st.q = aq.value; const p = aq.selectionStart; redraw(); const n2 = document.getElementById('aq'); n2?.focus(); n2?.setSelectionRange(p, p); });
-  body.querySelectorAll('[data-st]').forEach((b) => b.addEventListener('click', () => { st.status = b.dataset.st; redraw(); }));
+  body.querySelector('#ast').addEventListener('change', (e) => { st.status = e.target.value; redraw(); });
   body.querySelectorAll('[data-stop]').forEach((x) => x.addEventListener('click', (e) => e.stopPropagation()));
   body.querySelectorAll('[data-open]').forEach((r) => r.addEventListener('click', () => openAppointment(find(r.dataset.open))));
   body.querySelectorAll('[data-present]').forEach((r) => {

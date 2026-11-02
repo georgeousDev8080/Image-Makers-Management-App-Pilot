@@ -4,7 +4,7 @@
 import { evEnd, evOverlaps, evDays, fmtDate as fmtD, COVERAGE, needsOffer, normTime, timeInputAttrs, fmtTime, L, esc, icon, matches, fmtDate, CATEGORIES, RESOLUTIONS, segmented, initSegmented, toast, toastErr, busy, mapsUrl, money, parseMoney } from '../core.js';
 import { S, coupleName, profileName, saveCustomer, saveEvent, saveFinance, setCrew, crewDiffers, absencesOn, absenceWhen, uploadOffer, eventView, updateRequest, saveAppointment, copyOfferToEvent } from '../data.js';
 import { pageHead, go, backBtn } from '../layout.js';
-import { avatar, packageNameFrom, offerSummaryHTML, CREW_TASKS, crewBriefTexts } from '../components.js';
+import { dutyPicker, avatar, packageNameFrom, offerSummaryHTML, CREW_TASKS, crewBriefTexts } from '../components.js';
 import { pickLocation } from '../mappicker.js';
 import { openOfferBuilder, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf, offerKindFor, offerKindOf } from '../offer.js';
 
@@ -38,7 +38,7 @@ function freshState(params) {
       s.timeUnknown = !e.event_time;
       s.multi = !!(e.end_date && e.end_date > e.event_date);
       s.fin = { package_price: v.f.package_price ?? '', package_name: v.f.package_name || '', second_crew: !!v.f.second_crew, office_notes: v.f.office_notes || '' };
-      s.crew = v.crew.map((c) => ({ user_id: c.user_id, duty: c.duty, team: c.team ?? null, tasks: c.tasks || [] }));
+      s.crew = v.crew.map((c) => ({ user_id: c.user_id, duty: c.duty, drone: !!c.drone, team: c.team ?? null, tasks: c.tasks || [] }));
       s.crewMode = e.crew_mode || 'single';
       if (s.crewMode === 'double') {
         s.picked = s.crew.map((c) => c.user_id);
@@ -289,7 +289,7 @@ function stepEvent(body, root, params) {
         : locFld('church_location', 'church_geo', L('Εκκλησία / τοποθεσία μυστηρίου', 'Church / ceremony location'), { req: true, ph: L('π.χ. Ι.Ν. Αγίου Αχιλλείου, Λάρισα', 'e.g. St. Achilleios Church, Larissa') })}
       ${wed ? locFld('bride_house', 'bride_geo', L('Σπίτι νύφης', 'Bride’s home'), { ph: L('Διεύθυνση, περιοχή', 'Address, area') }) : ''}
       ${wed ? locFld('groom_house', 'groom_geo', L('Σπίτι γαμπρού', 'Groom’s home'), { ph: L('Διεύθυνση, περιοχή', 'Address, area') }) : ''}
-      ${simple ? '' : locFld('reception_location', 'reception_geo', L('Χώρος δεξίωσης', 'Reception venue'), { ph: L('π.χ. Κτήμα …, Λάρισα', 'e.g. Estate …, Larissa') })}
+      ${simple || W.ev.category === 'baptism' ? '' : locFld('reception_location', 'reception_geo', L('Χώρος δεξίωσης', 'Reception venue'), { ph: L('π.χ. Κτήμα …, Λάρισα', 'e.g. Estate …, Larissa') })}
       <div class="field full help" style="margin-top:-4px">${icon('pin')} ${esc(simple ? L('Πατήστε το κουμπί 📍 για να βάλετε pin στον χάρτη. Το συνεργείο πατά «Χάρτης» και πηγαίνει ακριβώς εκεί.', 'Tap 📍 to drop a pin on the map. The crew taps “Map” and goes exactly there.') : L('Πατήστε το κουμπί 📍 δίπλα σε κάθε τοποθεσία για να βάλετε pin στον χάρτη. Το συνεργείο πατά «Χάρτης» και πηγαίνει ακριβώς εκεί.', 'Tap 📍 next to each location to drop a pin on the map. The crew taps “Map” and goes exactly there.'))}</div>
       <div class="field full"><label>${esc(simple ? L('Σχόλια', 'Comments') : L('Σημειώσεις εκδήλωσης', 'Event notes'))}</label><textarea class="textarea" name="notes" placeholder="${esc(simple ? L('Περιγραφή, λεπτομέρειες, ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Description, details, anything the crew should know (they can see this)') : L('Ό,τι πρέπει να ξέρει το συνεργείο (τα βλέπει και εκείνο)', 'Anything the crew should know (they can see this)'))}">${esc(W.ev.notes)}</textarea></div>
     </div></div>`;
@@ -375,12 +375,18 @@ function crewNext() {
   return undefined;
 }
 function crewBack() {
+  if (W.ev.category === 'baptism' && W.cs === 'single') return false; // βάπτιση: μόνο 1 συνεργείο, δεν υπάρχει οθόνη επιλογής
   const back = { pick: 'mode', single: 'mode', t1: 'pick', t2: 't1' }[W.cs];
   if (!back) return false;
   W.cs = back; return true;
 }
 
 function stepCrew(body, root, params) {
+  // Βάπτιση: μόνο 1 συνεργείο (δεν γίνεται διπλό συνεργείο)
+  if (W.ev.category === 'baptism') {
+    if (W.crewMode === 'double') { W.crew = W.crew.map((c) => ({ ...c, team: null, tasks: [] })); W.tasks = { 1: [], 2: [] }; }
+    W.crewMode = 'single'; W.cs = 'single';
+  }
   const team = crewTeam();
   const redraw = () => draw(root, params);
   const extra = `<div class="card pad mt"><div class="field"><label>${esc(L('Εξωτερικοί συνεργάτες (προαιρετικό)', 'External crew (optional)'))}</label><input class="input" name="extra_crew" value="${esc(W.ev.extra_crew || '')}" placeholder="${esc(L('π.χ. Νίκος (drone)', 'e.g. Nick (drone)'))}"></div></div>`;
@@ -443,19 +449,20 @@ function stepCrew(body, root, params) {
 
   // 1 συνεργείο: όπως πάντα (Φωτο / Βίντεο / Drone ανά άτομο)
   if (W.cs === 'single') {
-    const sel = new Map(W.crew.map((c) => [c.user_id, c.duty]));
-    const write = () => { W.crew = [...sel.entries()].map(([user_id, duty]) => ({ user_id, duty, team: null, tasks: [] })); };
-    body.innerHTML = subtitle('1', L('1 συνεργείο (βασικό)', '1 crew (main)'), L('Όσοι επιλεγούν θα λάβουν ειδοποίηση με τα στοιχεία της εκδήλωσης και την αρμοδιότητά τους (χωρίς οικονομικά).', 'Selected members get a notification with the event details and their duty (no finances).'))
+    const sel = new Map(W.crew.map((c) => [c.user_id, { duty: c.duty, drone: !!c.drone }]));
+    const write = () => { W.crew = [...sel.entries()].map(([user_id, x]) => ({ user_id, duty: x.duty, drone: x.drone, team: null, tasks: [] })); };
+    body.innerHTML = subtitle('1', L('1 συνεργείο (βασικό)', '1 crew (main)'), (W.ev.category === 'baptism' ? L('Στη βάπτιση υπάρχει μόνο 1 συνεργείο. ', 'Baptisms have a single crew. ') : '') + L('Όσοι επιλεγούν θα λάβουν ειδοποίηση με τα στοιχεία της εκδήλωσης και την αρμοδιότητά τους (χωρίς οικονομικά).', 'Selected members get a notification with the event details and their duty (no finances).'))
       + `<div class="list mt-s">${team.map((p) => {
         const on = sel.has(p.id); const un = unavailable(p.id);
-        return person(p, { on, disabled: !!un && !on, extraHtml: on ? segmented('d_' + p.id, dutyOpts(), sel.get(p.id)) : '' });
+        return person(p, { on, disabled: !!un && !on, extraHtml: on ? dutyPicker(p.id, sel.get(p.id).duty, sel.get(p.id).drone, W.ev.coverage) : '' });
       }).join('') || `<div class="row muted">${esc(L('Δεν υπάρχουν ακόμα μέλη ομάδας με ρόλο.', 'No team members with a role yet.'))}</div>`}</div>` + extra;
     body.querySelectorAll('[data-u]').forEach((cb) => cb.addEventListener('change', () => {
       const p = team.find((x) => x.id === cb.dataset.u);
-      if (cb.checked) sel.set(p.id, defDuty(p)); else sel.delete(p.id);
+      if (cb.checked) sel.set(p.id, { duty: defDuty(p), drone: false }); else sel.delete(p.id);
       write(); redraw();
     }));
-    initSegmented(body, (name, val) => { sel.set(name.slice(2), val); write(); });
+    initSegmented(body, (name, val) => { const u = name.slice(2); sel.set(u, { ...sel.get(u), duty: val }); write(); redraw(); });
+    body.querySelectorAll('[data-drone]').forEach((b) => b.addEventListener('click', () => { const u = b.dataset.drone; sel.set(u, { ...sel.get(u), drone: !sel.get(u).drone }); write(); redraw(); }));
     bindInputs(body, W.ev);
     return;
   }
@@ -513,7 +520,7 @@ function stepOffer(body, root, params) {
     <div class="card pad ${withOffer ? 'mt' : ''}"><div class="form-grid">
       ${fld('package_price', L('Τελική αξία πακέτου (€)', 'Final package value (€)'), W.fin.package_price, { inputmode: 'decimal', ph: '2800', help: esc(withOffer ? L('Συμπληρώνεται αυτόματα από τον Οδηγό. Όταν οι πληρωμές φτάσουν αυτό το ποσό, η γραμμή στο Excel γίνεται πράσινη.', 'Filled automatically by the builder. When payments reach this amount, the Excel row turns green.') : L('Η συμφωνημένη αξία. Όταν οι πληρωμές φτάσουν αυτό το ποσό, η γραμμή στο Excel γίνεται πράσινη.', 'The agreed value. When payments reach this amount, the Excel row turns green.')), extra: '<span class="suffix">€</span>' })}
       ${fld('package_name', L('Όνομα πακέτου', 'Package name'), W.fin.package_name, { ph: 'BASIC PAC' })}
-      <label class="check-row full"><span class="switch"><input type="checkbox" name="second_crew" ${W.fin.second_crew ? 'checked' : ''}><span></span></span><span>${esc(L('Δεύτερο συνεργείο', 'Second crew'))}</span></label>
+      ${W.ev.category === 'baptism' ? '' : `<label class="check-row full"><span class="switch"><input type="checkbox" name="second_crew" ${W.fin.second_crew ? 'checked' : ''}><span></span></span><span>${esc(L('Δεύτερο συνεργείο', 'Second crew'))}</span></label>`}
       <div class="field full"><label>${esc(L('Σημειώσεις γραφείου (μόνο για διαχειριστές)', 'Office notes (admins only)'))}</label><textarea class="textarea" name="office_notes" style="min-height:70px">${esc(W.fin.office_notes)}</textarea></div>
     </div></div>
     <div class="card pad mt"><b>${esc(L('Σύνοψη', 'Summary'))}</b>
@@ -574,6 +581,8 @@ async function save(root, params, btn) {
     // πεδία που δεν υπάρχουν στην κατηγορία: σπίτια μόνο σε γάμο/γαμοβάπτιση, δεξίωση όχι σε διαφημιστικό/άλλο
     if (!['wedding', 'wedding_baptism'].includes(evRow.category)) Object.assign(evRow, { bride_house: null, groom_house: null, bride_geo: null, groom_geo: null, house_location: null });
     if (['promo', 'other'].includes(evRow.category)) Object.assign(evRow, { reception_location: null, reception_geo: null });
+    // βάπτιση: δεν υπάρχει πεδίο «Χώρος δεξίωσης» (σε νέες βαπτίσεις δεν αποθηκεύεται)
+    if (evRow.category === 'baptism' && W.mode !== 'edit') Object.assign(evRow, { reception_location: null, reception_geo: null });
     const prevMode = (evRow.id && S.events.get(evRow.id)?.crew_mode) || 'single';
     evRow.crew_mode = W.crewMode === 'double' ? 'double' : 'single';
     const ev = await saveEvent(evRow);
@@ -589,13 +598,13 @@ async function save(root, params, btn) {
       W.offer.existingPath = path;
     }
     const price = parseMoney(W.fin.package_price);
-    await saveFinance(ev.id, { package_price: price, package_name: W.fin.package_name || null, second_crew: !!W.fin.second_crew, office_notes: W.fin.office_notes || null });
+    await saveFinance(ev.id, { package_price: price, package_name: W.fin.package_name || null, second_crew: W.ev.category === 'baptism' ? false : !!W.fin.second_crew, office_notes: W.fin.office_notes || null });
     // συνεργείο: αν άλλαξε η σύνθεση/οι αρμοδιότητες, ξαναγράφονται τα κείμενα ανάθεσης
     const mode = W.crewMode === 'double' ? 'double' : 'single';
     const list = (mode === 'double' ? W.crew.filter((c) => c.team === 1 || c.team === 2) : W.crew.map((c) => ({ ...c, team: null, tasks: [] })))
-      .map((c) => ({ user_id: c.user_id, duty: c.duty || 'photo', team: c.team ?? null, tasks: c.tasks || [] }));
+      .map((c) => ({ user_id: c.user_id, duty: c.duty || 'photo', drone: mode === 'double' ? false : !!c.drone, team: c.team ?? null, tasks: c.tasks || [] }));
     const cur = S.crew.filter((c) => c.event_id === ev.id);
-    const configChanged = prevMode !== mode || cur.length !== list.length || list.some((l) => { const c = cur.find((x) => x.user_id === l.user_id); return !c || c.duty !== l.duty || (c.team ?? null) !== l.team || JSON.stringify([...(c.tasks || [])].sort()) !== JSON.stringify([...l.tasks].sort()); });
+    const configChanged = prevMode !== mode || cur.length !== list.length || list.some((l) => { const c = cur.find((x) => x.user_id === l.user_id); return !c || c.duty !== l.duty || !!c.drone !== !!l.drone || (c.team ?? null) !== l.team || JSON.stringify([...(c.tasks || [])].sort()) !== JSON.stringify([...l.tasks].sort()); });
     if (configChanged) {
       const texts = crewBriefTexts(mode, list, W.ev.coverage);
       const withBriefs = list.map((l) => ({ ...l, brief: texts[l.user_id] || null }));

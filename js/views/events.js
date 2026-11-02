@@ -4,7 +4,7 @@
 import { evDays, evOverlaps, evEnd, isMultiDay, fmtRange, dayCount, needsOffer, L, esc, icon, money, fmtDate, fmtDateLong, fmtTime, todayISO, daysBetween, matches, mapsUrl, telUrl, smsUrl, mailUrl, lbl, CATEGORIES, RESOLUTIONS, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, options, segmented, initSegmented, segValue, sheet, confirmBox, promptBox, toastErr, actionSheet, toast, download, icsFor, busy, monthName } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, coupleName, profileName, patchEvent, deleteEvent, setCrew, saveCrewBrief, absencesOn, absenceWhen, openOffer, deletePayment, myEventIds } from '../data.js';
 import { pageHead, setTopActions, emptyState, go, backBtn, UI } from '../layout.js';
-import { crewBriefTexts, eventHasDrone, eventRow, catPill, offerSummaryHTML, crewBriefHTML, crewChips, avatar, photoStatusPill, editStatusPill } from '../components.js';
+import { dutyPicker, crewBriefTexts, eventHasDrone, eventRow, catPill, offerSummaryHTML, crewBriefHTML, crewChips, avatar, photoStatusPill, editStatusPill } from '../components.js';
 import { openIncomeForm } from './money.js';
 import { pickLocation, geoUrl } from '../mappicker.js';
 import { editOfferForEvent, uploadPdfForEvent } from '../offer.js';
@@ -159,7 +159,7 @@ export function renderEventDetail(root, { id }) {
     </div>`;
     if (e.offer_data) html += `<div class="card pad mt-s">${offerSummaryHTML(e.offer_data)}</div>`;
   } else {
-    const myDuty = v.crew.find((x) => x.user_id === S.profile?.id)?.duty || null;
+    const myDuty = v.crew.find((x) => x.user_id === S.profile?.id) || null;
     html += `<div class="card pad">${crewBriefHTML(e, myDuty)}</div>`;
   }
 
@@ -313,26 +313,27 @@ export function openCrewSheet(eventId, { onSave, initial } = {}) {
   const busy = (uid) => S.crew.filter((c) => c.user_id === uid && c.event_id !== eventId).map((c) => S.events.get(c.event_id))
     .filter((e) => e && e.status !== 'cancelled' && ev0 && evOverlaps(e, ev0)).map((e) => [catN(e.category), e.event_time ? fmtTime(e.event_time) : L('ώρα ;', 'time ?')].join(' · ')).join(', ');
   const team = S.profiles.filter((p) => p.role && p.active).sort((a, b) => profileName(a).localeCompare(profileName(b)));
-  const cur = initial || S.crew.filter((c) => c.event_id === eventId).map((c) => ({ user_id: c.user_id, duty: c.duty }));
-  const sel = new Map(cur.map((c) => [c.user_id, c.duty]));
+  const cur = initial || S.crew.filter((c) => c.event_id === eventId).map((c) => ({ user_id: c.user_id, duty: c.duty, drone: !!c.drone }));
+  const sel = new Map(cur.map((c) => [c.user_id, { duty: c.duty, drone: !!c.drone }]));
   const defDuty = (p) => (['videographer', 'admin_video'].includes(p.role) ? 'video' : 'photo');
   const body = document.createElement('div');
   const draw = () => {
     body.innerHTML = `<p class="muted small mb">${esc(L('1 συνεργείο: επιλέξτε ποιοι θα πάνε και με ποια αρμοδιότητα. Θα λάβουν ειδοποίηση.', '1 crew: choose who goes and their duty. They will be notified.'))}</p>
-      ${onSave ? '' : `<button class="btn small mb" data-two>${icon('users')} ${esc(L('Θέλω 2 συνεργεία…', 'I need 2 crews…'))}</button>`}
+      ${onSave || ev0?.category === 'baptism' ? '' : `<button class="btn small mb" data-two>${icon('users')} ${esc(L('Θέλω 2 συνεργεία…', 'I need 2 crews…'))}</button>`}
       <div class="list">${team.map((p) => {
         const on = sel.has(p.id);
         const un = day ? unAll(p.id) : ''; const bz = busy(p.id);
         const off = !!un && !on;
         return `<div class="row ${off ? 'is-off' : ''}"><label class="hstack" style="flex:1;cursor:${off ? 'not-allowed' : 'pointer'};flex-wrap:nowrap"><input type="checkbox" data-u="${p.id}" ${on ? 'checked' : ''} ${off ? 'disabled' : ''} style="width:22px;height:22px;accent-color:var(--accent)">${avatar(p)}<div class="main-col"><div class="t" style="white-space:normal">${esc(profileName(p))}${un ? ` <span class="unavail">(${esc(L('δεν είναι διαθέσιμος/η', 'not available'))}: ${esc(un)})</span>` : ''}${bz ? ` <span class="busy">(${esc(L('ήδη δεσμευμένος/η', 'already booked'))}: ${esc(bz)})</span>` : ''}</div><div class="s">${esc(lbl([{ v: 'admin_photo', el: 'Διαχειριστής · Φωτογράφος', en: 'Admin · Photographer' }, { v: 'admin_video', el: 'Διαχειριστής · Βιντεογράφος', en: 'Admin · Videographer' }, { v: 'photographer', el: 'Φωτογράφος', en: 'Photographer' }, { v: 'videographer', el: 'Βιντεογράφος', en: 'Videographer' }], p.role))}</div></div></label>
-          ${on ? segmented('d_' + p.id, [{ v: 'photo', label: L('Φωτο', 'Photo') }, { v: 'video', label: L('Βίντεο', 'Video') }, { v: 'drone', label: 'Drone' }].filter((o) => !(cov === 'photo' && o.v === 'video') && !(cov === 'video' && o.v === 'photo')), sel.get(p.id)) : ''}</div>`;
+          ${on ? dutyPicker(p.id, sel.get(p.id).duty, sel.get(p.id).drone, cov) : ''}</div>`;
       }).join('') || `<div class="row muted">${esc(L('Δεν υπάρχουν μέλη με ρόλο.', 'No team members with a role.'))}</div>`}</div>`;
     body.querySelectorAll('[data-u]').forEach((cb) => cb.addEventListener('change', () => {
       const p = team.find((x) => x.id === cb.dataset.u);
-      if (cb.checked) sel.set(p.id, defDuty(p)); else sel.delete(p.id);
+      if (cb.checked) sel.set(p.id, { duty: cov === 'photo' ? 'photo' : cov === 'video' ? 'video' : defDuty(p), drone: false }); else sel.delete(p.id);
       draw();
     }));
-    initSegmented(body, (name, val) => sel.set(name.slice(2), val));
+    initSegmented(body, (name, val) => { const u = name.slice(2); sel.set(u, { ...sel.get(u), duty: val }); draw(); });
+    body.querySelectorAll('[data-drone]').forEach((b) => b.addEventListener('click', () => { const u = b.dataset.drone; sel.set(u, { ...sel.get(u), drone: !sel.get(u).drone }); draw(); }));
     body.querySelector('[data-two]')?.addEventListener('click', () => { document.querySelector('.layer [data-close]')?.click(); go(`#/event/${eventId}/edit?step=2`); });
   };
   draw();
@@ -341,14 +342,14 @@ export function openCrewSheet(eventId, { onSave, initial } = {}) {
     right: `<button class="btn plain" data-save><b>${esc(L('Αποθήκευση', 'Save'))}</b></button>`,
   });
   s.root.querySelector('[data-save]').addEventListener('click', async (ev) => { const _btn = ev.currentTarget;
-    const list = [...sel.entries()].map(([user_id, duty]) => ({ user_id, duty }));
+    const list = [...sel.entries()].map(([user_id, x]) => ({ user_id, duty: x.duty, drone: !!x.drone }));
     if (onSave) { onSave(list); s.close(); return; }
     busy(_btn, true);
     try {
       const texts = crewBriefTexts('single', list, S.events.get(eventId)?.coverage);
       const cur = S.crew.filter((c) => c.event_id === eventId);
       // κρατάμε τα κείμενα που δεν άλλαξαν (π.χ. χειροκίνητες αλλαγές) όταν η σύνθεση μένει ίδια
-      const same = cur.length === list.length && list.every((l) => cur.some((c) => c.user_id === l.user_id && c.duty === l.duty && !c.team));
+      const same = cur.length === list.length && list.every((l) => cur.some((c) => c.user_id === l.user_id && c.duty === l.duty && !!c.drone === !!l.drone && !c.team));
       await setCrew(eventId, list.map((l) => ({ ...l, team: null, tasks: [], brief: same ? (cur.find((c) => c.user_id === l.user_id)?.brief ?? texts[l.user_id]) : texts[l.user_id] })));
       if ((S.events.get(eventId)?.crew_mode || 'single') !== 'single') await patchEvent(eventId, { crew_mode: 'single' });
       toast(L('Το συνεργείο ενημερώθηκε', 'Crew updated'), { body: L('Στάλθηκαν ειδοποιήσεις.', 'Notifications sent.') }); s.close(); } catch { busy(_btn, false); }

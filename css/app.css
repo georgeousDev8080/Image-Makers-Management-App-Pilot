@@ -1276,3 +1276,18 @@ button.mp-r:hover { background: var(--fill-2); }
 .mp-r small { display: block; font-size: 12px; color: var(--label-2); line-height: 1.35; }
 .mp-r.muted { font-size: 13px; color: var(--label-2); align-items: center; }
 .spinner.sm { display: inline-block; width: 16px; height: 16px; border-width: 2px; margin: 0; border-color: var(--fill-strong); border-top-color: var(--accent); }
+
+/* Προσφορές / Ραντεβού: αναζήτηση + φίλτρο (dropdown) */
+.appt-toolbar { flex-wrap: nowrap; }
+.appt-toolbar .search { flex: 1 1 auto; max-width: 420px; min-width: 0; }
+.appt-filter { position: relative; display: flex; align-items: center; flex: 0 0 auto; }
+.appt-filter svg { position: absolute; left: 11px; width: 17px; height: 17px; color: var(--label-2); pointer-events: none; }
+.appt-filter .select { padding-left: 34px; min-height: 40px; width: auto; max-width: 230px; font-weight: 600; }
+.appt-filter.on .select { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--accent); }
+.appt-filter.on svg { color: var(--accent); }
+@media (max-width: 560px) { .appt-filter .select { max-width: 175px; font-size: 14px; padding-right: 26px; } }
+
+/* «+ Drone» δίπλα στην αρμοδιότητα */
+.duty-pick { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.drone-tg { min-height: 32px; padding: 0 11px; border-radius: 999px; border: 1.5px dashed var(--label-3, #aaa); background: transparent; color: var(--label-2); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.drone-tg.on { border-style: solid; border-color: #7c4dff; background: color-mix(in srgb, #7c4dff 14%, transparent); color: #6a3cf0; }

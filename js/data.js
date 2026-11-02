@@ -332,8 +332,8 @@ export async function saveFinance(eventId, patch) {
   return data;
 }
 /** Τα πεδία μιας ανάθεσης συνεργείου που αποθηκεύονται */
-const crewRow = (l) => ({ duty: l.duty || 'photo', team: l.team ?? null, tasks: l.tasks || [], brief: l.brief ?? null });
-const sameCrew = (a, b) => (a.duty || 'photo') === (b.duty || 'photo') && (a.team ?? null) === (b.team ?? null)
+const crewRow = (l) => ({ duty: l.duty || 'photo', drone: !!l.drone || l.duty === 'drone', team: l.team ?? null, tasks: l.tasks || [], brief: l.brief ?? null });
+const sameCrew = (a, b) => (a.duty || 'photo') === (b.duty || 'photo') && !!a.drone === !!b.drone && (a.team ?? null) === (b.team ?? null)
   && JSON.stringify([...(a.tasks || [])].sort()) === JSON.stringify([...(b.tasks || [])].sort()) && (a.brief ?? null) === (b.brief ?? null);
 export function crewDiffers(eventId, list) {
   const cur = S.crew.filter((c) => c.event_id === eventId);
