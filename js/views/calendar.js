@@ -257,7 +257,7 @@ function schedule(views) {
 function openPlusMenu(anchor, date) {
   document.querySelector('.plus-menu')?.remove();
   const items = [
-    { v: 'event', ic: 'events', t: L('Νέα εκδήλωση', 'New event'), s: L('Όπως μέχρι τώρα', 'As before') },
+    { v: 'event', ic: 'events', t: L('Νέα εκδήλωση', 'New event'), s: '' },
     { v: 'appt', ic: 'handshake', t: L('Προγραμματισμός ραντεβού', 'Schedule appointment'), s: L('Παρουσίαση στο μαγαζί σε συγκεκριμένη ημέρα & ώρα', 'In-store presentation on a set day & time') },
     { v: 'next_day', emoji: '🌅', t: 'Next day', s: L('Συνδέεται με υπάρχουσα εκδήλωση', 'Linked to an existing event') },
     { v: 'blessing', emoji: '🕯️', t: L('Ευχολόγιο', 'Blessing'), s: L('Συνδέεται με υπάρχουσα εκδήλωση', 'Linked to an existing event') },
@@ -266,7 +266,7 @@ function openPlusMenu(anchor, date) {
   ];
   const m = document.createElement('div');
   m.className = 'plus-menu'; m.setAttribute('role', 'menu');
-  m.innerHTML = items.map((it) => `<button type="button" role="menuitem" data-pm="${it.v}"><span class="pm-ic pm-${it.v}">${it.emoji || icon(it.ic)}</span><span><b>${esc(it.t)}</b><small>${esc(it.s)}</small></span></button>`).join('');
+  m.innerHTML = items.map((it) => `<button type="button" role="menuitem" data-pm="${it.v}"><span class="pm-ic pm-${it.v}">${it.emoji || icon(it.ic)}</span><span><b>${esc(it.t)}</b>${it.s ? `<small>${esc(it.s)}</small>` : ''}</span></button>`).join('');
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect();
   const w = Math.min(320, window.innerWidth - 24);
