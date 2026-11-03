@@ -8,6 +8,16 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.7.6', date: '03/11/2026',
+    items: [
+      ['🔎', 'Next day / Ευχολόγιο: η επιλογή εκδήλωσης δείχνει πλέον μόνο τις εκδηλώσεις των τελευταίων και των επόμενων 2 εβδομάδων και έχει αναζήτηση (όνομα, τοποθεσία, ημερομηνία) για όλες τις υπόλοιπες.', 'Next day / Blessing: the event picker now shows only the events of the last and next 2 weeks, with a search (name, place, date) for all others.'],
+      ['🚫', 'Γάμοι που στον Οδηγό προσφοράς αφαιρέθηκε όλο το next day (φωτογράφηση, video και drone next day) δεν εμφανίζονται στην επιλογή εκδήλωσης για Next day / Ευχολόγιο.', 'Weddings whose offer removed the whole next day (photo, video and drone next day) no longer appear in the Next day / Blessing event picker.'],
+      ['📊', 'Έσοδα & Έξοδα: νέα καρτέλα «Στατιστικά» πάνω πάνω, με έσοδα & έξοδα ανά μήνα, ανά κατηγορία, μεροκάματα και μισθοδοσία.', 'Income & Expenses: new “Statistics” tab at the top, with income & expenses by month, by category, daily wages and payroll.'],
+      ['🔍', 'Ημερολόγιο: διπλό πάτημα σε μια ημέρα την ανοίγει σε μεγέθυνση (προβολή «Ημέρα») για να δείτε τι έχει· δεν ανοίγει πλέον νέα εκδήλωση. Νέα εκδήλωση μπαίνει από το «+».', 'Calendar: double-tapping a day zooms into it (Day view) to see what it has; it no longer opens a new event. New events go through “+”.'],
+      ['🧹', 'Excel: αφαιρέθηκε η στήλη «Έως (πολυήμερη)». Οι διακόπτες (π.χ. «Δεύτερο συνεργείο») ενεργοποιούνται μόνο πατώντας πάνω τους ή στο κείμενό τους.', 'Excel: the “Until (multi-day)” column was removed. Switches (e.g. “Second crew”) now only toggle when tapping them or their text.'],
+    ],
+  },
+  {
     v: '1.7.5', date: '02/11/2026',
     items: [
       ['👥', 'Βάπτιση: στο βήμα «Συνεργείο» δεν υπάρχει πλέον επιλογή μονού / διπλού συνεργείου· η βάπτιση έχει πάντα 1 συνεργείο.', 'Baptism: the “Crew” step no longer offers single / double crew; a baptism always has 1 crew.'],

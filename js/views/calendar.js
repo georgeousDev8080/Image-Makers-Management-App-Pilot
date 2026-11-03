@@ -17,6 +17,7 @@ const catLabel = (c) => { const o = CATEGORIES.find((x) => x.v === c); return o 
 const HOUR = 48;          // ύψος μίας ώρας (px) στο πλέγμα ωρών
 const DUR = 120;          // προεπιλεγμένη διάρκεια εμφάνισης (λεπτά) — οι εκδηλώσεις έχουν μόνο ώρα έναρξης
 const st = { sel: todayISO(), mode: 'month', onlyMine: false, anim: '' };
+let lastTap = { d: '', t: 0 };
 
 const dows = () => (LANG === 'en' ? DOW_SHORT_EN : DOW_SHORT_EL);
 const mondayOf = (iso) => { const d = parseISO(iso); return addDays(iso, -((d.getDay() + 6) % 7)); };
@@ -71,7 +72,7 @@ function timeGrid(days, byDate, admin) {
         <b>${esc(evType(v))}</b><span>${esc(hhmm(s))}</span></a>`;
     }).join('');
     const nowLine = iso === today ? `<div class="tg-now" style="top:${(nowM / 60) * HOUR}px"></div>` : '';
-    return `<div class="tg-col ${iso === today ? 'today' : ''}" data-day="${iso}" ${admin ? 'data-slot' : ''}>${blocks}${nowLine}</div>`;
+    return `<div class="tg-col ${iso === today ? 'today' : ''}" data-day="${iso}">${blocks}${nowLine}</div>`;
   }).join('');
   return `<div class="tg ${days.length === 1 ? 'one' : ''}" style="--days:${days.length};--hour:${HOUR}px">
     <div class="tg-headrow"><div class="tg-gut"></div>${head}</div>
@@ -325,7 +326,7 @@ export function renderCalendar(root, params = {}) {
   else if (st.mode === 'day') html += timeGrid([st.sel], byDate, admin);
   else if (st.mode === 'year') html += yearGrid(byDate);
   else html += schedule(views);
-  if (st.mode !== 'list') html += `<div class="legend">${['wedding', 'baptism', 'wedding_baptism', 'promo', 'other'].map((c) => `<span><i class="cat-${c}" style="background:var(--c)"></i>${esc(catShort(c))}</span>`).join('')}${admin && (st.mode === 'day' || st.mode === 'week') ? `<span class="muted">${esc(L('Πατήστε σε κενή ώρα για νέα εκδήλωση', 'Tap an empty time slot to add an event'))}</span>` : ''}</div>`;
+  if (st.mode !== 'list') html += `<div class="legend">${['wedding', 'baptism', 'wedding_baptism', 'promo', 'other'].map((c) => `<span><i class="cat-${c}" style="background:var(--c)"></i>${esc(catShort(c))}</span>`).join('')}${st.mode === 'month' || st.mode === 'week' ? `<span class="muted">${esc(L('Διπλό πάτημα σε ημέρα για μεγέθυνση', 'Double-tap a day to zoom in'))}</span>` : ''}</div>`;
   st.anim = '';
 
   root.innerHTML = html;
@@ -354,20 +355,22 @@ export function renderCalendar(root, params = {}) {
   root.querySelectorAll('.cal-cell').forEach((c) => {
     c.addEventListener('click', (e) => {
       if (e.target.closest('a,.cal-more,[data-x],[data-abs]')) return;
+      // διπλό πάτημα / διπλό κλικ στην ίδια ημέρα → μεγέθυνση στην προβολή «Ημέρα» (μόνο προβολή, όχι νέα εκδήλωση)
+      const now = Date.now();
+      if (lastTap.d === c.dataset.date && now - lastTap.t < 450) { lastTap = { d: '', t: 0 }; st.sel = c.dataset.date; st.mode = 'day'; renderCalendar(root); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+      lastTap = { d: c.dataset.date, t: now };
       const prevM = st.sel.slice(0, 7);
       st.sel = c.dataset.date;
       if (st.sel.slice(0, 7) !== prevM) st.anim = st.sel > prevM ? 'cal-anim-next' : 'cal-anim-prev';
       renderCalendar(root);
-      if (window.innerWidth < 760) root.querySelector('.cal-daylist')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // στο κινητό: κύλιση στη λίστα της ημέρας, αφού περάσει το περιθώριο για διπλό πάτημα
+      if (window.innerWidth < 760) { const d0 = c.dataset.date; setTimeout(() => { if (st.mode === 'month' && st.sel === d0 && lastTap.d === d0) document.querySelector('.cal-daylist')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 470); }
     });
-    if (admin) c.addEventListener('dblclick', (e) => { if (!e.target.closest('a')) location.hash = `#/new-event?date=${c.dataset.date}`; });
   });
-  // κλικ σε κενή ώρα → νέα εκδήλωση εκείνη την ώρα (στρογγυλοποίηση στο μισάωρο)
-  root.querySelectorAll('[data-slot]').forEach((col) => col.addEventListener('click', (e) => {
+  // Εβδομάδα: διπλό κλικ σε ημέρα → προβολή «Ημέρα»
+  if (st.mode === 'week') root.querySelectorAll('.tg-col').forEach((col) => col.addEventListener('dblclick', (e) => {
     if (e.target.closest('a,button')) return;
-    const y = e.clientY - col.getBoundingClientRect().top;
-    const m = Math.max(0, Math.min(23 * 60 + 30, Math.floor((y / HOUR) * 2) * 30));
-    location.hash = `#/new-event?date=${col.dataset.day}&time=${hhmm(m)}`;
+    st.sel = col.dataset.day; st.mode = 'day'; renderCalendar(root);
   }));
   // αρχική κύλιση στις 09:00 (ή στην πρώτη εκδήλωση της προβολής)
   const tgs = root.querySelector('#tgs');

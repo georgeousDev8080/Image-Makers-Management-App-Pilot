@@ -5,8 +5,9 @@ import { L, esc, icon, money, fmtDate, todayISO, addDays, matches, sum, parseMon
 import { S, isAdmin, eventView, allEventViews, coupleName, profileName, profileById, savePayment, deletePayment, saveExpense, deleteExpense, nextPaymentLabel, wageStatus } from '../data.js';
 import { pageHead, setTopActions } from '../layout.js';
 import { catPill } from '../components.js';
+import { barPairs, hbars, bindTips } from '../charts.js';
 
-const st = { kind: 'all', y: new Date().getFullYear(), q: '' };
+const st = { view: 'list', kind: 'all', y: new Date().getFullYear(), q: '' };
 
 export function expenseTitle(x) {
   const k = opt(EXPENSE_KINDS, x.kind);
@@ -47,6 +48,10 @@ export function renderMoney(root) {
       <div class="kpi accent"><div class="k-label">${icon('euro')} ${esc(L('Καθαρό', 'Net'))}</div><div class="k-value">${esc(money(inSum - outSum, { dec: 0 }))}</div><div class="k-sub">${esc(L('ταμειακή διαφορά', 'cash difference'))}</div></div>
     </div>`;
 
+  // Κινήσεις ή Στατιστικά: τα στατιστικά ένα πάτημα μακριά, όχι στο τέλος της σελίδας
+  html += `<div class="money-tabs mt">${segmented('view', [{ v: 'list', label: L('Κινήσεις', 'Entries') }, { v: 'stats', label: L('Στατιστικά', 'Statistics') }], st.view, { block: true })}</div>`;
+  if (st.view === 'stats') { html += moneyStats(y, incomes, expenses); finish(root, html); return; }
+
   html += `<div class="spread mt" style="flex-wrap:wrap">${segmented('k', [{ v: 'all', label: L('Όλα', 'All') }, { v: 'in', label: L('Έσοδα', 'Income') }, { v: 'out', label: L('Έξοδα', 'Expenses') }], st.kind)}
     <div class="search" style="flex:1;min-width:200px;max-width:340px">${icon('search')}<input class="input" id="mq" type="search" placeholder="${esc(L('Αναζήτηση…', 'Search…'))}" value="${esc(st.q)}"></div></div>`;
 
@@ -79,7 +84,27 @@ export function renderMoney(root) {
     });
     if (open) html += '</div>';
   }
+  html += sheetLinks();
 
+  finish(root, html);
+}
+
+function sheetLinks() {
+  return `<div class="hstack mt" style="flex-wrap:wrap"><a class="btn" href="#/sheets/register">${icon('table')} ${esc(L('Μητρώο Εισπράξεων', 'Receipts register'))}</a><a class="btn" href="#/sheets/expenses">${icon('table')} ${esc(L('Φύλλο Εξόδων', 'Expenses sheet'))}</a><a class="btn" href="#/sheets/dashboard">${icon('chart')} Dashboard</a></div>`;
+}
+
+/** Στατιστικά χρονιάς: ανά μήνα, ανά κατηγορία, μεροκάματα, μισθοδοσία */
+function moneyStats(y, incomes, expenses) {
+  let html = '';
+  const months = [...Array(12).keys()].map((m) => { const mm = String(m + 1).padStart(2, '0'); return { label: monthName(m).slice(0, 3), a: sum(incomes.filter((p) => (p.paid_on || '').slice(5, 7) === mm), (p) => p.amount), b: sum(expenses.filter((x) => (x.paid_on || '').slice(5, 7) === mm), (x) => x.amount), m }; });
+  html += `<div class="card pad mt" id="mchart"><b>${esc(L(`Έσοδα & έξοδα ανά μήνα · ${y}`, `Income & expenses by month · ${y}`))}</b><div class="mt-s">${barPairs(months)}</div></div>`;
+  const byCat = CATEGORIES.map((c) => ({ label: L(c.el, c.en).replace(/\s*\(.*\)$/, ''), v: sum(incomes.filter((p) => p.category === c.v), (p) => p.amount), dot: c.v })).filter((r) => r.v > 0).sort((a, b) => b.v - a.v);
+  const byKind = EXPENSE_KINDS.map((k) => ({ label: L(k.el, k.en), v: sum(expenses.filter((x) => x.kind === k.v), (x) => x.amount) })).filter((r) => r.v > 0).sort((a, b) => b.v - a.v);
+  const m0 = (v) => money(v, { dec: 0 });
+  html += `<div class="grid cols-2 mt">
+    <div class="card pad"><b>${esc(L('Έσοδα ανά κατηγορία', 'Income by category'))}</b><div class="mt-s">${hbars(byCat, { fmt: m0 }) || `<div class="muted small">—</div>`}</div></div>
+    <div class="card pad"><b>${esc(L('Έξοδα ανά είδος', 'Expenses by type'))}</b><div class="mt-s">${hbars(byKind, { fmt: m0 }) || `<div class="muted small">—</div>`}</div></div>
+  </div>`;
   // Μεροκάματα
   const wages = wageStatus();
   html += `<div class="section-title"><h2>${esc(L('Μεροκάματα', 'Daily wages'))}</h2><button class="btn small" data-wage="">${icon('plus')} ${esc(L('Πληρωμή', 'Pay'))}</button></div>`;
@@ -95,14 +120,18 @@ export function renderMoney(root) {
     html += `<div class="section-title"><h2>${esc(L(`Μισθοδοσία ${yr}`, `Payroll ${yr}`))}</h2></div><div class="list">${Object.values(by).map((b) => { const [yy, mm] = (b.last || '').split('-').map(Number); return `<div class="row"><div class="main-col"><div class="t">${esc(b.name)}</div><div class="s">${esc(b.last ? L(`Τελευταίος μήνας: ${monthName(mm - 1)} ${yy}`, `Last month paid: ${monthName(mm - 1)} ${yy}`) : '')}</div></div><div class="v money">${esc(money(b.total))}</div></div>`; }).join('')}</div>`;
   }
 
-  html += `<div class="hstack mt"><a class="btn" href="#/sheets/register">${icon('table')} ${esc(L('Μητρώο Εισπράξεων', 'Receipts register'))}</a><a class="btn" href="#/sheets/expenses">${icon('table')} ${esc(L('Φύλλο Εξόδων', 'Expenses sheet'))}</a><a class="btn" href="#/sheets/dashboard">${icon('chart')} Dashboard</a></div>`;
+  html += sheetLinks();
+  return html;
+}
+
+function finish(root, html) {
   html += `<button class="fab" data-new aria-label="${esc(L('Νέα κίνηση', 'New entry'))}">${icon('plus')}</button>`;
   root.innerHTML = html;
-
-  initSegmented(root, (_, v) => { st.kind = v; renderMoney(root); });
+  const mc = root.querySelector('#mchart'); if (mc) bindTips(mc);
+  initSegmented(root, (name, v) => { if (name === 'view') st.view = v; else st.kind = v; renderMoney(root); });
   root.querySelectorAll('[data-m]').forEach((b) => b.addEventListener('click', () => { st.y += Number(b.dataset.m); renderMoney(root); }));
   const mq = root.querySelector('#mq');
-  mq.addEventListener('input', () => { st.q = mq.value; const p = mq.selectionStart; renderMoney(root); const n = root.querySelector('#mq'); n.focus(); n.setSelectionRange(p, p); });
+  mq?.addEventListener('input', () => { st.q = mq.value; const p = mq.selectionStart; renderMoney(root); const n = root.querySelector('#mq'); n.focus(); n.setSelectionRange(p, p); });
   document.querySelectorAll('[data-new]').forEach((b) => b.addEventListener('click', newEntry));
   root.querySelectorAll('[data-in]').forEach((b) => b.addEventListener('click', () => paymentActions(S.payments.find((p) => p.id === b.dataset.in))));
   root.querySelectorAll('[data-out]').forEach((b) => b.addEventListener('click', () => expenseActions(S.expenses.find((x) => x.id === b.dataset.out))));

@@ -467,7 +467,7 @@ a.row:active, button.row:active, .row.tap:active { background: var(--fill-2); }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .form-grid .full { grid-column: 1 / -1; }
 @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
-.check-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+.check-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; width: fit-content; max-width: 100%; justify-self: start; cursor: pointer; } /* μόνο ο διακόπτης και το κείμενό του, όχι όλο το πλάτος */
 
 /* ---------- Toast ---------- */
 .toasts { position: fixed; z-index: 400; left: 50%; top: calc(12px + var(--safe-top)); transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; width: min(440px, calc(100vw - 24px)); pointer-events: none; }
@@ -961,7 +961,6 @@ button.cal-more:hover { text-decoration: underline; }
 .tg-hours .tg-h { height: var(--hour); position: relative; }
 .tg-hours .tg-h span { position: absolute; top: -7px; right: 8px; font-size: 11px; color: var(--label-3); font-variant-numeric: tabular-nums; }
 .tg-col { position: relative; border-left: 1px solid var(--sep); height: calc(var(--hour) * 24); background-image: repeating-linear-gradient(to bottom, var(--sep) 0 1px, transparent 1px var(--hour)); }
-.tg-col[data-slot] { cursor: copy; }
 .tg-col.today { background-color: color-mix(in srgb, var(--accent) 4%, transparent); }
 .tg-ev { position: absolute; z-index: 1; display: flex; flex-direction: column; gap: 1px; padding: 3px 6px; border-radius: 6px; overflow: hidden; background: var(--c); color: #fff; font-size: 12px; line-height: 1.25; box-shadow: 0 0 0 1px var(--bg-elev); text-decoration: none; }
 .tg-ev b { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1291,3 +1290,7 @@ button.mp-r:hover { background: var(--fill-2); }
 .duty-pick { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .drone-tg { min-height: 32px; padding: 0 11px; border-radius: 999px; border: 1.5px dashed var(--label-3, #aaa); background: transparent; color: var(--label-2); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; white-space: nowrap; }
 .drone-tg.on { border-style: solid; border-color: #7c4dff; background: color-mix(in srgb, #7c4dff 14%, transparent); color: #6a3cf0; }
+.money-tabs { max-width: 420px; }
+.ev-pick-list { max-height: 330px; overflow-y: auto; border-radius: 12px; }
+.ev-pick { width: 100%; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ev-pick .date-tile { transform: scale(.88); transform-origin: left center; }

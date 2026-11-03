@@ -4,10 +4,10 @@
 //  συνεργείο, κατηγορία κ.λπ. Υποχρεωτικά: εκδήλωση + ημερομηνία.
 //  Προαιρετικά: ώρα, τοποθεσία (αν μείνει κενή, εμφανίζεται της εκδήλωσης).
 // =====================================================================
-import { L, esc, icon, sheet, toast, toastErr, busy, confirmBox, actionSheet, todayISO, addDays, fmtDate, fmtDateLong, fmtTime, normTime, timeInputAttrs, CATEGORIES, sessionLabel, SESSION_KINDS, evEnd } from '../core.js';
+import { matches, L, esc, icon, sheet, toast, toastErr, busy, confirmBox, actionSheet, todayISO, addDays, fmtDate, fmtDateLong, fmtTime, normTime, timeInputAttrs, CATEGORIES, sessionLabel, SESSION_KINDS, evEnd } from '../core.js';
 import { S, isAdmin, eventView, allEventViews, saveSession, deleteSession, sessionsOf } from '../data.js';
 import { go } from '../layout.js';
-import { dateTile, avatar } from '../components.js';
+import { dateTile, avatar, withoutNextDay } from '../components.js';
 
 const catLabel = (c) => { const o = CATEGORIES.find((x) => x.v === c); return o ? L(o.el, o.en).replace(/\s*\(.*\)$/, '') : ''; };
 export const sessionEmoji = (k) => SESSION_KINDS.find((x) => x.v === k)?.emoji || '';
@@ -17,7 +17,6 @@ export const sessionPlace = (x) => x.location || S.events.get(x.event_id)?.churc
 export const sessionTitle = (x) => [sessionLabel(x.kind), sessionPlace(x)].filter(Boolean).join(' · ');
 export const sessionTip = (x) => { const v = eventView(x.event_id); return [sessionLabel(x.kind), x.start_time ? fmtTime(x.start_time) : '', sessionPlace(x), v?.title, v ? `${catLabel(v.e.category)} ${fmtDate(v.e.event_date)}` : ''].filter(Boolean).join(' · '); };
 
-const evOption = (v) => `${fmtDate(v.e.event_date)} · ${catLabel(v.e.category)} · ${v.title}${v.e.church_location ? ` · ${v.e.church_location}` : ''}`;
 
 /** Φόρμα νέου / επεξεργασίας Next day ή Ευχολογίου */
 export function openSessionSheet({ kind = 'next_day', eventId = '', day = '', session = null } = {}) {
@@ -26,22 +25,33 @@ export function openSessionSheet({ kind = 'next_day', eventId = '', day = '', se
     : { kind, event_id: eventId, day, start_time: '', location: '', notes: '' };
   if (!f.day && f.event_id && f.kind === 'next_day') { const e = S.events.get(f.event_id); if (e) f.day = addDays(evEnd(e), 1); }
   const today = todayISO();
-  const views = allEventViews({ includeCancelled: false });
-  const up = views.filter((v) => evEnd(v.e) >= addDays(today, -60));
-  const old = views.filter((v) => evEnd(v.e) < addDays(today, -60)).reverse();
-  if (f.event_id && !views.some((v) => v.e.id === f.event_id)) { const v = eventView(f.event_id); if (v) up.unshift(v); }
+  // εκδηλώσεις που μπορούν να έχουν Next day / Ευχολόγιο: όχι ακυρωμένες, όχι γάμοι που στην προσφορά αφαιρέθηκε όλο το next day
+  const views = allEventViews({ includeCancelled: false }).filter((v) => !withoutNextDay(v.e) || v.e.id === f.event_id);
+  const near = (v) => Math.abs(new Date(v.e.event_date) - new Date(today)) / 864e5;
+  const recent = views.filter((v) => v.e.event_date <= today && evEnd(v.e) >= addDays(today, -14)).sort((a, b) => near(a) - near(b));
+  const soon = views.filter((v) => v.e.event_date > today && v.e.event_date <= addDays(today, 14)).sort((a, b) => near(a) - near(b));
+  let q = '';
   const name = sessionLabel(f.kind);
+  const evBtn = (v) => `<button type="button" class="row ev-pick" data-pick="${v.e.id}">${dateTile(v.e.event_date, v.e.category)}<div class="main-col"><div class="t">${esc([catLabel(v.e.category), v.e.church_location].filter(Boolean).join(' · '))}</div><div class="s">${esc([v.title, v.e.event_time ? fmtTime(v.e.event_time) : ''].filter(Boolean).join(' · '))}</div></div>${icon('chevR', 'chev')}</button>`;
+  const listHTML = () => {
+    if (q.trim()) {
+      const hits = views.filter((v) => matches(q, v.title, v.e.church_location, v.e.reception_location, catLabel(v.e.category), fmtDate(v.e.event_date), v.c?.phone1, v.c?.phone2))
+        .sort((a, b) => near(a) - near(b)).slice(0, 30);
+      return hits.length ? `<div class="list">${hits.map(evBtn).join('')}</div>` : `<div class="card pad small muted">${esc(L('Δεν βρέθηκε εκδήλωση.', 'No event found.'))}</div>`;
+    }
+    const grp = (t, l) => (l.length ? `<div class="group-label">${esc(t)}</div><div class="list">${l.map(evBtn).join('')}</div>` : '');
+    return grp(L('Τελευταίες 2 εβδομάδες', 'Last 2 weeks'), recent) + grp(L('Επόμενες 2 εβδομάδες', 'Next 2 weeks'), soon)
+      || `<div class="card pad small muted">${esc(L('Καμία εκδήλωση τις τελευταίες / επόμενες 2 εβδομάδες. Χρησιμοποιήστε την αναζήτηση.', 'No events in the last / next 2 weeks. Use the search.'))}</div>`;
+  };
   const body = document.createElement('div');
   const draw = () => {
     const parent = f.event_id ? eventView(f.event_id) : null;
     body.innerHTML = `<div class="form">
       <div class="banner">${icon('link')}<div><b>${esc(L(`Το ${name} συνδέεται με μια εκδήλωση`, `The ${name} is linked to an event`))}</b><span>${esc(L('Πελάτης, συνεργείο και στοιχεία παίρνονται από την εκδήλωση. Το συνεργείο της ειδοποιείται.', 'Client, crew and details come from the event. Its crew is notified.'))}</span></div></div>
       <div class="field"><label>${esc(L('Από ποια εκδήλωση είναι', 'Which event it belongs to'))} <span class="req">*</span></label>
-        <select class="select" name="event_id"><option value="">${esc(L('— Επιλέξτε εκδήλωση —', '— Choose an event —'))}</option>
-          ${up.length ? `<optgroup label="${esc(L('Πρόσφατες & επόμενες', 'Recent & upcoming'))}">${up.map((v) => `<option value="${v.e.id}" ${v.e.id === f.event_id ? 'selected' : ''}>${esc(evOption(v))}</option>`).join('')}</optgroup>` : ''}
-          ${old.length ? `<optgroup label="${esc(L('Παλαιότερες', 'Older'))}">${old.map((v) => `<option value="${v.e.id}" ${v.e.id === f.event_id ? 'selected' : ''}>${esc(evOption(v))}</option>`).join('')}</optgroup>` : ''}
-        </select></div>
-      ${parent ? `<div class="card pad small sess-parent"><b>${esc(parent.title)}</b><div class="muted">${esc([catLabel(parent.e.category), fmtDateLong(parent.e.event_date), parent.e.event_time ? fmtTime(parent.e.event_time) : '', parent.e.church_location].filter(Boolean).join(' · '))}</div>${parent.crew.length ? `<div class="muted">${esc(L('Συνεργείο', 'Crew'))}: ${esc(parent.crew.map((c) => (c.profile?.full_name || '').split(' ')[0]).filter(Boolean).join(', '))}</div>` : ''}</div>` : ''}
+      ${parent ? `<div class="card pad small sess-parent spread" style="align-items:flex-start;gap:10px"><div><b>${esc(parent.title)}</b><div class="muted">${esc([catLabel(parent.e.category), fmtDateLong(parent.e.event_date), parent.e.event_time ? fmtTime(parent.e.event_time) : '', parent.e.church_location].filter(Boolean).join(' · '))}</div>${parent.crew.length ? `<div class="muted">${esc(L('Συνεργείο', 'Crew'))}: ${esc(parent.crew.map((c) => (c.profile?.full_name || '').split(' ')[0]).filter(Boolean).join(', '))}</div>` : ''}</div>${session ? '' : `<button type="button" class="btn small" data-change>${esc(L('Αλλαγή', 'Change'))}</button>`}</div>`
+        : `<div class="search">${icon('search')}<input class="input" id="evq" type="search" autocomplete="off" placeholder="${esc(L('Αναζήτηση: όνομα, τοποθεσία, ημερομηνία (π.χ. 12/06)…', 'Search: name, place, date (e.g. 12/06)…'))}" value="${esc(q)}"></div><div class="ev-pick-list mt-s" id="evl">${listHTML()}</div>`}
+      </div>
       <div class="field"><label>${esc(L(`Ημερομηνία ${name}`, `${name} date`))} <span class="req">*</span></label><input class="input" type="date" name="day" value="${esc(f.day || '')}"></div>
       <div class="form-grid">
         <div class="field"><label>${esc(L('Ώρα (προαιρετικά)', 'Time (optional)'))}</label><input class="input" name="start_time" ${timeInputAttrs} value="${esc(f.start_time || '')}" placeholder="${esc(L('π.χ. 17:00', 'e.g. 17:00'))}"></div>
@@ -49,15 +59,20 @@ export function openSessionSheet({ kind = 'next_day', eventId = '', day = '', se
       </div>
       <div class="field"><label>${esc(L('Σημειώσεις (προαιρετικά)', 'Notes (optional)'))}</label><textarea class="textarea" name="notes" style="min-height:60px">${esc(f.notes || '')}</textarea></div>
     </div>`;
-    body.querySelectorAll('[name]').forEach((i) => i.addEventListener(i.tagName === 'SELECT' ? 'change' : 'input', () => {
+    body.querySelectorAll('[name]').forEach((i) => i.addEventListener('input', () => {
       f[i.name] = i.value; i.classList.remove('invalid');
-      if (i.name === 'event_id') {
-        const e = S.events.get(f.event_id);
-        if (e && f.kind === 'next_day' && !session && (!f.day || f._autoDay)) { f.day = addDays(evEnd(e), 1); f._autoDay = true; }
-        draw();
-      }
       if (i.name === 'day') f._autoDay = false;
     }));
+    const bindPicks = () => body.querySelectorAll('[data-pick]').forEach((b) => b.addEventListener('click', () => {
+      f.event_id = b.dataset.pick;
+      const e = S.events.get(f.event_id);
+      if (e && f.kind === 'next_day' && !session && (!f.day || f._autoDay)) { f.day = addDays(evEnd(e), 1); f._autoDay = true; }
+      draw();
+    }));
+    const qEl = body.querySelector('#evq');
+    qEl?.addEventListener('input', () => { q = qEl.value; qEl.classList.remove('invalid'); body.querySelector('#evl').innerHTML = listHTML(); bindPicks(); });
+    bindPicks();
+    body.querySelector('[data-change]')?.addEventListener('click', () => { f.event_id = ''; q = ''; draw(); body.querySelector('#evq')?.focus(); });
   };
   draw();
   const s = sheet({ title: session ? L(`Επεξεργασία ${name}`, `Edit ${name}`) : `${sessionEmoji(f.kind)} ${name}`, body, right: `<button class="btn plain" data-save><b>${esc(L('Αποθήκευση', 'Save'))}</b></button>` });
@@ -65,7 +80,7 @@ export function openSessionSheet({ kind = 'next_day', eventId = '', day = '', se
     const btn = ev.currentTarget;
     let ok = true;
     const bad = (n) => { body.querySelector(`[name=${n}]`)?.classList.add('invalid'); ok = false; };
-    if (!f.event_id) bad('event_id');
+    if (!f.event_id) { body.querySelector('#evq')?.classList.add('invalid'); ok = false; }
     if (!f.day) bad('day');
     let t = null;
     if (String(f.start_time || '').trim()) { t = normTime(f.start_time); if (!t) bad('start_time'); }
@@ -99,7 +114,7 @@ export async function sessionActions(x) {
 /** Ενότητα στην καρτέλα εκδήλωσης */
 export function sessionsSectionHTML(eventId) {
   const list = sessionsOf(eventId);
-  const admin = isAdmin();
+  const admin = isAdmin() && !withoutNextDay(S.events.get(eventId));
   if (!list.length && !admin) return '';
   return `<div class="group-label spread"><span>${esc(L('Next day / Ευχολόγιο', 'Next day / Blessing'))}</span>${admin ? `<span class="hstack" style="gap:6px"><button class="btn plain small" data-newsess="next_day">${icon('plus')} Next day</button><button class="btn plain small" data-newsess="blessing">${icon('plus')} ${esc(L('Ευχολόγιο', 'Blessing'))}</button></span>` : ''}</div>
     <div class="list">${list.map((x) => `<button class="row has-icon" data-sess="${x.id}"><span class="row-icon sess-ic ${x.kind}">${sessionEmoji(x.kind)}</span><div class="main-col"><div class="t">${esc(sessionTitle(x))}</div><div class="s">${esc([fmtDateLong(x.day), x.start_time ? fmtTime(x.start_time) : L('ώρα: δεν έχει οριστεί', 'time: not set'), x.notes].filter(Boolean).join(' · '))}</div></div>${admin ? icon('chevR', 'chev') : ''}</button>`).join('') || `<div class="row muted small">${esc(L('Δεν υπάρχει Next day ή Ευχολόγιο.', 'No Next day or blessing.'))}</div>`}</div>`;

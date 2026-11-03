@@ -110,7 +110,6 @@ function eventsSheet(body, tab, redraw) {
   const add = (g, c) => { if (visible.has(g)) cols.push({ group: g, ...c }); };
   add('basic', { key: 'month', label: L('Μήνας', 'Month'), w: 126, get: (v) => monthUp(v.e.event_date) });
   add('basic', { key: 'date', label: L('Ημερομηνία', 'Date'), w: 96, type: 'date', editable: true, required: true, get: (v) => v.e.event_date, set: (v, val) => val && patchEvent(v.e.id, { event_date: val }) });
-  add('basic', { key: 'end', label: L('Έως (πολυήμερη)', 'Until (multi-day)'), w: 110, type: 'date', editable: true, get: (v) => (v.e.end_date && v.e.end_date > v.e.event_date ? v.e.end_date : null), set: (v, val) => { if (val && val <= v.e.event_date) { tErr(L('Η τελευταία ημέρα πρέπει να είναι μετά την πρώτη', 'The last day must be after the first')); return Promise.reject(new Error('end_date')); } return patchEvent(v.e.id, { end_date: val || null }); } });
   add('basic', { key: 'loc', label: L('Τοποθεσία', 'Location'), w: 210, editable: true, get: (v) => v.e.church_location, set: (v, val) => patchEvent(v.e.id, { church_location: val }) });
   add('couple', { key: 'name1', label: L('Όνομα 1', 'Name 1'), w: 160, editable: (v) => !!v.c, get: (v) => v.c?.name1, set: (v, val) => updCust(v, 'name1', val) });
   add('couple', { key: 'name2', label: L('Όνομα 2', 'Name 2'), w: 160, editable: (v) => !!v.c, get: (v) => v.c?.name2, set: (v, val) => updCust(v, 'name2', val) });

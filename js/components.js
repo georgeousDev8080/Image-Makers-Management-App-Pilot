@@ -77,6 +77,14 @@ const BAPTISM_INCLUDED = () => [
   L('Όλο το φωτογραφικό αρχείο σε πλήρη ανάλυση', 'All photos in full resolution'),
 ];
 export const isBaptismOffer = (od) => od?.kind === 'baptism';
+/** Ο γάμος δεν έχει next day: στον Οδηγό προσφοράς αφαιρέθηκαν φωτογράφηση, video και drone next day */
+export const NEXT_DAY_ITEMS = ['Φωτογράφηση next day', 'Video next day', 'Drone next day'];
+export function withoutNextDay(e) {
+  const od = e?.offer_data;
+  if (!od || isBaptismOffer(od) || e.category === 'baptism' || ['promo', 'other'].includes(e.category)) return false;
+  const r = od.removes || [];
+  return NEXT_DAY_ITEMS.every((x) => r.includes(x));
+}
 /** Έχει drone η εκδήλωση; (μέλος συνεργείου με Drone ή drone μέσα στο πακέτο της προσφοράς) */
 export function eventHasDrone(e, crew = []) {
   if (crew.some((c) => c.duty === 'drone' || c.drone || (c.tasks || []).includes('drone'))) return true;
