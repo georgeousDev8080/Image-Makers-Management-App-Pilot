@@ -438,10 +438,11 @@ export const SHOP_SUBS = [
   { v: 'internet', el: 'Internet', en: 'Internet' },
   { v: 'water', el: 'Νερό', en: 'Water' },
   { v: 'common', el: 'Κοινόχρηστα', en: 'Building fees' },
+  { v: 'accountant', el: 'Λογιστής', en: 'Accountant' },
   { v: 'misc', el: 'Διάφορα', en: 'Miscellaneous' },
 ];
 export const OTHER_SUBS = [
-  { v: 'accountant', el: 'Λογιστής / Επαγγελματικές υπηρεσίες', en: 'Accountant / Services' },
+  { v: 'accountant', el: 'Επαγγελματικές υπηρεσίες', en: 'Professional services' },
   { v: 'equipment', el: 'Εξοπλισμός / Αναλώσιμα', en: 'Equipment / Supplies' },
   { v: 'travel', el: 'Μετακινήσεις / Καύσιμα', en: 'Travel / Fuel' },
   { v: 'subscriptions', el: 'Λογαριασμοί / Συνδρομές', en: 'Bills / Subscriptions' },
