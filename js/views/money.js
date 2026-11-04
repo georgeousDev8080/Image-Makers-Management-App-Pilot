@@ -101,7 +101,11 @@ export function renderMoney(root) {
   // ανοιχτός μόνο ο τρέχων μήνας (ή όλοι όταν ψάχνετε / φιλτράρετε)
   const curM = new Date().getFullYear() === y ? new Date().getMonth() + 1 : -1;
   if (!st.open) st.open = new Set([curM]);
-  const isOpen = (mo) => !!(st.q || anyF) || st.open.has(mo);
+  // με αναζήτηση / φίλτρο: όλοι οι μήνες ανοιχτοί αρχικά, αλλά κλείνουν κανονικά με το βελάκι
+  const fkey = JSON.stringify([st.kind, st.q, st.f]);
+  if (st.fkey !== fkey) { st.fkey = fkey; st.closedF = new Set(); }
+  const filtering = !!(st.q || anyF);
+  const isOpen = (mo) => (filtering ? !st.closedF.has(mo) : st.open.has(mo));
 
   html += `<div class="section-title"><h2>${esc(L(`Κινήσεις ${y}`, `Entries ${y}`))}</h2><span class="hint">${filtered.length}</span></div>`;
   if (!filtered.length) html += `<div class="card pad center muted">${esc(L('Καμία κίνηση αυτή τη χρονιά. Πατήστε + για νέα.', 'No entries this year. Tap + to add one.'))}</div>`;
@@ -173,8 +177,10 @@ function finish(root, html) {
   root.querySelector('[data-mfclear]')?.addEventListener('click', () => { st.f = {}; renderMoney(root); });
   root.querySelectorAll('[data-mo]').forEach((b) => b.addEventListener('click', () => {
     const mo = Number(b.dataset.mo); const list = b.nextElementSibling;
-    if (st.open.has(mo)) st.open.delete(mo); else st.open.add(mo);
-    const op = st.open.has(mo) || !!(st.q || Object.values(st.f).some(Boolean));
+    const filtering = !!(st.q || Object.values(st.f).some(Boolean));
+    const set = filtering ? st.closedF : st.open;
+    if (set.has(mo)) set.delete(mo); else set.add(mo);
+    const op = filtering ? !st.closedF.has(mo) : st.open.has(mo);
     b.classList.toggle('open', op); b.setAttribute('aria-expanded', op); if (list) list.hidden = !op;
   }));
   const mq = root.querySelector('#mq');
