@@ -4,10 +4,10 @@
 import { L, esc, icon, money, fmtDate, todayISO, addDays, matches, sum, parseMoney, lbl, opt, options, CATEGORIES, METHODS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, sheet, actionSheet, confirmBox, toast, toastErr, busy, monthName, segmented, initSegmented, daysBetween } from '../core.js';
 import { S, isAdmin, eventView, allEventViews, coupleName, profileName, profileById, savePayment, deletePayment, saveExpense, deleteExpense, nextPaymentLabel, wageStatus } from '../data.js';
 import { pageHead, setTopActions } from '../layout.js';
-import { catPill } from '../components.js';
+import { catPill, pickYear, yearOf, yearSelect, bindYear } from '../components.js';
 import { barPairs, hbars, bindTips } from '../charts.js';
 
-const st = { view: 'list', kind: 'all', y: new Date().getFullYear(), q: '' };
+const st = { view: 'list', kind: 'all', y: new Date().getFullYear(), q: '', f: {}, open: null };
 
 export function expenseTitle(x) {
   const k = opt(EXPENSE_KINDS, x.kind);
@@ -33,21 +33,26 @@ export function wageLine(w) {
 }
 
 export function renderMoney(root) {
+  // χρονιές μόνο όπου υπάρχουν κινήσεις · η ίδια επιλογή σε όλα τα tabs
+  const prevY = st.y;
+  st.y = pickYear([...S.payments.map((p) => yearOf(p.paid_on)), ...S.expenses.map((x) => yearOf(x.paid_on))]).y;
+  if (st.y !== prevY) st.open = null;
   const y = st.y, yp = String(y) + '-';
+  const years = pickYear([...S.payments.map((p) => yearOf(p.paid_on)), ...S.expenses.map((x) => yearOf(x.paid_on))]).ys;
   const incomes = S.payments.filter((p) => (p.paid_on || '').startsWith(yp));
   const expenses = S.expenses.filter((x) => (x.paid_on || '').startsWith(yp));
   const inSum = sum(incomes, (p) => p.amount), outSum = sum(expenses, (x) => x.amount);
 
-  setTopActions(`<button class="btn primary small hide-mobile" data-new>${icon('plus')} ${esc(L('Νέα κίνηση', 'New entry'))}</button>`);
+  setTopActions(`${yearSelect(years, y)} <button class="btn primary small hide-mobile" data-new>${icon('plus')} ${esc(L('Νέα κίνηση', 'New entry'))}</button>`);
   let html = pageHead(L('Έσοδα & Έξοδα', 'Income & Expenses'), { sub: esc(L('Κάθε καταχώρηση ενημερώνει αυτόματα τα φύλλα Excel.', 'Every entry updates the Excel sheets automatically.')) });
 
-  html += `<div class="cal-head"><button class="icon-btn filled" data-m="-1">${icon('chevL')}</button><div class="cal-title" style="min-width:0;text-align:center;flex:1">${y}</div><button class="icon-btn filled" data-m="1">${icon('chevR')}</button></div>
-    <div class="grid cols-3" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+  html += `<div class="grid cols-3 money-kpis" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
       <div class="kpi"><div class="k-label">${icon('incoming')} ${esc(L('Έσοδα', 'Income'))}</div><div class="k-value pos">${esc(money(inSum, { dec: 0 }))}</div><div class="k-sub">${incomes.length} ${esc(L('κινήσεις', 'entries'))}</div></div>
       <div class="kpi"><div class="k-label">${icon('outgoing')} ${esc(L('Έξοδα', 'Expenses'))}</div><div class="k-value neg">${esc(money(outSum, { dec: 0 }))}</div><div class="k-sub">${expenses.length} ${esc(L('κινήσεις', 'entries'))}</div></div>
       <div class="kpi accent"><div class="k-label">${icon('euro')} ${esc(L('Καθαρό', 'Net'))}</div><div class="k-value">${esc(money(inSum - outSum, { dec: 0 }))}</div><div class="k-sub">${esc(L('ταμειακή διαφορά', 'cash difference'))}</div></div>
     </div>`;
 
+  html += sheetLinks();
   // Κινήσεις ή Στατιστικά: τα στατιστικά ένα πάτημα μακριά, όχι στο τέλος της σελίδας
   html += `<div class="money-tabs mt">${segmented('view', [{ v: 'list', label: L('Κινήσεις', 'Entries') }, { v: 'stats', label: L('Στατιστικά', 'Statistics') }], st.view, { block: true })}</div>`;
   if (st.view === 'stats') { html += moneyStats(y, incomes, expenses); finish(root, html); return; }
@@ -55,13 +60,48 @@ export function renderMoney(root) {
   html += `<div class="spread mt" style="flex-wrap:wrap">${segmented('k', [{ v: 'all', label: L('Όλα', 'All') }, { v: 'in', label: L('Έσοδα', 'Income') }, { v: 'out', label: L('Έξοδα', 'Expenses') }], st.kind)}
     <div class="search" style="flex:1;min-width:200px;max-width:340px">${icon('search')}<input class="input" id="mq" type="search" placeholder="${esc(L('Αναζήτηση…', 'Search…'))}" value="${esc(st.q)}"></div></div>`;
 
+  // ---- φίλτρα ----
+  const F = st.f;
+  const who = (x) => x.crew_name || (x.crew_id ? profileName(profileById(x.crew_id)) : '') || '';
+  const subOf = (x) => (x.kind === 'shop' ? lbl(SHOP_SUBS, x.subcategory) : x.kind === 'other' ? lbl(OTHER_SUBS, x.subcategory) : (x.subcategory || ''));
+  const countOpts = (list, keyFn, labelFn = (k) => k) => { const m = new Map(); list.forEach((r) => { const k = keyFn(r); if (k) m.set(k, (m.get(k) || 0) + 1); }); return [...m.entries()].map(([k, n]) => [k, `${labelFn(k)} (${n})`]); };
+  const labelRank = (l) => (/προκαταβ/i.test(l) ? 0 : Number((l.match(/\d+/) || [99])[0]));
+  const fsel = (key, all, opts) => `<label class="wf-filter ${F[key] ? 'on' : ''}"><select class="select" data-mf="${key}"><option value="">${esc(all)}</option>${opts.map(([v, t]) => `<option value="${esc(v)}" ${String(F[key] || '') === String(v) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`;
+  const monthsAll = countOpts([...incomes, ...expenses], (r) => (r.paid_on || '').slice(5, 7), (m) => monthName(Number(m) - 1)).sort((a, b) => a[0].localeCompare(b[0]));
+  let filtersHTML = fsel('month', L('Όλοι οι μήνες', 'All months'), monthsAll);
+  if (st.kind === 'in') {
+    filtersHTML += fsel('label', L('Όλες οι πληρωμές', 'All payments'), countOpts(incomes, (p) => p.label || (p.kind === 'deposit' ? L('Προκαταβολή', 'Deposit') : L('Άλλο', 'Other'))).sort((a, b) => labelRank(a[0]) - labelRank(b[0])))
+      + fsel('cat', L('Όλες οι κατηγορίες', 'All categories'), countOpts(incomes, (p) => p.category, (c) => lbl(CATEGORIES, c)))
+      + fsel('method', L('Κάθε τρόπος', 'Any method'), countOpts(incomes, (p) => p.method, (m) => lbl(METHODS, m)));
+  }
+  if (st.kind === 'out') {
+    const ofKind = F.ekind ? expenses.filter((x) => x.kind === F.ekind) : expenses;
+    filtersHTML += fsel('ekind', L('Όλα τα είδη', 'All types'), countOpts(expenses, (x) => x.kind, (k) => lbl(EXPENSE_KINDS, k)))
+      + fsel('sub', L('Όλες οι υποκατηγορίες', 'All subcategories'), countOpts(ofKind, subOf))
+      + fsel('who', L('Μέλος / συνεργάτης: όλοι', 'Member / partner: all'), countOpts(ofKind, who))
+      + fsel('supplier', L('Προμηθευτής: όλοι', 'Supplier: all'), countOpts(ofKind, (x) => (x.supplier || '').trim()))
+      + fsel('method', L('Κάθε τρόπος', 'Any method'), countOpts(ofKind, (x) => x.method, (m) => lbl(METHODS, m)));
+  }
+  const anyF = Object.values(F).some(Boolean);
+  const okIn = (p) => (!F.month || (p.paid_on || '').slice(5, 7) === F.month) && (!F.label || (p.label || (p.kind === 'deposit' ? L('Προκαταβολή', 'Deposit') : L('Άλλο', 'Other'))) === F.label) && (!F.cat || p.category === F.cat) && (!F.method || p.method === F.method);
+  const okOut = (x) => (!F.month || (x.paid_on || '').slice(5, 7) === F.month) && (!F.ekind || x.kind === F.ekind) && (!F.sub || subOf(x) === F.sub) && (!F.who || who(x) === F.who) && (!F.supplier || (x.supplier || '').trim() === F.supplier) && (!F.method || x.method === F.method);
+
   const rows = [];
-  if (st.kind !== 'out') incomes.forEach((p) => {
+  if (st.kind !== 'out') incomes.filter(okIn).forEach((p) => {
     const v = p.event_id ? eventView(p.event_id) : null;
     rows.push({ t: 'in', id: p.id, date: p.paid_on, created: p.created_at, amount: Number(p.amount), title: v ? `${v.title}` : (p.description || lbl(CATEGORIES, p.category)), sub: [p.label, lbl(METHODS, p.method), p.notes].filter((x) => x && x !== '—').join(' · '), cat: p.category });
   });
-  if (st.kind !== 'in') expenses.forEach((x) => rows.push({ t: 'out', id: x.id, date: x.paid_on, created: x.created_at, amount: Number(x.amount), title: expenseTitle(x), sub: expenseSub(x) }));
+  if (st.kind !== 'in') expenses.filter(okOut).forEach((x) => rows.push({ t: 'out', id: x.id, date: x.paid_on, created: x.created_at, amount: Number(x.amount), title: expenseTitle(x), sub: expenseSub(x) }));
   const filtered = rows.filter((r) => matches(st.q, r.title, r.sub, fmtDate(r.date), String(r.amount))).sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created || '').localeCompare(a.created || ''));
+  html += `<div class="sheet-toolbar wf-filters mt-s">${filtersHTML}${anyF ? `<button class="btn plain small" data-mfclear>${icon('x')} ${esc(L('Καθαρισμός', 'Clear'))}</button>` : ''}</div>`;
+  if (anyF || st.q) {
+    const tin = sum(filtered.filter((r) => r.t === 'in'), (r) => r.amount), tout = sum(filtered.filter((r) => r.t === 'out'), (r) => r.amount);
+    html += `<div class="card pad small filter-sum"><b>${filtered.length}</b> ${esc(L('κινήσεις', 'entries'))}${tin ? ` · <span class="pos">+${esc(money(tin))}</span>` : ''}${tout ? ` · <span class="neg">−${esc(money(tout))}</span>` : ''}</div>`;
+  }
+  // ανοιχτός μόνο ο τρέχων μήνας (ή όλοι όταν ψάχνετε / φιλτράρετε)
+  const curM = new Date().getFullYear() === y ? new Date().getMonth() + 1 : -1;
+  if (!st.open) st.open = new Set([curM]);
+  const isOpen = (mo) => !!(st.q || anyF) || st.open.has(mo);
 
   html += `<div class="section-title"><h2>${esc(L(`Κινήσεις ${y}`, `Entries ${y}`))}</h2><span class="hint">${filtered.length}</span></div>`;
   if (!filtered.length) html += `<div class="card pad center muted">${esc(L('Καμία κίνηση αυτή τη χρονιά. Πατήστε + για νέα.', 'No entries this year. Tap + to add one.'))}</div>`;
@@ -73,7 +113,8 @@ export function renderMoney(root) {
         if (open) html += '</div>';
         const mIn = sum(filtered.filter((x) => x.t === 'in' && Number((x.date || '').slice(5, 7)) === mo), (x) => x.amount);
         const mOut = sum(filtered.filter((x) => x.t === 'out' && Number((x.date || '').slice(5, 7)) === mo), (x) => x.amount);
-        html += `<div class="agenda-day spread"><span>${esc(mo ? monthName(mo - 1) : '—')}</span><span class="small" style="font-weight:600">${mIn ? `<span class="pos">+${esc(money(mIn, { dec: 0 }))}</span>` : ''}${mIn && mOut ? ' · ' : ''}${mOut ? `<span class="neg">−${esc(money(mOut, { dec: 0 }))}</span>` : ''}</span></div><div class="list">`;
+        const n = filtered.filter((x) => Number((x.date || '').slice(5, 7)) === mo).length;
+        html += `<button type="button" class="agenda-day spread month-tg ${isOpen(mo) ? 'open' : ''}" data-mo="${mo}" aria-expanded="${isOpen(mo)}"><span class="hstack" style="gap:6px">${icon('chevD', 'mchev')}${esc(mo ? monthName(mo - 1) : '—')} <span class="muted" style="font-weight:500">(${n})</span></span><span class="small" style="font-weight:600">${mIn ? `<span class="pos">+${esc(money(mIn, { dec: 0 }))}</span>` : ''}${mIn && mOut ? ' · ' : ''}${mOut ? `<span class="neg">−${esc(money(mOut, { dec: 0 }))}</span>` : ''}</span></button><div class="list" ${isOpen(mo) ? '' : 'hidden'}>`;
         lastM = mo; open = true;
       }
       const dn = daysBetween(r.date, todayISO());
@@ -84,7 +125,6 @@ export function renderMoney(root) {
     });
     if (open) html += '</div>';
   }
-  html += sheetLinks();
 
   finish(root, html);
 }
@@ -120,7 +160,6 @@ function moneyStats(y, incomes, expenses) {
     html += `<div class="section-title"><h2>${esc(L(`Μισθοδοσία ${yr}`, `Payroll ${yr}`))}</h2></div><div class="list">${Object.values(by).map((b) => { const [yy, mm] = (b.last || '').split('-').map(Number); return `<div class="row"><div class="main-col"><div class="t">${esc(b.name)}</div><div class="s">${esc(b.last ? L(`Τελευταίος μήνας: ${monthName(mm - 1)} ${yy}`, `Last month paid: ${monthName(mm - 1)} ${yy}`) : '')}</div></div><div class="v money">${esc(money(b.total))}</div></div>`; }).join('')}</div>`;
   }
 
-  html += sheetLinks();
   return html;
 }
 
@@ -128,8 +167,16 @@ function finish(root, html) {
   html += `<button class="fab" data-new aria-label="${esc(L('Νέα κίνηση', 'New entry'))}">${icon('plus')}</button>`;
   root.innerHTML = html;
   const mc = root.querySelector('#mchart'); if (mc) bindTips(mc);
-  initSegmented(root, (name, v) => { if (name === 'view') st.view = v; else st.kind = v; renderMoney(root); });
-  root.querySelectorAll('[data-m]').forEach((b) => b.addEventListener('click', () => { st.y += Number(b.dataset.m); renderMoney(root); }));
+  initSegmented(root, (name, v) => { if (name === 'view') st.view = v; else { st.kind = v; st.f = { month: st.f.month || '' }; } renderMoney(root); });
+  bindYear(() => renderMoney(root));
+  root.querySelectorAll('[data-mf]').forEach((sel) => sel.addEventListener('change', () => { st.f[sel.dataset.mf] = sel.value; if (sel.dataset.mf === 'ekind') { st.f.sub = ''; st.f.who = ''; st.f.supplier = ''; } renderMoney(root); }));
+  root.querySelector('[data-mfclear]')?.addEventListener('click', () => { st.f = {}; renderMoney(root); });
+  root.querySelectorAll('[data-mo]').forEach((b) => b.addEventListener('click', () => {
+    const mo = Number(b.dataset.mo); const list = b.nextElementSibling;
+    if (st.open.has(mo)) st.open.delete(mo); else st.open.add(mo);
+    const op = st.open.has(mo) || !!(st.q || Object.values(st.f).some(Boolean));
+    b.classList.toggle('open', op); b.setAttribute('aria-expanded', op); if (list) list.hidden = !op;
+  }));
   const mq = root.querySelector('#mq');
   mq?.addEventListener('input', () => { st.q = mq.value; const p = mq.selectionStart; renderMoney(root); const n = root.querySelector('#mq'); n.focus(); n.setSelectionRange(p, p); });
   document.querySelectorAll('[data-new]').forEach((b) => b.addEventListener('click', newEntry));
@@ -250,7 +297,7 @@ export function openExpenseForm({ expense = null, kind = null, crew_id = null, c
   const f = {
     id: x.id || null, kind: x.kind || kind || 'shop', subcategory: x.subcategory || (kind === 'shop' || (!kind && !x.kind) ? 'rent' : ''),
     crew_id: x.crew_id || crew_id || '', crew_name: x.crew_id ? '' : (x.crew_name || crew_name || ''),
-    for_month: (x.for_month || todayISO()).slice(0, 7), paid_until: x.paid_until || todayISO(), days: x.days ?? '',
+    for_month: (x.for_month || todayISO()).slice(0, 7), paid_until: x.paid_until || '', days: x.days ?? '',
     amount: x.amount != null ? String(x.amount).replace('.', ',') : '', paid_on: x.paid_on || todayISO(), method: x.method || 'cash',
     supplier: x.supplier || '', description: x.description || '', notes: x.notes || '',
   };
@@ -267,7 +314,7 @@ export function openExpenseForm({ expense = null, kind = null, crew_id = null, c
       html += `<div class="form-grid">${crewSel}<div class="field"><label>${esc(L('Για ποιον μήνα', 'For which month'))} <span class="req">*</span></label><input class="input" type="month" name="for_month" value="${esc(f.for_month)}"></div></div>`;
     } else if (f.kind === 'daily_wage') {
       const w = wageStatus().find((w) => (f.crew_id && w.crew_id === f.crew_id) || (!f.crew_id && f.crew_name && w.name.toLowerCase() === f.crew_name.toLowerCase()));
-      html += `<div class="form-grid">${crewSel}<div class="field"><label>${esc(L('Πληρωμένος μέχρι και για', 'Paid up to and including'))} <span class="req">*</span></label><input class="input" type="date" name="paid_until" value="${esc(f.paid_until)}"></div></div>
+      html += `<div class="form-grid">${crewSel}<div class="field"><label>${esc(L('Πληρωμένος μέχρι και για (προαιρετικό)', 'Paid up to and including (optional)'))}</label><input class="input" type="date" name="paid_until" value="${esc(f.paid_until)}"></div></div>
         ${w ? `<div class="banner" style="margin:0">${icon('user')}<div><b>${esc(L('Μέχρι τώρα', 'So far'))}</b><span>${esc(wageLine(w))}</span></div></div>` : ''}
         <div class="field"><label>${esc(L('Αριθμός μεροκάματων (προαιρετικό)', 'Number of days (optional)'))}</label><input class="input" name="days" inputmode="decimal" value="${esc(f.days)}" placeholder="π.χ. 2"></div>`;
     } else if (f.kind === 'shop') {
@@ -303,13 +350,12 @@ export function openExpenseForm({ expense = null, kind = null, crew_id = null, c
     const bad = (name, msg) => { toastErr(msg); body.querySelector(`[name=${name}]`)?.classList.add('invalid'); };
     if ((f.kind === 'payroll' || f.kind === 'daily_wage') && !f.crew_id && !f.crew_name) return bad('crew_id', L('Επιλέξτε μέλος ομάδας', 'Choose a team member'));
     if (f.kind === 'payroll' && !f.for_month) return bad('for_month', L('Επιλέξτε μήνα', 'Choose a month'));
-    if (f.kind === 'daily_wage' && !f.paid_until) return bad('paid_until', L('Συμπληρώστε μέχρι πότε είναι πληρωμένος', 'Fill in “paid until”'));
     if (f.kind === 'investment' && !f.description) return bad('description', L('Γράψτε περιγραφή', 'Enter a description'));
     if (f.kind === 'shop' && f.subcategory === 'misc' && !f.description) return bad('description', L('Γράψτε σημείωση', 'Enter a note'));
     if (!amount) return bad('amount', L('Γράψτε ποσό', 'Enter an amount'));
     busy(_btn, true);
     try {
-      await saveExpense({ id: f.id, kind: f.kind, subcategory: f.subcategory || null, crew_id: f.crew_id || null, crew_name: f.crew_id ? null : f.crew_name || null, for_month: f.kind === 'payroll' ? f.for_month + '-01' : null, paid_until: f.kind === 'daily_wage' ? f.paid_until : null, days: f.kind === 'daily_wage' ? parseMoney(f.days) : null, amount, paid_on: f.paid_on || todayISO(), method: f.method, supplier: f.supplier, description: f.description, notes: f.notes });
+      await saveExpense({ id: f.id, kind: f.kind, subcategory: f.subcategory || null, crew_id: f.crew_id || null, crew_name: f.crew_id ? null : f.crew_name || null, for_month: f.kind === 'payroll' ? f.for_month + '-01' : null, paid_until: f.kind === 'daily_wage' ? (f.paid_until || null) : null, days: f.kind === 'daily_wage' ? parseMoney(f.days) : null, amount, paid_on: f.paid_on || todayISO(), method: f.method, supplier: f.supplier, description: f.description, notes: f.notes });
       s.close();
       if (f.kind === 'daily_wage') { const w = wageStatus().find((w) => (f.crew_id && w.crew_id === f.crew_id) || (!f.crew_id && w.name.toLowerCase() === (f.crew_name || '').toLowerCase())); toast(L('Το μεροκάματο καταχωρήθηκε', 'Wage recorded'), { body: w ? wageLine(w) : '' , ms: 5000 }); }
       else toast(f.id ? L('Το έξοδο ενημερώθηκε', 'Expense updated') : L('Το έξοδο καταχωρήθηκε', 'Expense recorded'));

@@ -13,7 +13,27 @@ const coarse = () => window.matchMedia('(pointer: coarse)').matches;
  * cols: [{ key, label, group, w, type, get(row), display(row)->html, editable(row)->bool|bool, options(row)->[{v,el,en}], cls(row), sum: bool }]
  * opts: { id, rows, rowKey(row), rowClass(row), groups: {key: {label, cls}}, onEdit(row, col, value) → Promise, empty }
  */
+/** Ο πίνακας χωράει στο παράθυρο: το κάτω μέρος (και η οριζόντια μπάρα κύλισης) φαίνεται πάντα */
+function fitWrap(wrap) {
+  if (!wrap || !wrap.isConnected) return;
+  const top = wrap.getBoundingClientRect().top + window.scrollY;
+  const tab = document.querySelector('.tabbar');
+  const tabH = tab && getComputedStyle(tab).display !== 'none' ? tab.offsetHeight : 0;
+  const bar = document.querySelector('.topbar');
+  const barH = bar && getComputedStyle(bar).display !== 'none' ? bar.offsetHeight : 0;
+  let h = window.innerHeight - top - tabH - 14;
+  // λίγος χώρος κάτω από τα φίλτρα (π.χ. κινητό): ο πίνακας γεμίζει την οθόνη μόλις κυλήσετε λίγο τη σελίδα
+  if (h < 320) h = window.innerHeight - barH - tabH - 20;
+  wrap.style.maxHeight = `${Math.max(260, Math.round(h))}px`;
+}
+let fitBound = false;
+function bindFit() {
+  if (fitBound) return; fitBound = true;
+  let t = null;
+  window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => document.querySelectorAll('.xl-wrap').forEach(fitWrap), 120); });
+}
 export function renderGrid(container, cols, opts) {
+  bindFit();
   const { id, rows, rowKey, rowClass = () => '', groups = {}, onEdit, empty = L('Καμία εγγραφή', 'No rows') } = opts;
   const mem = (memory[id] ||= { scrollLeft: 0, scrollTop: 0, sel: null });
   const isEditable = (c, r) => (typeof c.editable === 'function' ? c.editable(r) : !!c.editable);
@@ -63,6 +83,7 @@ export function renderGrid(container, cols, opts) {
   container.innerHTML = html;
 
   const wrap = container.querySelector('.xl-wrap');
+  fitWrap(wrap);
   wrap.scrollLeft = mem.scrollLeft; wrap.scrollTop = mem.scrollTop;
   wrap.addEventListener('scroll', () => { mem.scrollLeft = wrap.scrollLeft; mem.scrollTop = wrap.scrollTop; }, { passive: true });
 

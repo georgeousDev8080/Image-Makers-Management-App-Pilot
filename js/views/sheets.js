@@ -5,7 +5,7 @@
 import { needsOffer, dutyEmoji, L, esc, icon, money, fmtDate, todayISO, daysBetween, sum, matches, lbl, COVERAGE, CATEGORIES, PHOTO_STATUS, EDIT_STATUS, VIDEO_STATUS, PCS, SHOP_STATUS, FILES_COPIED, STORED_AT, METHODS, RESOLUTIONS, EXPENSE_KINDS, SHOP_SUBS, OTHER_SUBS, MONTHS_EL_UP, monthName, monthShort, toast, confirmBox, actionSheet, segmented, initSegmented } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, saveCustomer, patchCustomer, patchPayment, patchExpense, patchEvent, saveFinance, savePayment, deletePayment, saveExpense, deleteExpense, openOffer, yearsAvailable, profileName, profileById } from '../data.js';
 import { pageHead, setTopActions } from '../layout.js';
-import { catShort } from '../components.js';
+import { pickYear, yearOf, yearSelect, bindYear, catShort } from '../components.js';
 import { toastErr as tErr } from '../core.js';
 import { renderGrid, exportGrid } from '../grid.js';
 import { openIncomeForm, openExpenseForm, expenseTitle, paymentActions, expenseActions } from './money.js';
@@ -15,7 +15,7 @@ import { barPairs, hbars, bindTips } from '../charts.js';
 import { apptSummaryHTML } from './appointments.js';
 
 const TABS = () => [
-  { v: 'main', t: L('Κεντρικό (όλα)', 'Main (all)') },
+  { v: 'main', t: 'Image Makers' },
   { v: 'clients', t: L('Πελάτες & εκδηλώσεις', 'Clients & events') },
   { v: 'payments', t: L('Πληρωμές', 'Payments') },
   { v: 'photos', t: L('Φωτογραφίες & editing', 'Photos & editing') },
@@ -48,22 +48,18 @@ export function renderSheets(root, params = {}) {
   if (!isAdmin()) return;
   const tab = params.tab || 'main';
   if (params.unpaid) st.unpaid = true;
-  const years = yearsAvailable();
-  if (!st.year) {
-    const cy = new Date().getFullYear();
-    const counts = years.map((y) => [y, [...S.events.values()].filter((e) => e.event_date.startsWith(String(y))).length]);
-    st.year = counts.find(([y]) => y === cy)?.[1] ? cy : (counts.filter(([, n]) => n).map(([y]) => y).find((y) => y >= cy) || cy);
-  }
+  // χρονιές μόνο όπου υπάρχει κάτι (εκδηλώσεις, πληρωμές, έξοδα) · η ίδια επιλογή σε όλα τα tabs
+  const { ys: years, y: selY } = pickYear([...[...S.events.values()].map((e) => yearOf(e.event_date)), ...S.payments.map((p) => yearOf(p.paid_on)), ...S.expenses.map((x) => yearOf(x.paid_on))]);
+  st.year = selY;
   const tabs = TABS();
   // Το Mitsos είναι ξεχωριστή σελίδα (μενού), χωρίς τις καρτέλες των υπόλοιπων φύλλων
   const cur = tab === 'mitsos' ? { v: 'mitsos', t: 'Dimitris' } : (tabs.find((t) => t.v === tab) || tabs[0]);
-  const yearSel = `<select class="select" id="yr" style="min-height:36px;padding:6px 34px 6px 12px;width:auto;font-weight:650">${years.map((y) => `<option ${y === st.year ? 'selected' : ''}>${y}</option>`).join('')}</select>`;
-  setTopActions(yearSel);
+  setTopActions(yearSelect(years, st.year));
   let html = pageHead(cur.v === 'mitsos' ? 'Dimitris · Editing Workflow' : `${cur.t} ${st.year}`, { sub: '' });
   if (cur.v !== 'mitsos') html += `<div class="sheet-tabs" style="position:static;margin:-8px 0 12px">${tabs.map((t) => `<a href="#/sheets/${t.v}" class="${t.v === cur.v ? 'active' : ''} ${t.cls || ''}">${esc(t.t)}</a>`).join('')}</div>`;
   html += `<div id="sheetBody"></div>`;
   root.innerHTML = html;
-  document.getElementById('yr')?.addEventListener('change', (e) => { st.year = Number(e.target.value); renderSheets(root, params); });
+  bindYear(() => renderSheets(root, params));
   const body = root.querySelector('#sheetBody');
   const fn = { main: eventsSheet, clients: eventsSheet, payments: eventsSheet, photos: eventsSheet, register: registerSheet, expenses: expensesSheet, summary: summarySheet, dashboard: dashboardSheet, checks: checksSheet, mitsos: mitsosSheet }[cur.v];
   fn(body, cur.v, () => renderSheets(root, params));
@@ -138,8 +134,8 @@ function eventsSheet(body, tab, redraw) {
     cols.push({ group: 'fin', key: 'paidok', label: L('Εξόφληση OK', 'Paid OK'), w: 92, align: 'center', get: (v) => (v.fullyPaid ? L('Ναι', 'Yes') : L('Όχι', 'No')), display: (v) => v.price == null ? '<span class="muted">—</span>' : v.fullyPaid ? `<span class="pill green">✓ ${esc(L('Ναι', 'Yes'))}</span>` : esc(L('Όχι', 'No')) });
   }
   add('photo', { key: 'pst', label: L('Κατάσταση Φωτογραφίες', 'Photos status'), w: 220, type: 'select', blank: false, options: PHOTO_STATUS, editable: true, get: (v) => v.e.photo_status, set: async (v, val) => { const before = v.e.editing_status; const u = await patchEvent(v.e.id, { photo_status: val }); if (u.editing_status !== before) toast(L('Το editing έγινε «Να γίνει» αυτόματα', 'Editing auto-set to “To do”'), { type: 'info' }); } });
-  add('photo', { key: 'est', label: L('Κατάσταση Editing', 'Editing status'), w: 130, type: 'select', blank: false, options: EDIT_STATUS, editable: true, get: (v) => v.e.editing_status, set: (v, val) => patchEvent(v.e.id, { editing_status: val }) });
-  add('photo', { key: 'pc', label: L('Υπολογιστής μοντάζ', 'Editing computer'), w: 120, type: 'select', options: PCS, editable: true, get: (v) => v.e.editing_pc, set: (v, val) => patchEvent(v.e.id, { editing_pc: val }) });
+  // Κατάσταση Editing = καθρέφτης της «Κατάστασης Βίντεο» του φύλλου Dimitris (αλλάζει μόνο αυτόματα)
+  add('photo', { key: 'est', label: L('Κατάσταση Editing', 'Editing status'), w: 130, type: 'select', blank: false, options: EDIT_STATUS, editable: false, get: (v) => v.e.editing_status, title: L('Αλλάζει αυτόματα από την «Κατάσταση Βίντεο» του φύλλου Dimitris', 'Changes automatically from the Dimitris “Video status”') });
   add('photo', { key: 'vnotes', label: L('Σχόλια Βίντεο', 'Video notes'), w: 220, editable: true, get: (v) => v.e.video_notes, set: (v, val) => patchEvent(v.e.id, { video_notes: val }) });
   add('money', { key: 'paid', label: L('Σύνολο Εισπράξεων', 'Total collected'), w: 112, type: 'money', sum: true, get: (v) => v.paid });
   add('money', { key: 'bal', label: L('Υπόλοιπο προς Είσπραξη', 'Balance due'), w: 112, type: 'money', sum: (v) => Math.max(0, v.balance || 0), get: (v) => v.balance, cls: (v) => (v.balance > 0 && v.e.event_date < todayISO() ? 'neg' : '') });
@@ -187,11 +183,10 @@ const isSOS = (e) => e.coverage !== 'photo' && ['lab', 'ready', 'delivered'].inc
 const MONTH_COLORS = ['#3d6fb6', '#1f6b45', '#4f9a5b', '#bfe3b4', '#a8d67a', '#e6c84f', '#f0a34a', '#e2763d', '#c95b4a', '#9b5bb5', '#6b6fc7', '#5a8fd6'];
 const MONTH_DARK = [true, true, true, false, false, false, false, true, true, true, true, true];
 /** Προτεραιότητα (= Κατάσταση editing του Excel): αλλάζει μόνο αυτόματα */
-const priority = (e) => (e.editing_status === 'done' ? { v: 'done', el: 'Έτοιμο', en: 'Ready', tone: 'green' }
-  : isSOS(e) ? { v: 'sos', el: 'SOS', en: 'SOS', tone: 'solid-red' }
+// Δείχνει μόνο SOS ή «Να γίνει»· το «υπό επεξεργασία» φαίνεται ήδη στην Κατάσταση Βίντεο
+const priority = (e) => (isSOS(e) ? { v: 'sos', el: 'SOS', en: 'SOS', tone: 'solid-red' }
   : e.editing_status === 'todo' ? { v: 'todo', el: 'Να γίνει', en: 'To do', tone: 'orange' }
-  : e.editing_status === 'in_progress' ? { v: 'in_progress', el: 'Σε επεξεργασία', en: 'In progress', tone: 'blue' }
-  : { v: 'none', el: '—', en: '—', tone: 'grey' });
+  : { v: 'none', el: '', en: '', tone: 'grey' });
 function mitsosSheet(body, tab, redraw) {
   if (isVideoAdmin() && (S.profile?.username === 'dimitris' || /^Δημήτρ/.test(S.profile?.full_name || '')) && st.q.trim().toLowerCase() === 'diva') {
     st.q = ''; import('../diva.js').then((m) => m.showDiva());
@@ -212,17 +207,17 @@ function mitsosSheet(body, tab, redraw) {
       display: (v) => `<span class="tchip cat-${v.e.category}" style="background:var(--c);color:#fff">${esc(catShort(v.e.category).toLocaleUpperCase('el-GR').normalize('NFD').replace(/\p{M}/gu, ''))}</span>` },
     { key: 'loc', label: L('ΤΟΠΟΘΕΣΙΑ', 'LOCATION'), w: 220, align: 'center', get: (v) => v.e.church_location || '',
       display: (v) => `<a href="#/event/${v.e.id}" class="dim-loc" title="${esc(v.title)}">${esc(v.e.church_location || '—')}</a>` },
+    { key: 'files', label: L('Περασμένα αρχεία', 'Files copied'), w: 120, type: 'select', chips: true, options: FILES_COPIED, editable: true, get: (v) => v.e.files_copied, set: (v, val) => patchEvent(v.e.id, { files_copied: val }) },
     { key: 'vst', label: L('Κατάσταση Βίντεο', 'Video status'), w: 190, type: 'select', chips: true, blank: false, options: VIDEO_STATUS, editable: true,
       get: (v) => v.e.video_status || 'not_ready', set: (v, val) => patchEvent(v.e.id, { video_status: val || 'not_ready' }) },
     { key: 'prio', label: L('Προτεραιότητα', 'Priority'), w: 130, align: 'center', get: (v) => L(priority(v.e).el, priority(v.e).en),
       display: (v) => { const p = priority(v.e); return p.v === 'none' ? '<span class="ph"></span>' : `<span class="tchip t-${p.tone}${p.v === 'sos' ? ' sos-pulse' : ''}">${esc(L(p.el, p.en))}</span>`; } },
     { key: 'shop', label: L('Είναι στο μαγαζί;', 'In the shop?'), w: 200, type: 'select', chips: true, options: SHOP_STATUS, editable: true, get: (v) => v.e.shop_status, set: (v, val) => patchEvent(v.e.id, { shop_status: val }) },
     { key: 'pc', label: L('Υπολογιστής', 'Computer'), w: 110, type: 'select', chips: true, options: PCS, editable: true, get: (v) => v.e.editing_pc, set: (v, val) => patchEvent(v.e.id, { editing_pc: val }) },
-    { key: 'files', label: L('Περασμένα αρχεία', 'Files copied'), w: 120, type: 'select', chips: true, options: FILES_COPIED, editable: true, get: (v) => v.e.files_copied, set: (v, val) => patchEvent(v.e.id, { files_copied: val }) },
     { key: 'stored', label: L('Αποθηκευμένο σε', 'Stored at'), w: 120, type: 'select', chips: true, options: STORED_AT, editable: true, get: (v) => v.e.stored_at, set: (v, val) => patchEvent(v.e.id, { stored_at: val }) },
     { key: 'vn', label: L('Σχόλια', 'Comments'), w: 240, editable: true, get: (v) => v.e.video_notes, set: (v, val) => patchEvent(v.e.id, { video_notes: val }) },
   ];
-  body.innerHTML = `<div class="banner">${icon('film')}<div><b>${esc(L('Πώς δουλεύει το Editing Workflow', 'How the Editing Workflow works'))}</b><span>${esc(L('Κάθε εκδήλωση μπαίνει εδώ μόλις κλειστεί. Η «Προτεραιότητα» αλλάζει μόνη της: φωτογραφίες σε «Αλλαγές» → «Να γίνει» (με ειδοποίηση) · album σε «Εκτύπωση στο εργαστήριο» → SOS (κόκκινη γραμμή). Γίνεται «Έτοιμο» (και στο μεγάλο Excel) μόνο όταν η Κατάσταση Βίντεο είναι «έτοιμο» και το «Είναι στο μαγαζί;» είναι «παραδόθηκε στο μαγαζί». Πατήστε την τοποθεσία για να ανοίξει η εκδήλωση.', 'Every event appears here once booked. “Priority” changes by itself: photos to “Changes” → “To do” (with a notification) · album to the lab → SOS (red row). It becomes “Ready” (also in the main Excel) only when Video status is “ready” and “In the shop?” is “delivered to the shop”. Tap the location to open the event.'))}</span></div></div>`
+  body.innerHTML = `<div class="banner">${icon('film')}<div><b>${esc(L('Πώς δουλεύει το Editing Workflow', 'How the Editing Workflow works'))}</b><span>${esc(L('Κάθε εκδήλωση μπαίνει εδώ μόλις κλειστεί. Η «Προτεραιότητα» αλλάζει μόνη της: φωτογραφίες σε «Αλλαγές» → «Να γίνει» (με ειδοποίηση) · album σε «Εκτύπωση στο εργαστήριο» → SOS (κόκκινη γραμμή). Η «Κατάσταση Editing» του μεγάλου Excel ακολουθεί την Κατάσταση Βίντεο: υπό επεξεργασία / έτοιμο να γίνει export → «Σε επεξεργασία» · «Ολοκληρώθηκε» μόνο όταν η Κατάσταση Βίντεο είναι «έτοιμο» και το «Είναι στο μαγαζί;» είναι «παραδόθηκε στο μαγαζί». Πατήστε την τοποθεσία για να ανοίξει η εκδήλωση.', 'Every event appears here once booked. “Priority” changes by itself: photos to “Changes” → “To do” (with a notification) · album to the lab → SOS (red row). The main Excel “Editing status” follows Video status: in progress / ready for export → “In progress” · “Done” only when Video status is “ready” and “In the shop?” is “delivered to the shop”. Tap the location to open the event.'))}</span></div></div>`
     + toolbar({ months: false, cats: false, extra: segmented('mf', [{ v: 'all', label: L('Όλα', 'All') }, { v: 'open', label: L(`Εκκρεμή (${counts.open})`, `Pending (${counts.open})`) }, { v: 'sos', label: `SOS (${counts.sos})` }], st.mitsosFilter) }) + '<div id="grid" class="dim-grid"></div>';
   bindToolbar(body, redraw);
   initSegmented(body, (_, v) => { st.mitsosFilter = v; redraw(); });
@@ -326,8 +321,7 @@ function summarySheet(body) {
     <div><div class="group-label" style="margin-top:0">${esc(L('Δείκτες', 'Indicators'))}</div>${tbl([L('Δείκτης', 'Indicator'), L('Τιμή', 'Value')], [
       [esc(L('Σύνολο εκδηλώσεων', 'Total events')), s.views.length],
       [esc(L('Συνολική αξία πακέτων (καταχωρημένη)', 'Total package value (recorded)')), m(s.value)],
-      [esc(L('Εισπράξεις εκδηλώσεων του έτους', 'Collected for this year’s events')), m(s.evPaid)],
-      [esc(L('Πραγματικά εισπραχθέντα μέσα στο έτος', 'Actually collected during the year')), m(s.collected)],
+      [esc(L('Εισπραχθέντα', 'Collected')), m(s.collected)],
       [esc(L('Ανοιχτό υπόλοιπο', 'Open balance')), m(s.open)],
       [esc(L('Σύνολο εξόδων', 'Total expenses')), m(s.spent)],
       [esc(L('Καθαρή ταμειακή διαφορά', 'Net cash difference')), `<b>${m(s.collected - s.spent)}</b>`],

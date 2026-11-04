@@ -1,10 +1,10 @@
 // =====================================================================
 //  Εκδηλώσεις: λίστα & λεπτομέρειες
 // =====================================================================
-import { evDays, evOverlaps, evEnd, isMultiDay, fmtRange, dayCount, needsOffer, L, esc, icon, money, fmtDate, fmtDateLong, fmtTime, todayISO, daysBetween, matches, mapsUrl, telUrl, smsUrl, mailUrl, lbl, CATEGORIES, RESOLUTIONS, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, options, segmented, initSegmented, segValue, sheet, confirmBox, promptBox, toastErr, actionSheet, toast, download, icsFor, busy, monthName } from '../core.js';
+import { VIDEO_STATUS, evDays, evOverlaps, evEnd, isMultiDay, fmtRange, dayCount, needsOffer, L, esc, icon, money, fmtDate, fmtDateLong, fmtTime, todayISO, daysBetween, matches, mapsUrl, telUrl, smsUrl, mailUrl, lbl, CATEGORIES, RESOLUTIONS, PHOTO_STATUS, EDIT_STATUS, PCS, METHODS, options, segmented, initSegmented, segValue, sheet, confirmBox, promptBox, toastErr, actionSheet, toast, download, icsFor, busy, monthName } from '../core.js';
 import { S, isAdmin, isVideoAdmin, allEventViews, eventView, coupleName, profileName, patchEvent, deleteEvent, setCrew, saveCrewBrief, absencesOn, absenceWhen, openOffer, deletePayment, myEventIds } from '../data.js';
 import { pageHead, setTopActions, emptyState, go, backBtn, UI } from '../layout.js';
-import { dutyPicker, crewBriefTexts, eventHasDrone, eventRow, catPill, offerSummaryHTML, crewBriefHTML, crewChips, avatar, photoStatusPill, editStatusPill } from '../components.js';
+import { pickYear, yearOf, yearSelect, bindYear, dutyPicker, crewBriefTexts, eventHasDrone, eventRow, catPill, offerSummaryHTML, crewBriefHTML, crewChips, avatar, photoStatusPill, editStatusPill } from '../components.js';
 import { openIncomeForm } from './money.js';
 import { pickLocation, geoUrl } from '../mappicker.js';
 import { editOfferForEvent, uploadPdfForEvent } from '../offer.js';
@@ -17,6 +17,10 @@ export function renderEvents(root, params = {}) {
   const today = todayISO();
   const mine = myEventIds();
   let list = allEventViews().filter((v) => admin || mine.has(v.e.id));
+  // όλο το tab αφορά την επιλεγμένη χρονιά (μόνο χρονιές με εκδηλώσεις)
+  const { ys, y: selY } = pickYear(list.map((v) => yearOf(v.e.event_date)));
+  list = list.filter((v) => yearOf(v.e.event_date) === selY || (isMultiDay(v.e) && yearOf(v.e.end_date) === selY));
+  setTopActions(yearSelect(ys, selY));
   if (params.filter === 'nocrew') { st.when = 'upcoming'; }
   list = list.filter((v) => {
     if (st.when === 'upcoming' && evEnd(v.e) < today) return false;
@@ -65,6 +69,7 @@ export function renderEvents(root, params = {}) {
   const q = root.querySelector('#q');
   q.addEventListener('input', () => { st.q = q.value; const pos = q.selectionStart; renderEvents(root, params); const nq = root.querySelector('#q'); nq.focus(); nq.setSelectionRange(pos, pos); });
   initSegmented(root, (_, v) => { st.when = v; renderEvents(root, params); });
+  bindYear((y) => { if (y !== new Date().getFullYear()) st.when = 'all'; renderEvents(root, params); });
   root.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { st.cat = b.dataset.cat; renderEvents(root, params); }));
 }
 
@@ -168,10 +173,10 @@ export function renderEventDetail(root, { id }) {
     html += `<div class="group-label">${esc(L('Παραγωγή', 'Production'))}</div>`;
     html += `<div class="card pad"><div class="form-grid">
       <div class="field"><label>${esc(L('Κατάσταση φωτογραφιών', 'Photos status'))}</label><select class="select" data-patch="photo_status">${options(PHOTO_STATUS, e.photo_status)}</select></div>
-      <div class="field"><label>${esc(L('Κατάσταση editing', 'Editing status'))}</label><select class="select" data-patch="editing_status">${options(EDIT_STATUS, e.editing_status)}</select></div>
+      ${e.coverage === 'photo' ? '' : `<div class="field"><label>${esc(L('Κατάσταση βίντεο', 'Video status'))}</label><select class="select" data-patch="video_status">${options(VIDEO_STATUS, e.video_status || 'not_ready')}</select><div class="help">${esc(L('Κατάσταση editing (αυτόματα)', 'Editing status (automatic)'))}: <b>${esc(lbl(EDIT_STATUS, e.editing_status))}</b></div></div>`}
       ${isVideoAdmin() ? `<div class="field"><label>${esc(L('Υπολογιστής μοντάζ', 'Editing computer'))}</label><select class="select" data-patch="editing_pc">${options(PCS, e.editing_pc, { blank: '—' })}</select></div>
       <div class="field"><label>${esc(L('Σχόλια βίντεο', 'Video notes'))}</label><input class="input" data-patch="video_notes" value="${esc(e.video_notes || '')}"></div>` : ''}
-    </div><div class="help mt-s">${esc(L('Όταν οι φωτογραφίες γίνουν «Αλλαγές», το editing γίνεται αυτόματα «Να γίνει».', 'When photos become “Changes”, editing automatically becomes “To do”.'))}</div></div>`;
+    </div><div class="help mt-s">${esc(L('Το editing ακολουθεί αυτόματα την κατάσταση βίντεο (φύλλο Dimitris). Όταν οι φωτογραφίες γίνουν «Αλλαγές» και το βίντεο δεν έχει ξεκινήσει, γίνεται «Να γίνει».', 'Editing follows the video status (Dimitris sheet). When photos become “Changes” and the video has not started, it becomes “To do”.'))}</div></div>`;
   }
 
   if (e.notes) html += `<div class="group-label">${esc(['promo', 'other'].includes(e.category) ? L('Σχόλια', 'Comments') : L('Σημειώσεις', 'Notes'))}</div><div class="card pad" style="white-space:pre-wrap">${esc(e.notes)}</div>`;

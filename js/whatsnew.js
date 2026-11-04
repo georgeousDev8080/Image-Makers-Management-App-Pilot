@@ -8,6 +8,18 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.8', date: '04/11/2026',
+    items: [
+      ['📅', 'Επιλογή χρονιάς πάνω δεξιά στα Ημερολόγιο, Εκδηλώσεις, Προσφορές / Ραντεβού, Κατάσταση Εργασιών, Έσοδα & Έξοδα και Φύλλα (Excel). Κάθε tab δείχνει μόνο ό,τι αφορά τη χρονιά και εμφανίζονται μόνο χρονιές που έχουν δεδομένα.', 'Year picker at the top right of Calendar, Events, Offers / Appointments, Work status, Income & Expenses and Sheets. Each tab shows only that year, and only years with data are listed.'],
+      ['🤝', 'Προσφορές / Ραντεβού: «Δια ζώσης» αντί για «Παρουσίαση στο μαγαζί», χωρίς το ποσοστό κλεισίματος στις κάρτες· τα confirmed / rejected / σε αναμονή ανοίγουν με βελάκι. Η λίστα ραντεβού είναι κρυμμένη και εμφανίζεται με το ματάκι.', 'Offers / Appointments: “In person” instead of “In-store presentation”, no win rate on the cards; confirmed / rejected / pending open with an arrow. The appointment list is hidden and shown with the eye.'],
+      ['🎬', 'Η «Κατάσταση editing» του μεγάλου Excel ακολουθεί πλέον την «Κατάσταση Βίντεο» του Dimitris (υπό επεξεργασία / export / έτοιμο → «Σε επεξεργασία», έτοιμο και παραδόθηκε στο μαγαζί → «Ολοκληρώθηκε»). Αν κάτι γυρίσει πίσω, όλα διορθώνονται αυτόματα. Η «Προτεραιότητα» δείχνει μόνο SOS ή «Να γίνει».', 'The main Excel “Editing status” now follows the Dimitris “Video status” (in progress / export / ready → “In progress”, ready and delivered to the shop → “Done”). If something is set back, everything follows automatically. “Priority” shows only SOS or “To do”.'],
+      ['🗂️', 'Κατάσταση Εργασιών: φίλτρα για Μήνα, Κατάσταση Φωτογραφιών και Κατάσταση Video, ο Μήνας πρώτα. Το Video εδώ είναι το ίδιο με το φύλλο Dimitris.', 'Work status: filters for Month, Photos status and Video status, Month first. Video here is the same as the Dimitris sheet.'],
+      ['📊', 'Φύλλα: το Κεντρικό λέγεται «Image Makers», έφυγε η στήλη «Υπολογιστής μοντάζ», οι πίνακες χωράνε στο παράθυρο (φαίνεται η μπάρα κύλισης) και στο Dimitris τα «Περασμένα αρχεία» είναι πριν από την Κατάσταση Βίντεο. Σύνοψη: μόνο «Εισπραχθέντα».', 'Sheets: Main is now “Image Makers”, the “Editing computer” column was removed, tables fit the window (scroll bar visible) and in Dimitris “Files copied” comes before Video status. Summary: only “Collected”.'],
+      ['💶', 'Έσοδα & Έξοδα: τα κουμπιά Μητρώο / Φύλλο Εξόδων / Dashboard πάνω, μήνες που ανοίγουν με βελάκι (ανοιχτός ο τρέχων), φίλτρα εσόδων (προκαταβολές, 1η / 2η δόση…, κατηγορία, τρόπος) και εξόδων (είδος, υποκατηγορία, μέλος, προμηθευτής, τρόπος). Το «Πληρωμένος μέχρι και» είναι προαιρετικό.', 'Income & Expenses: Register / Expenses sheet / Dashboard buttons on top, months that open with an arrow (current one open), income filters (deposits, 1st / 2nd installment…, category, method) and expense filters (type, subcategory, member, supplier, method). “Paid up to” is optional.'],
+      ['✉️', 'Μηνύματα προς πελάτες: όσα αφορούσαν εκδηλώσεις του 2026 και παλιότερα σημειώθηκαν ως απεσταλμένα και πέρασαν στο Ιστορικό.', 'Client messages: those for 2026 and earlier events were marked as sent and moved to History.'],
+    ],
+  },
+  {
     v: '1.7.6', date: '03/11/2026',
     items: [
       ['🔎', 'Next day / Ευχολόγιο: η επιλογή εκδήλωσης δείχνει πλέον μόνο τις εκδηλώσεις των τελευταίων και των επόμενων 2 εβδομάδων και έχει αναζήτηση (όνομα, τοποθεσία, ημερομηνία) για όλες τις υπόλοιπες.', 'Next day / Blessing: the event picker now shows only the events of the last and next 2 weeks, with a search (name, place, date) for all others.'],

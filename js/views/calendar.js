@@ -5,8 +5,8 @@
 import { evDays, evEnd, isMultiDay, fmtDate, CATEGORIES, L, esc, icon, toISO, parseISO, todayISO, addDays, monthName, fmtDateLong, fmtTime, LANG, DOW_SHORT_EL, DOW_SHORT_EN, segmented, initSegmented } from '../core.js';
 import { S, isAdmin, allEventViews, myEventIds, profileName, absenceWhen } from '../data.js';
 import { openAbsenceSheet, absenceActions, absenceText, groupAbsences } from './absences.js';
-import { pageHead } from '../layout.js';
-import { eventRow, catShort } from '../components.js';
+import { pageHead, setTopActions } from '../layout.js';
+import { eventRow, catShort, yearOf, yearSelect, yearState } from '../components.js';
 import { openSessionSheet, sessionActions, sessionTitle, sessionTip, sessionEmoji } from './sessions.js';
 import { openScheduleSheet, scheduledActions, apptFor, apptName, openAppointment } from './appointments.js';
 import { go } from '../layout.js';
@@ -309,6 +309,10 @@ export function renderCalendar(root, params = {}) {
   const modes = [{ v: 'day', label: L('Ημέρα', 'Day') }, { v: 'week', label: L('Εβδομάδα', 'Week') }, { v: 'month', label: L('Μήνας', 'Month') }, { v: 'year', label: L('Χρόνος', 'Year') }, { v: 'list', label: L('Πρόγραμμα', 'Schedule') }];
   const actions = `<button class="btn" data-absence>🚫 <span class="hide-mobile">${esc(L('Δήλωση απουσίας', 'Declare absence'))}</span></button>${admin ? `<button class="btn primary cal-plus" data-plus="${st.sel}" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(L('Νέο', 'New'))}" title="${esc(L('Νέα εκδήλωση, ραντεβού, Next day, Ευχολόγιο, Meeting, Άλλο', 'New event, appointment, Next day, blessing, meeting, other'))}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v15M4.5 12h15"/></svg></button>` : ''}`;
   let html = pageHead(L('Ημερολόγιο', 'Calendar'), { actions });
+  // Επιλογή χρονιάς: πάει στον ίδιο μήνα της χρονιάς (μόνο χρονιές που έχουν κάτι)
+  const shownY = yearOf(st.sel);
+  const calYears = new Set([shownY, ...views.map((v) => yearOf(v.e.event_date)), ...XS.map((x) => yearOf(x.date)), ...S.absences.map((a) => yearOf(a.day))].filter(Boolean));
+  setTopActions(yearSelect([...calYears], shownY));
 
   html += `<div class="gc-bar">
       <button class="btn small" data-nav="0">${esc(L('Σήμερα', 'Today'))}</button>
@@ -333,6 +337,12 @@ export function renderCalendar(root, params = {}) {
   initSegmented(root, (_, v) => { st.mode = v; renderCalendar(root); });
   root.querySelectorAll('[data-plus]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); if (document.querySelector('.plus-menu')) { document.querySelector('.plus-menu').remove(); b.setAttribute('aria-expanded', 'false'); return; } openPlusMenu(b, b.dataset.plus); }));
   root.querySelectorAll('[data-x]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); xClick(b.dataset.x); }));
+  document.querySelectorAll('[data-year]').forEach((sel) => sel.addEventListener('change', (e) => {
+    const y = Number(e.target.value); yearState.y = y;
+    const d = parseISO(st.sel); st.sel = toISO(new Date(y, d.getMonth(), Math.min(d.getDate(), 28)));
+    if (st.mode === 'day' || st.mode === 'week') st.mode = 'month';
+    renderCalendar(root);
+  }));
   root.querySelector('[data-absence]')?.addEventListener('click', () => openAbsenceSheet({ day: st.sel }));
   root.querySelectorAll('[data-abs]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); absenceActions(S.absences.find((a) => a.id === b.dataset.abs)); }));
   root.querySelectorAll('[data-yday]').forEach((b) => b.addEventListener('click', () => { st.sel = b.dataset.yday; st.mode = 'day'; renderCalendar(root); }));

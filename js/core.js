@@ -317,6 +317,7 @@ const P = {
   backspace: '<path d="M8.5 5H20a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 20 19H8.5L2.5 12Z"/><path d="m11.5 9.5 5 5M16.5 9.5l-5 5"/>',
   print: '<path d="M7 9V3.5h10V9M7 17.5H5A1.5 1.5 0 0 1 3.5 16v-5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v5a1.5 1.5 0 0 1-1.5 1.5h-2"/><rect x="7" y="14" width="10" height="7" rx="1"/>',
   eye: '<path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z"/><circle cx="12" cy="12" r="3"/>',
+  eyeOff: '<path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 9.5 7 9.5 7a17 17 0 0 1-2.6 3.5M6.6 6.6C3.9 8.3 2.5 12 2.5 12S6 19 12 19a9.6 9.6 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="m3 3 18 18"/>',
   image: '<rect x="3" y="3.5" width="18" height="17" rx="3"/><circle cx="9" cy="9.5" r="2"/><path d="m21 15.5-5-5L5 20.5"/>',
   install: '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M12 7v7M9 11l3 3 3-3M10.5 18.5h3"/>',
   sms: '<path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 20.5l1.5-5A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 11.5h.1M12 11.5h.1M16 11.5h.1"/>',
@@ -361,7 +362,7 @@ export const SESSION_KINDS = [
 ];
 export const sessionLabel = (k) => { const o = SESSION_KINDS.find((x) => x.v === k); return o ? L(o.el, o.en) : k; };
 export const APPT_MODES = [
-  { v: 'store', el: 'Παρουσίαση στο μαγαζί', en: 'In-store presentation', icon: 'store' },
+  { v: 'store', el: 'Δια ζώσης', en: 'In person', icon: 'store' },
   { v: 'online', el: 'Ηλεκτρονική παρουσίαση', en: 'Online presentation', icon: 'link' },
 ];
 export const APPT_STATUS = [

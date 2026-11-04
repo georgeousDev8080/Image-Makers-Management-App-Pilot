@@ -247,3 +247,21 @@ export function dutyPicker(uid, duty, drone, coverage = 'both') {
   if (duty === 'drone') opts.push({ v: 'drone', label: L('Μόνο drone', 'Drone only') });
   return `<div class="duty-pick">${segmented('d_' + uid, opts, duty)}${duty === 'drone' ? '' : `<button type="button" class="drone-tg ${drone ? 'on' : ''}" data-drone="${uid}" aria-pressed="${drone ? 'true' : 'false'}">${drone ? '✓ ' : '+ '}Drone</button>`}</div>`;
 }
+
+// ---------- Επιλογή χρονιάς (κοινή σε όλα τα tabs με ημερομηνίες) ----------
+export const yearState = { y: null };
+/** Χρονιές που έχουν δεδομένα → επιλεγμένη χρονιά (η ίδια σε όλα τα tabs όσο υπάρχει) */
+export function pickYear(years) {
+  const cy = new Date().getFullYear();
+  const ys = [...new Set(years.map(Number).filter((y) => y > 1990 && y < 2200))].sort((a, b) => a - b);
+  if (!ys.length) ys.push(cy);
+  if (!ys.includes(yearState.y)) yearState.y = ys.includes(cy) ? cy : (ys.find((y) => y > cy) ?? ys[ys.length - 1]);
+  return { ys, y: yearState.y };
+}
+export const yearOf = (d) => Number(String(d || '').slice(0, 4)) || null;
+export function yearSelect(ys, y) {
+  return `<label class="year-pick" title="${esc(L('Χρονιά', 'Year'))}"><select class="select" data-year aria-label="${esc(L('Χρονιά', 'Year'))}">${[...ys].sort((a, b) => b - a).map((v) => `<option value="${v}" ${v === y ? 'selected' : ''}>${v}</option>`).join('')}</select></label>`;
+}
+export function bindYear(onChange) {
+  document.querySelectorAll('[data-year]').forEach((sel) => sel.addEventListener('change', (e) => { yearState.y = Number(e.target.value); onChange(yearState.y); }));
+}

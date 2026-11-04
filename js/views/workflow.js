@@ -3,12 +3,13 @@
 //  Αντίγραφο του Excel μόνο για Κατάσταση Φωτογραφιών & Κατάσταση Video.
 //  Ό,τι αλλάζει εδώ αλλάζει και στο Excel (και στο Dimitris για το video).
 // =====================================================================
-import { L, esc, icon, fmtDate, todayISO, daysBetween, matches, lbl, options, PHOTO_STATUS, EDIT_STATUS, WF_RULES, MONTHS_EL_UP, CHANNELS, sheet, toast, toastErr, confirmBox, copyText, smsUrl, mailUrl, waUrl, viberUrl, timeAgo, busy } from '../core.js';
+import { VIDEO_STATUS, L, esc, icon, fmtDate, todayISO, daysBetween, matches, lbl, options, PHOTO_STATUS, EDIT_STATUS, WF_RULES, MONTHS_EL_UP, CHANNELS, sheet, toast, toastErr, confirmBox, copyText, smsUrl, mailUrl, waUrl, viberUrl, timeAgo, busy } from '../core.js';
 import { S, allEventViews, eventView, patchEvent, logSentMessage, yearsAvailable, saveWfTemplate, deleteWfTemplate } from '../data.js';
 import { pageHead, emptyState, setTopActions } from '../layout.js';
 import { renderText } from './outbox.js';
+import { pickYear, yearOf, yearSelect, bindYear } from '../components.js';
 
-const st = { year: null, q: '', filter: 'active' };
+const st = { year: null, q: '', filter: 'active', month: '', ph: '', vid: '' };
 
 /** Πόσες ημέρες είναι το έργο στο τρέχον στάδιο και τι χρώμα παίρνει */
 export function wfLevel(e, today = todayISO()) {
@@ -25,13 +26,12 @@ export const wfLateCount = () => [...S.events.values()].filter((e) => wfLevel(e)
 const monthUp = (iso) => (iso ? MONTHS_EL_UP[Number(iso.slice(5, 7)) - 1] : '');
 
 export function renderWorkflow(root) {
-  const years = yearsAvailable();
-  if (!st.year) st.year = new Date().getFullYear();
   const today = todayISO();
-  // «Σε εξέλιξη» και «Καθυστερήσεις»: όλες οι κλεισμένες εκδηλώσεις, κάθε χρονιάς (μπαίνουν εδώ μόλις κλειστούν)
-  // «Παραδόθηκαν» και «Όλες»: ανά χρονιά
-  const byYear = (k) => k === 'done' || k === 'all';
-  setTopActions(byYear(st.filter) ? `<select class="select" id="wy" style="min-height:36px;padding:6px 34px 6px 12px;width:auto;font-weight:650">${years.map((y) => `<option ${y === st.year ? 'selected' : ''}>${y}</option>`).join('')}</select>` : '');
+  // όλο το tab αφορά την επιλεγμένη χρονιά (μόνο χρονιές που έχουν εκδηλώσεις)
+  const { ys: years, y: selY } = pickYear([...S.events.values()].filter((e) => e.status !== 'cancelled').map((e) => yearOf(e.event_date)));
+  st.year = selY;
+  const byYear = () => true;
+  setTopActions(yearSelect(years, st.year));
   const lvl = (list) => list.map((v) => ({ v, ...wfLevel(v.e, today) }));
   const allRows = lvl(allEventViews({ includeCancelled: false }));
   const yearRows = allRows.filter((r) => String(r.v.e.event_date).startsWith(String(st.year)));
@@ -42,27 +42,38 @@ export function renderWorkflow(root) {
     all: () => true,
   };
   const count = (k) => (byYear(k) ? yearRows : allRows).filter(f[k]).length;
-  let rows = (byYear(st.filter) ? yearRows : allRows).filter(f[st.filter]).filter((r) => matches(st.q, r.v.title, r.v.e.church_location, fmtDate(r.v.e.event_date), lbl(PHOTO_STATUS, r.v.e.photo_status), lbl(EDIT_STATUS, r.v.e.editing_status)));
+  const colF = (r) => (!st.month || r.v.e.event_date.slice(5, 7) === st.month)
+    && (!st.ph || (r.v.e.coverage !== 'video' && (r.v.e.photo_status || 'samples_todo') === st.ph))
+    && (!st.vid || (r.v.e.coverage !== 'photo' && (r.v.e.video_status || 'not_ready') === st.vid));
+  let rows = (byYear(st.filter) ? yearRows : allRows).filter(f[st.filter]).filter(colF).filter((r) => matches(st.q, r.v.title, r.v.e.church_location, fmtDate(r.v.e.event_date), lbl(PHOTO_STATUS, r.v.e.photo_status), lbl(VIDEO_STATUS, r.v.e.video_status)));
+  const monthsHere = [...new Set(yearRows.map((r) => r.v.e.event_date.slice(5, 7)))].sort();
+  const fsel = (id, all, opts, val) => `<label class="wf-filter ${val ? 'on' : ''}"><select class="select" id="${id}">${[`<option value="">${esc(all)}</option>`, ...opts.map(([v, t]) => `<option value="${v}" ${v === val ? 'selected' : ''}>${esc(t)}</option>`)].join('')}</select></label>`;
   const rank = { late: 0, warn: 1, '': 2 };
   rows.sort((a, b) => (st.filter === 'late' ? rank[a.level] - rank[b.level] : 0) || a.v.e.event_date.localeCompare(b.v.e.event_date));
 
   let html = pageHead(L('Κατάσταση Εργασιών', 'Work status'), { sub: esc(L('Φωτογραφίες και video κάθε εκδήλωσης. Ό,τι αλλάζετε εδώ αλλάζει αυτόματα και στο Excel και στο Dimitris.', 'Photos and video for every event. Changes here update the Excel and Dimitris automatically.')) });
   html += `<div class="sheet-toolbar"><div class="search">${icon('search')}<input class="input" id="wq" type="search" placeholder="${esc(L('Αναζήτηση…', 'Search…'))}" value="${esc(st.q)}"></div>
     <div class="chips">${[['active', L('Σε εξέλιξη', 'In progress')], ['late', L('Καθυστερήσεις', 'Delays')], ['done', L('Παραδόθηκαν', 'Delivered')], ['all', L('Όλες', 'All')]].map(([k, t]) => `<button class="chip ${st.filter === k ? 'on' : ''}" data-f="${k}">${esc(t)} <b>${count(k)}</b></button>`).join('')}</div>
+    </div>
+    <div class="sheet-toolbar wf-filters">
+      ${fsel('wfm', L('Όλοι οι μήνες', 'All months'), monthsHere.map((m) => [m, MONTHS_EL_UP[Number(m) - 1]]), st.month)}
+      ${fsel('wfp', L('Φωτογραφίες: όλες', 'Photos: all'), PHOTO_STATUS.map((o) => [o.v, L(o.el, o.en)]), st.ph)}
+      ${fsel('wfv', L('Video: όλα', 'Video: all'), VIDEO_STATUS.map((o) => [o.v, L(o.el, o.en)]), st.vid)}
+      ${st.month || st.ph || st.vid ? `<button class="btn plain small" data-clearf>${icon('x')} ${esc(L('Καθαρισμός', 'Clear'))}</button>` : ''}
     <span style="flex:1"></span><button class="btn small" data-tpl>${icon('message')} ${esc(L('Πρότυπα μηνυμάτων', 'Message templates'))}</button></div>`;
   if (!rows.length) html += emptyState('flow', st.filter === 'late' ? L('Καμία καθυστέρηση 🎉', 'No delays 🎉') : L('Δεν υπάρχουν εκδηλώσεις εδώ', 'No events here'), st.filter === 'active' ? L('Εδώ εμφανίζεται κάθε εκδήλωση από τη στιγμή που κλείνεται, μέχρι να παραδοθεί.', 'Every event appears here from the moment it is booked until it is delivered.') : '');
   else {
     html += `<div class="wf-table">
-      <div class="wf-head"><span>${esc(L('Ημερομηνία', 'Date'))}</span><span>${esc(L('Μήνας', 'Month'))}</span><span>${esc(L('Όνομα', 'Name'))}</span><span>${esc(L('Τοποθεσία', 'Location'))}</span><span>${esc(L('Κατάσταση Φωτογραφιών', 'Photos status'))}</span><span>${esc(L('Κατάσταση Video', 'Video status'))}</span><span></span></div>
+      <div class="wf-head"><span>${esc(L('Μήνας', 'Month'))}</span><span>${esc(L('Ημερομηνία', 'Date'))}</span><span>${esc(L('Όνομα', 'Name'))}</span><span>${esc(L('Τοποθεσία', 'Location'))}</span><span>${esc(L('Κατάσταση Φωτογραφιών', 'Photos status'))}</span><span>${esc(L('Κατάσταση Video', 'Video status'))}</span><span></span></div>
       ${rows.map(({ v, level, days, rule }) => {
         const sent = S.queue.filter((m) => m.event_id === v.e.id && m.status === 'sent').sort((a, b) => String(b.sent_at).localeCompare(String(a.sent_at)))[0];
         return `<div class="wf-row ${level}" data-id="${v.e.id}">
-        <span class="wf-date"><b>${esc(fmtDate(v.e.event_date))}</b></span>
         <span class="wf-month">${esc(monthUp(v.e.event_date))}</span>
+        <span class="wf-date"><b>${esc(fmtDate(v.e.event_date))}</b></span>
         <span class="wf-name"><a href="#/event/${v.e.id}">${esc(v.title)}</a></span>
         <span class="wf-loc">${esc(v.e.church_location || '—')}</span>
         <span class="wf-sel"><label class="wf-lbl">${esc(L('Φωτογραφίες', 'Photos'))}</label>${v.e.coverage === 'video' ? `<span class="muted small">${esc(L('Μόνο βίντεο', 'Video only'))}</span>` : `<select class="select" data-ph="${v.e.id}">${options(PHOTO_STATUS, v.e.photo_status)}</select>`}${days != null && rule ? `<small class="wf-days">${esc(L(`${days} ημ. σε αυτό το στάδιο`, `${days} days in this stage`))}${level ? ` · ${esc(level === 'late' ? L('καθυστέρηση', 'late') : L('προσοχή', 'attention'))}` : ''}</small>` : ''}</span>
-        <span class="wf-sel"><label class="wf-lbl">Video</label>${v.e.coverage === 'photo' ? `<span class="muted small">${esc(L('Μόνο φωτογραφία', 'Photo only'))}</span>` : `<select class="select" data-ed="${v.e.id}">${options(EDIT_STATUS, v.e.editing_status)}</select>`}</span>
+        <span class="wf-sel"><label class="wf-lbl">Video</label>${v.e.coverage === 'photo' ? `<span class="muted small">${esc(L('Μόνο φωτογραφία', 'Photo only'))}</span>` : `<select class="select" data-vs="${v.e.id}">${options(VIDEO_STATUS, v.e.video_status || 'not_ready')}</select>`}</span>
         <span class="wf-act"><button class="btn small" data-mail="${v.e.id}" title="${esc(L('Μήνυμα στον πελάτη', 'Message the client'))}">${icon('mail')}<span class="hide-mobile"> ${esc(L('Μήνυμα', 'Message'))}</span></button>${sent ? `<small class="wf-sent" title="${esc(sent.title || '')}">✓ ${esc(timeAgo(sent.sent_at))}</small>` : ''}</span>
       </div>`;
       }).join('')}
@@ -71,7 +82,9 @@ export function renderWorkflow(root) {
     <div class="card pad mt small muted" style="line-height:1.7">${esc(L('Κανόνες: «Να γίνουν δείγματα» 25 / 35 ημέρες μετά την εκδήλωση · «Έλαβαν δείγματα και περιμένουμε» 20 / 35 ημέρες χωρίς να πάει στις «Αλλαγές» · «Αλλαγές» 20 / 30 ημέρες χωρίς να πάει για εκτύπωση · «Έτοιμα προς παραλαβή» 7 / 14 ημέρες (πορτοκαλί / κόκκινο).', 'Rules: “Samples to be made” 25 / 35 days after the event · “Client has samples” 20 / 35 days without moving to “Changes” · “Changes” 20 / 30 days without going to print · “Ready for pickup” 7 / 14 days (orange / red).'))}</div>`;
   }
   root.innerHTML = html;
-  document.getElementById('wy')?.addEventListener('change', (e) => { st.year = Number(e.target.value); renderWorkflow(root); });
+  bindYear(() => renderWorkflow(root));
+  [['wfm', 'month'], ['wfp', 'ph'], ['wfv', 'vid']].forEach(([id, k]) => root.querySelector('#' + id)?.addEventListener('change', (e) => { st[k] = e.target.value; renderWorkflow(root); }));
+  root.querySelector('[data-clearf]')?.addEventListener('click', () => { st.month = ''; st.ph = ''; st.vid = ''; renderWorkflow(root); });
   const wq = root.querySelector('#wq');
   wq.addEventListener('input', () => { st.q = wq.value; const p = wq.selectionStart; renderWorkflow(root); const n = document.getElementById('wq'); n?.focus(); n?.setSelectionRange(p, p); });
   root.querySelectorAll('[data-f]').forEach((b) => b.addEventListener('click', () => { st.filter = b.dataset.f; renderWorkflow(root); }));
@@ -85,9 +98,10 @@ export function renderWorkflow(root) {
       else toast(L('Αποθηκεύτηκε', 'Saved'), { ms: 1200 });
     } catch { sel.value = S.events.get(id).photo_status; } finally { sel.disabled = false; }
   }));
-  root.querySelectorAll('[data-ed]').forEach((sel) => sel.addEventListener('change', async () => {
+  // Κατάσταση Video = η ίδια με το φύλλο Dimitris (το «Κατάσταση editing» του Excel ακολουθεί αυτόματα)
+  root.querySelectorAll('[data-vs]').forEach((sel) => sel.addEventListener('change', async () => {
     sel.disabled = true;
-    try { await patchEvent(sel.dataset.ed, { editing_status: sel.value }); toast(L('Αποθηκεύτηκε', 'Saved'), { ms: 1200 }); } catch { sel.value = S.events.get(sel.dataset.ed).editing_status; } finally { sel.disabled = false; }
+    try { await patchEvent(sel.dataset.vs, { video_status: sel.value }); toast(L('Αποθηκεύτηκε', 'Saved'), { ms: 1200 }); } catch { sel.value = S.events.get(sel.dataset.vs).video_status || 'not_ready'; } finally { sel.disabled = false; }
   }));
   root.querySelectorAll('[data-mail]').forEach((b) => b.addEventListener('click', () => pickMessage(b.dataset.mail)));
 }

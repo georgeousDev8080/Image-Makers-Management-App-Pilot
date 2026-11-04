@@ -7,18 +7,19 @@
 import { fmtDateLong, fmtTime, normTime, timeInputAttrs, L, esc, icon, money, fmtDate, todayISO, daysBetween, matches, lbl, sum, CATEGORIES, APPT_MODES, REJECT_REASONS, MONTHS_EL_UP, monthShort, sheet, actionSheet, confirmBox, toast, toastErr, busy, copyText, smsUrl, mailUrl, waUrl, viberUrl, telUrl, segmented, initSegmented, parseMoney } from '../core.js';
 import { S, isStaleAppt, STALE_DAYS, saveAppointment, deleteAppointment, uploadAppointmentOffer, openOffer, offerUrl, business, eventView } from '../data.js';
 import { pageHead, emptyState, setTopActions, go, backBtn } from '../layout.js';
-import { catPill, catShort, packageNameFrom, offerSummaryHTML } from '../components.js';
+import { catPill, catShort, packageNameFrom, offerSummaryHTML, pickYear, yearOf, yearSelect, bindYear } from '../components.js';
 import { openOfferBuilder, generateOfferPdf, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf, offerKindFor, offerKindOf } from '../offer.js';
 import { clientPageUrl, downloadClientFile } from './requests.js';
 import { barPairs, hbars, bindTips } from '../charts.js';
 
-const st = { mode: 'store', view: 'list', status: 'all', q: '', year: null };
+const st = { mode: 'store', view: 'list', status: 'all', q: '', year: null, statsOpen: false, show: false };
 
 /** «Ραντεβού για Γάμο» — ο τύπος της εκδήλωσης σε αιτιατική */
 const CAT_ACC = { wedding: ['Γάμο', 'a wedding'], baptism: ['Βάπτιση', 'a baptism'], wedding_baptism: ['Γαμοβάπτιση', 'a wedding & baptism'], promo: ['Διαφημιστικό', 'a promotional'], other: ['Άλλο', 'other'] };
 export const apptFor = (cat) => { const x = CAT_ACC[cat] || CAT_ACC.other; return L(`Ραντεβού για ${x[0]}`, `Appointment for ${x[1]}`); };
 export const isScheduled = (a) => a.status === 'scheduled';
 const tm = (t) => (t ? String(t).slice(0, 5) : '');
+const inYear = (a) => yearOf(a.appt_date) === st.year;
 export const apptName = (a) => [a.name1, a.name2].filter(Boolean).join(' & ') || L('Χωρίς όνομα', 'No name');
 const ageDays = (a) => Math.floor((Date.now() - new Date(a.status_at).getTime()) / 864e5);
 
@@ -40,36 +41,45 @@ function offerPrefill(a) {
 //  Σελίδα
 // ---------------------------------------------------------------------
 export function renderAppointments(root) {
-  if (!st.year) st.year = new Date().getFullYear();
-  setTopActions(`<button class="btn primary small" data-new>${icon('plus')} <span class="hide-mobile">${esc(L('Νέο ραντεβού', 'New appointment'))}</span></button>`);
-  let html = pageHead(L('Προσφορές / Ραντεβού', 'Offers / Appointments'), { sub: esc(L('Κάθε παρουσίαση προσφοράς, στο μαγαζί ή ηλεκτρονικά. Confirm = κλείσαμε τη δουλειά.', 'Every offer presentation, in store or online. Confirm = the job is booked.')) });
+  // όλο το tab αφορά την επιλεγμένη χρονιά (ημερομηνία ραντεβού)
+  const { ys, y: selY } = pickYear(S.appointments.map((a) => yearOf(a.appt_date)));
+  st.year = selY;
+  setTopActions(`${yearSelect(ys, st.year)} <button class="btn primary small" data-new>${icon('plus')} <span class="hide-mobile">${esc(L('Νέο ραντεβού', 'New appointment'))}</span></button>`);
+  let html = pageHead(L('Προσφορές / Ραντεβού', 'Offers / Appointments'), { sub: esc(L('Κάθε παρουσίαση προσφοράς, δια ζώσης ή ηλεκτρονικά.', 'Every offer presentation, in person or online.')) });
 
   // Τα δύο μεγάλα παράθυρα
   html += `<div class="appt-modes">${APPT_MODES.map((m) => {
-    const list = S.appointments.filter((a) => a.mode === m.v && !isScheduled(a));
-    const sched = S.appointments.filter((a) => a.mode === m.v && isScheduled(a)).length;
+    const list = S.appointments.filter((a) => a.mode === m.v && !isScheduled(a) && inYear(a));
+    const sched = S.appointments.filter((a) => a.mode === m.v && isScheduled(a) && inYear(a)).length;
     const c = (s) => list.filter((a) => a.status === s).length;
     const decided = c('confirmed') + c('rejected');
     const stale = list.filter(isStaleAppt).length;
-    return `<button class="appt-mode ${st.mode === m.v ? 'on' : ''}" data-mode="${m.v}">
+    void decided;
+    return `<div class="appt-mode ${st.mode === m.v ? 'on' : ''}" data-mode="${m.v}" role="button" tabindex="0">
       <span class="am-ic">${icon(m.icon)}</span>
       <span class="am-t">${esc(L(m.el, m.en))}</span>
       <span class="am-n">${list.length}<small>${esc(L('ραντεβού', 'appointments'))}</small></span>
-      <span class="am-stats"><i class="ok">${c('confirmed')} confirmed</i><i class="no">${c('rejected')} rejected</i><i class="wait">${c('pending')} ${esc(L('σε αναμονή', 'pending'))}</i>${stale ? `<i class="stale">${stale} ${esc(L('χωρίς απάντηση', 'no answer'))}</i>` : ''}${sched ? `<i class="sched">${sched} ${esc(L('προγραμματισμένα', 'scheduled'))}</i>` : ''}</span>
-      <span class="am-rate">${decided ? Math.round((c('confirmed') / decided) * 100) + '%' : '—'}<small>${esc(L('κλείσιμο', 'win rate'))}</small></span>
-    </button>`;
+      <button type="button" class="am-toggle" data-stats aria-expanded="${st.statsOpen}" title="${esc(st.statsOpen ? L('Απόκρυψη', 'Hide') : L('Λεπτομέρειες', 'Details'))}">${icon('chevD')}</button>
+      <span class="am-stats" ${st.statsOpen ? '' : 'hidden'}><i class="ok">${c('confirmed')} confirmed</i><i class="no">${c('rejected')} rejected</i><i class="wait">${c('pending')} ${esc(L('σε αναμονή', 'pending'))}</i>${stale ? `<i class="stale">${stale} ${esc(L('χωρίς απάντηση', 'no answer'))}</i>` : ''}${sched ? `<i class="sched">${sched} ${esc(L('προγραμματισμένα', 'scheduled'))}</i>` : ''}</span>
+    </div>`;
   }).join('')}</div>`;
 
-  html += `<div class="spread mb" style="flex-wrap:wrap;gap:10px">${segmented('v', [{ v: 'list', label: L('Λίστα ραντεβού', 'Appointments') }, { v: 'stats', label: L('Στατιστικά', 'Statistics') }], st.view)}
-    ${st.mode === 'online' ? `<button class="btn small" data-link>${icon('link')} ${esc(L('Αποστολή link σε πελάτη', 'Send link to client'))}</button>` : `<span class="hstack" style="gap:8px;flex-wrap:wrap"><button class="btn small" data-sched>${icon('calendar')} ${esc(L('Προγραμματισμός ραντεβού', 'Schedule appointment'))}</button><button class="btn small" data-store>${icon('plus')} ${esc(L('Νέα παρουσίαση στο μαγαζί', 'New in-store presentation'))}</button></span>`}</div>`;
+  html += `<div class="spread mb" style="flex-wrap:wrap;gap:10px"><span class="hstack" style="gap:8px">${segmented('v', [{ v: 'list', label: L('Λίστα ραντεβού', 'Appointments') }, { v: 'stats', label: L('Στατιστικά', 'Statistics') }], st.view)}${st.view === 'list' ? `<button type="button" class="icon-btn filled eye-tg ${st.show ? 'on' : ''}" data-eye aria-pressed="${st.show}" title="${esc(st.show ? L('Απόκρυψη ραντεβού', 'Hide appointments') : L('Εμφάνιση ραντεβού', 'Show appointments'))}">${icon(st.show ? 'eye' : 'eyeOff')}</button>` : ''}</span>
+    ${st.mode === 'online' ? `<button class="btn small" data-link>${icon('link')} ${esc(L('Αποστολή link σε πελάτη', 'Send link to client'))}</button>` : `<span class="hstack" style="gap:8px;flex-wrap:wrap"><button class="btn small" data-sched>${icon('calendar')} ${esc(L('Προγραμματισμός ραντεβού', 'Schedule appointment'))}</button><button class="btn small" data-store>${icon('plus')} ${esc(L('Νέα παρουσίαση δια ζώσης', 'New in-person presentation'))}</button></span>`}</div>`;
   html += '<div id="apBody"></div>';
   root.innerHTML = html;
 
   const body = root.querySelector('#apBody');
-  (st.view === 'stats' ? statsView : listView)(body, () => renderAppointments(root));
+  if (st.view === 'list' && !st.show) {
+    body.innerHTML = `<button type="button" class="appt-hidden" data-eye2>${icon('eyeOff')}<b>${esc(L('Τα ραντεβού είναι κρυμμένα', 'Appointments are hidden'))}</b><span>${esc(L('Πατήστε το ματάκι για να εμφανιστούν.', 'Tap the eye to show them.'))}</span></button>`;
+    body.querySelector('[data-eye2]').addEventListener('click', () => { st.show = true; renderAppointments(root); });
+  } else (st.view === 'stats' ? statsView : listView)(body, () => renderAppointments(root));
 
   initSegmented(root, (name, v) => { if (name === 'v') { st.view = v; renderAppointments(root); } });
-  root.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { st.mode = b.dataset.mode; renderAppointments(root); }));
+  root.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', (e) => { if (e.target.closest('[data-stats]')) return; st.mode = b.dataset.mode; renderAppointments(root); }));
+  root.querySelectorAll('[data-stats]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); st.statsOpen = !st.statsOpen; renderAppointments(root); }));
+  bindYear(() => renderAppointments(root));
+  root.querySelector('[data-eye]')?.addEventListener('click', () => { st.show = !st.show; renderAppointments(root); });
   document.querySelector('[data-new]')?.addEventListener('click', () => newAppointmentChooser());
   root.querySelector('[data-link]')?.addEventListener('click', () => openSendLink());
   root.querySelector('[data-store]')?.addEventListener('click', () => go('#/appointment-new'));
@@ -155,7 +165,7 @@ export async function scheduledActions(a) {
 
 function scheduledBlock() {
   const today = todayISO();
-  const list = scheduledAppts().filter((a) => matches(st.q, a.name1, a.phone, a.notes, fmtDate(a.event_date), fmtDate(a.appt_date)));
+  const list = scheduledAppts().filter(inYear).filter((a) => matches(st.q, a.name1, a.phone, a.notes, fmtDate(a.event_date), fmtDate(a.appt_date)));
   if (!list.length) return '';
   // πρώτα τα σημερινά, μετά όσα πέρασαν χωρίς παρουσίαση, μετά τα επόμενα
   const rank = (a) => (a.appt_date === today ? 0 : a.appt_date < today ? 1 : 2);
@@ -185,7 +195,7 @@ function rowState(a) {
 }
 
 function listView(body, redraw) {
-  const all = S.appointments.filter((a) => a.mode === st.mode && !isScheduled(a));
+  const all = S.appointments.filter((a) => a.mode === st.mode && !isScheduled(a) && inYear(a));
   const n = (f) => all.filter(f).length;
   let list = all.filter((a) => (st.status === 'all' || (st.status === 'stale' ? isStaleAppt(a) : a.status === st.status))
     && matches(st.q, a.name1, a.name2, a.phone, a.email, a.church, a.reception, a.comments, a.notes, fmtDate(a.event_date), fmtDate(a.appt_date)));
@@ -508,24 +518,24 @@ export function apptSummaryHTML(year) {
   if (!s.list.length) return '';
   const k = (label, p) => `<div class="kpi"><div class="k-label">${esc(label)}</div><div class="k-value">${p.rate == null ? '—' : p.rate + '%'}</div><div class="k-sub">${p.n} ${esc(L('ραντεβού', 'appts'))} · ${p.conf} confirmed · ${p.rej} rejected</div></div>`;
   return `<div class="section-title"><h2>${esc(L('Προσφορές / Ραντεβού', 'Offers / Appointments'))} ${year}</h2><a class="small" href="#/appointments">${esc(L('Αναλυτικά', 'Details'))} ${icon('chevR')}</a></div>
-    <div class="grid cols-3">${k(L('Ποσοστό κλεισίματος (όλα)', 'Win rate (all)'), s.all)}${k(L('Στο μαγαζί', 'In store'), s.store)}${k(L('Ηλεκτρονικά', 'Online'), s.online)}</div>`;
+    <div class="grid cols-3">${k(L('Ποσοστό κλεισίματος (όλα)', 'Win rate (all)'), s.all)}${k(L('Δια ζώσης', 'In person'), s.store)}${k(L('Ηλεκτρονικά', 'Online'), s.online)}</div>`;
 }
 
 function statsView(body, redraw) {
-  const years = [...new Set([new Date().getFullYear(), ...S.appointments.map((a) => Number(a.appt_date.slice(0, 4)))])].sort();
+  void 0;
   const s = apptStats(st.year);
   const pct = (p) => (p.rate == null ? '—' : p.rate + '%');
   const m0 = (v) => money(v, { dec: 0 });
   const row = (label, f) => `<tr><td>${esc(label)}</td><td class="num">${f(s.store)}</td><td class="num">${f(s.online)}</td><td class="num"><b>${f(s.all)}</b></td></tr>`;
-  body.innerHTML = `<div class="spread mb"><b>${esc(L('Στατιστικά ραντεβού', 'Appointment statistics'))}</b><select class="select" id="ay" style="width:auto;min-height:36px">${years.map((y) => `<option ${y === st.year ? 'selected' : ''}>${y}</option>`).join('')}</select></div>
+  body.innerHTML = `<div class="spread mb"><b>${esc(L(`Στατιστικά ραντεβού ${st.year}`, `Appointment statistics ${st.year}`))}</b></div>
     <div class="grid cols-4">
-      <div class="kpi accent"><div class="k-label">${esc(L('Ραντεβού', 'Appointments'))}</div><div class="k-value">${s.all.n}</div><div class="k-sub">${s.store.n} ${esc(L('στο μαγαζί', 'in store'))} · ${s.online.n} ${esc(L('ηλεκτρονικά', 'online'))}</div></div>
+      <div class="kpi accent"><div class="k-label">${esc(L('Ραντεβού', 'Appointments'))}</div><div class="k-value">${s.all.n}</div><div class="k-sub">${s.store.n} ${esc(L('δια ζώσης', 'in person'))} · ${s.online.n} ${esc(L('ηλεκτρονικά', 'online'))}</div></div>
       <div class="kpi"><div class="k-label">Confirmed</div><div class="k-value pos">${s.all.conf}</div><div class="k-sub">${esc(L('Αξία', 'Value'))} ${esc(m0(s.all.value))}</div></div>
       <div class="kpi"><div class="k-label">Rejected</div><div class="k-value neg">${s.all.rej}</div><div class="k-sub">${esc(L('Χαμένη αξία', 'Lost value'))} ${esc(m0(s.all.lost))}</div></div>
       <div class="kpi"><div class="k-label">${esc(L('Ποσοστό κλεισίματος', 'Win rate'))}</div><div class="k-value">${pct(s.all)}</div><div class="k-sub">${s.all.pend} ${esc(L('σε αναμονή', 'pending'))}${s.all.stale ? ` · ${s.all.stale} ${esc(L('χωρίς απάντηση', 'no answer'))}` : ''}</div></div>
     </div>
-    <div class="card pad mt"><b>${esc(L('Μαγαζί ή ηλεκτρονικά; Σύγκριση', 'In store or online? Comparison'))}</b>
-      <div class="xl-wrap mt-s" style="max-height:none;min-height:0"><table class="xl cmp-table"><thead><tr class="h"><th class="gc-plain" style="top:0;text-align:left">${esc(L('Δείκτης', 'Indicator'))}</th><th class="gc-plain" style="top:0">${esc(L('Στο μαγαζί', 'In store'))}</th><th class="gc-plain" style="top:0">${esc(L('Ηλεκτρονικά', 'Online'))}</th><th class="gc-plain" style="top:0">${esc(L('Σύνολο', 'Total'))}</th></tr></thead><tbody>
+    <div class="card pad mt"><b>${esc(L('Δια ζώσης ή ηλεκτρονικά; Σύγκριση', 'In person or online? Comparison'))}</b>
+      <div class="xl-wrap mt-s" style="max-height:none;min-height:0"><table class="xl cmp-table"><thead><tr class="h"><th class="gc-plain" style="top:0;text-align:left">${esc(L('Δείκτης', 'Indicator'))}</th><th class="gc-plain" style="top:0">${esc(L('Δια ζώσης', 'In person'))}</th><th class="gc-plain" style="top:0">${esc(L('Ηλεκτρονικά', 'Online'))}</th><th class="gc-plain" style="top:0">${esc(L('Σύνολο', 'Total'))}</th></tr></thead><tbody>
         ${row(L('Ραντεβού', 'Appointments'), (p) => p.n)}${row('Confirmed', (p) => p.conf)}${row('Rejected', (p) => p.rej)}${row(L('Σε αναμονή', 'Pending'), (p) => p.pend)}
         ${row(L('Ποσοστό κλεισίματος', 'Win rate'), pct)}${row(L('Αξία που κλείσαμε', 'Value booked'), (p) => esc(m0(p.value)))}${row(L('Μέση αξία προσφοράς', 'Average offer'), (p) => esc(m0(p.avg)))}${row(L('Μέρες μέχρι απόφαση (μ.ό.)', 'Days to decision (avg)'), (p) => (p.days == null ? '—' : p.days))}
       </tbody></table></div></div>
@@ -537,7 +547,6 @@ function statsView(body, redraw) {
     <div class="section-title"><h2>${esc(L('Σχόλια: τι μπορεί να πήγε λάθος', 'Comments: what might have gone wrong'))}</h2></div>
     ${s.comments.length ? `<div class="list">${s.comments.slice(0, 40).map((a) => `<button class="row has-icon" data-open="${a.id}"><span class="row-icon" style="background:${a.status === 'rejected' ? 'var(--red)' : a.status === 'confirmed' ? 'var(--green)' : 'var(--orange)'}">${icon('message')}</span><div class="main-col"><div class="t">${esc(apptName(a))} · ${esc(lbl(APPT_MODES, a.mode))}${a.reason ? ' · ' + esc(lbl(REJECT_REASONS, a.reason)) : ''}</div><div class="s" style="white-space:normal">${esc(a.comments)}</div></div><div class="v tiny">${esc(fmtDate(a.appt_date))}</div></button>`).join('')}</div>`
       : `<div class="card pad muted small">${esc(L('Γράψτε σχόλια σε κάθε ραντεβού (ειδικά στα Rejected) για να βλέπετε εδώ τι δουλεύει και τι όχι.', 'Write comments on each appointment (especially Rejected) to see here what works and what does not.'))}</div>`}`;
-  body.querySelector('#ay').addEventListener('change', (e) => { st.year = Number(e.target.value); redraw(); });
   body.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => openAppointment(find(b.dataset.open))));
   bindTips(body.querySelector('#achart'));
 }

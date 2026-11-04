@@ -877,7 +877,7 @@ details.faq .a { padding: 0 16px 16px; color: var(--label-2); white-space: pre-l
 }
 
 /* ---------- Κατάσταση Εργασιών (workflow) ---------- */
-.wf-head, .wf-row { display: grid; grid-template-columns: 100px 116px minmax(170px, 1.3fr) minmax(150px, 1fr) minmax(210px, 1.2fr) 150px 120px; gap: 12px; align-items: center; padding: 10px 14px; }
+.wf-head, .wf-row { display: grid; grid-template-columns: 116px 100px minmax(170px, 1.3fr) minmax(150px, 1fr) minmax(210px, 1.2fr) 150px 120px; gap: 12px; align-items: center; padding: 10px 14px; }
 .wf-row { border-top: 1px solid var(--sep); }
 .wf-row.warn { background: var(--wf-warn); }
 .wf-row.late { background: var(--wf-late); }
@@ -893,7 +893,7 @@ details.faq .a { padding: 0 16px 16px; color: var(--label-2); white-space: pre-l
 @media (max-width: 1000px) {
   .wf-head { display: none; }
   .wf-row { grid-template-columns: 1fr 1fr; grid-template-areas: "date month" "name name" "loc loc" "ph ph" "ed act"; gap: 6px 10px; padding: 14px; }
-  .wf-row > :nth-child(1) { grid-area: date; } .wf-row > :nth-child(2) { grid-area: month; justify-self: end; }
+  .wf-row > :nth-child(1) { grid-area: month; justify-self: end; } .wf-row > :nth-child(2) { grid-area: date; }
   .wf-row > :nth-child(3) { grid-area: name; font-size: 16px; } .wf-row > :nth-child(4) { grid-area: loc; color: var(--label-2); font-size: 13px; }
   .wf-row > :nth-child(5) { grid-area: ph; } .wf-row > :nth-child(6) { grid-area: ed; } .wf-row > :nth-child(7) { grid-area: act; align-items: flex-end; align-self: end; }
   .wf-lbl { display: block; font-size: 11.5px; color: var(--label-2); margin-bottom: 3px; }
@@ -1294,3 +1294,38 @@ button.mp-r:hover { background: var(--fill-2); }
 .ev-pick-list { max-height: 330px; overflow-y: auto; border-radius: 12px; }
 .ev-pick { width: 100%; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .ev-pick .date-tile { transform: scale(.88); transform-origin: left center; }
+
+/* Προσφορές / Ραντεβού: κάρτες χωρίς ποσοστό, αναδιπλούμενα στατιστικά, ματάκι */
+.appt-mode { grid-template-areas: "ic t tg" "ic n tg" "st st st"; }
+.appt-mode .am-toggle { grid-area: tg; width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--fill-2); color: var(--label-2); display: grid; place-items: center; cursor: pointer; }
+.appt-mode .am-toggle svg { width: 18px; height: 18px; transition: transform .2s var(--ease); }
+.appt-mode .am-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.appt-mode .am-stats[hidden] { display: none; }
+.eye-tg.on { color: var(--accent); }
+.appt-hidden { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; padding: 36px 16px; border: 1.5px dashed var(--sep); border-radius: var(--radius-lg); background: transparent; color: var(--label-2); font: inherit; cursor: pointer; }
+.appt-hidden svg { width: 30px; height: 30px; }
+.appt-hidden b { color: var(--label); font-size: 15px; }
+
+/* Επιλογή χρονιάς πάνω δεξιά */
+.year-pick .select { min-height: 36px; padding: 6px 32px 6px 12px; width: auto; font-weight: 700; }
+
+.wf-filters { margin-top: -2px; }
+.wf-filter .select { min-height: 36px; padding: 6px 30px 6px 12px; width: auto; font-size: 14px; font-weight: 600; }
+.wf-filter.on .select { box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--accent); }
+
+/* Οι πίνακες τύπου Excel προσαρμόζονται στο ύψος του παραθύρου (το ύψος ορίζεται δυναμικά) */
+.xl-wrap { max-height: calc(100dvh - 250px); }
+
+/* Έσοδα & Έξοδα: μήνες που ανοίγουν / κλείνουν */
+.month-tg { width: 100%; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.month-tg .mchev { width: 16px; height: 16px; transition: transform .2s var(--ease); transform: rotate(-90deg); }
+.month-tg.open .mchev { transform: none; }
+.filter-sum { margin-bottom: 4px; }
+
+@media (max-width: 560px) {
+  .wf-filters { gap: 6px; }
+  .wf-filters .wf-filter { flex: 1 1 calc(50% - 6px); min-width: 0; }
+  .wf-filters .wf-filter .select { width: 100%; font-size: 13px; padding-left: 10px; }
+  .money-kpis .kpi { padding: 12px; }
+  .money-kpis .k-value { font-size: clamp(15px, 4.4vw, 24px); white-space: nowrap; overflow: visible; text-overflow: clip; }
+}
