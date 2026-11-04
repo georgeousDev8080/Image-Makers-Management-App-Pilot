@@ -261,15 +261,18 @@ function registerSheet(body, tab, redraw) {
 //  Έξοδα
 // ---------------------------------------------------------------------
 const kindOptions = () => [...EXPENSE_KINDS];
+const subOfExp = (x) => (x.kind === 'shop' ? (x.subcategory ? lbl(SHOP_SUBS, x.subcategory) : '') : x.kind === 'other' ? (x.subcategory ? lbl(OTHER_SUBS, x.subcategory) : '') : '');
 function expensesSheet(body, tab, redraw) {
   const y = String(st.year);
   let rows = S.expenses.filter((x) => (x.paid_on || '').startsWith(y));
-  rows = rows.filter((x) => (!st.month || x.paid_on.slice(5, 7) === st.month) && (!st.cat || x.kind === st.cat) && matches(st.q, expenseTitle(x), x.supplier, x.description, x.notes, x.crew_name));
+  rows = rows.filter((x) => (!st.month || x.paid_on.slice(5, 7) === st.month) && (!st.cat || x.kind === st.cat) && matches(st.q, expenseTitle(x), subOfExp(x), x.supplier, x.description, x.notes, x.crew_name));
   rows.sort((a, b) => a.paid_on.localeCompare(b.paid_on) || a.created_at.localeCompare(b.created_at));
   const cols = [
     { key: 'date', label: L('Ημερομηνία', 'Date'), w: 100, type: 'date', sticky: true, editable: true, required: true, get: (x) => x.paid_on, set: (x, v) => v && patchExpense(x.id, { paid_on: v }) },
     { key: 'month', label: L('Μήνας', 'Month'), w: 110, get: (x) => monthUp(x.paid_on) },
-    { key: 'kind', label: L('Κατηγορία Εξόδου', 'Expense category'), w: 220, get: (x) => expenseTitle(x) },
+    { key: 'kind', label: L('Κατηγορία Εξόδου', 'Expense category'), w: 150, get: (x) => lbl(EXPENSE_KINDS, x.kind) },
+    // Υποκατηγορία (π.χ. Μαγαζί → Ενοίκιο / Internet / Διάφορα): μόνο όταν υπάρχει στα έξοδα που φαίνονται
+    ...(rows.some((x) => subOfExp(x)) ? [{ key: 'sub', label: L('Υποκατηγορία', 'Subcategory'), w: 150, get: (x) => subOfExp(x) }] : []),
     { key: 'sup', label: L('Πληρώθηκε σε / Προμηθευτής', 'Paid to / Supplier'), w: 190, editable: (x) => !x.crew_id, get: (x) => x.supplier || x.crew_name || profileName(profileById(x.crew_id)) || '', set: (x, v) => patchExpense(x.id, { supplier: v }) },
     { key: 'desc', label: L('Περιγραφή', 'Description'), w: 220, editable: true, get: (x) => x.description || (x.kind === 'payroll' && x.for_month ? L(`Μισθός ${monthName(Number(x.for_month.slice(5, 7)) - 1)}`, `Salary ${monthName(Number(x.for_month.slice(5, 7)) - 1)}`) : x.kind === 'daily_wage' && x.paid_until ? L(`Πληρωμένος έως ${fmtDate(x.paid_until)}`, `Paid until ${fmtDate(x.paid_until)}`) : ''), set: (x, v) => patchExpense(x.id, { description: v }) },
     { key: 'amount', label: L('Ποσό', 'Amount'), w: 104, type: 'money', editable: true, required: true, sum: true, get: (x) => x.amount, set: (x, v) => { if (!v) throw new Error('amount'); return patchExpense(x.id, { amount: v }); } },
