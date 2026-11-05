@@ -8,6 +8,16 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.9', date: '05/11/2026',
+    items: [
+      ['💍', 'Νέα φόρμα προσφοράς για Γάμο (με αριθμό μικρών album και κόστος μετακίνησης) και καινούρια προσφορά για Γαμοβάπτιση, που δουλεύει όπως οι υπόλοιπες: από το ραντεβού, το link και την εκδήλωση, με PDF.', 'New Wedding offer form (with number of small albums and travel cost) and a new Wedding + Baptism offer that works like the others: from the appointment, the link and the event, with PDF.'],
+      ['❔', 'Ημερολόγιο: κάθε προσφορά σε αναμονή απάντησης με ημερομηνία εκδήλωσης εμφανίζεται ως «Ενδεχόμενη εκδήλωση» (διακεκομμένη) με τοποθεσία και ώρα. Πατώντας την ανοίγουν οι λεπτομέρειες και το πακέτο. Φεύγει μόλις γίνει confirm ή reject.', 'Calendar: every offer waiting for an answer with an event date shows as a “Possible event” (dashed) with place and time. Tap it for the details and package. It disappears once confirmed or rejected.'],
+      ['📆', 'Στο ραντεβού, μόλις μπει η ημερομηνία εκδήλωσης, φαίνεται αμέσως αν υπάρχει ήδη εκδήλωση ή άλλη προσφορά σε αναμονή την ίδια μέρα.', 'In an appointment, as soon as the event date is set you see whether there is already an event or another pending offer on that day.'],
+      ['🌤️', 'Αρχική: στην επόμενη εκδήλωση φαίνεται ο καιρός για την περιοχή, την ημέρα και την ώρα της (από 16 ημέρες πριν).', 'Home: the next event shows the weather for its area, day and time (from 16 days before).'],
+      ['🖱️', 'Φύλλα (Excel): με το ποντίκι πάνω στο φύλλο, όταν αυτό τελειώσει, η ροδέλα κυλάει πλέον όλη τη σελίδα.', 'Sheets (Excel): with the mouse over a sheet, once it reaches its end the wheel now scrolls the whole page.'],
+    ],
+  },
+  {
     v: '1.8', date: '04/11/2026',
     items: [
       ['📅', 'Επιλογή χρονιάς πάνω δεξιά στα Ημερολόγιο, Εκδηλώσεις, Προσφορές / Ραντεβού, Κατάσταση Εργασιών, Έσοδα & Έξοδα και Φύλλα (Excel). Κάθε tab δείχνει μόνο ό,τι αφορά τη χρονιά και εμφανίζονται μόνο χρονιές που έχουν δεδομένα.', 'Year picker at the top right of Calendar, Events, Offers / Appointments, Work status, Income & Expenses and Sheets. Each tab shows only that year, and only years with data are listed.'],

@@ -11,6 +11,7 @@ import { pageHead } from '../layout.js';
 import { eventRow } from '../components.js';
 import { openIncomeForm, openExpenseForm } from './money.js';
 import { pushState } from '../push.js';
+import { fillWeather } from '../weather.js';
 
 const catLabel = (c) => { const o = CATEGORIES.find((x) => x.v === c); return o ? L(o.el, o.en).replace(/\s*\(.*\)$/, '') : ''; };
 export function renderHome(root) {
@@ -41,13 +42,13 @@ export function renderHome(root) {
     if (group.length === 1) {
       html += `<a class="hero-card" href="#/event/${next.e.id}">${count}
         <div class="eyebrow">${esc(admin ? L('Επόμενη εκδήλωση', 'Next event') : L('Η επόμενη εκδήλωσή σου', 'Your next event'))}</div>
-        <h2>${big(next)}</h2>${meta(next)}</a>`;
+        <h2>${big(next)}</h2>${meta(next)}<div class="hero-wx" data-wx="${next.e.id}" hidden></div></a>`;
     } else {
       let lastDate = '';
       const items = group.map((v) => {
         const head = v.e.event_date !== lastDate ? `<div class="hero-day">${icon('calendar')} ${esc(fmtDateLong(v.e.event_date))}</div>` : '';
         lastDate = v.e.event_date;
-        return `${head}<a class="hero-item" href="#/event/${v.e.id}"><h3>${big(v)}</h3>${meta(v)}</a>`;
+        return `${head}<a class="hero-item" href="#/event/${v.e.id}"><h3>${big(v)}</h3>${meta(v)}<div class="hero-wx" data-wx="${v.e.id}" hidden></div></a>`;
       }).join('');
       html += `<div class="hero-card multi">${count}
         <div class="eyebrow">${esc(admin ? L(`Επόμενες εκδηλώσεις · ${group.length}`, `Next events · ${group.length}`) : L(`Οι επόμενες εκδηλώσεις σου · ${group.length}`, `Your next events · ${group.length}`))}</div>
@@ -123,6 +124,7 @@ export function renderHome(root) {
   html += list.length ? `<div class="list">${list.map((it) => (it.m ? meetingRow(it.m) : it.x ? sessionRow(it.x) : eventRow(it.v, { money: false, crewType: true, typeFirst: true }))).join('')}</div>` : `<div class="card pad muted center">${esc(L('Καμία επερχόμενη εκδήλωση.', 'No upcoming events.'))}</div>`;
 
   root.innerHTML = html;
+  fillWeather(root, S.events, today);
   root.querySelectorAll('[data-meeting]').forEach((b) => b.addEventListener('click', () => meetingActions(S.meetings.find((m) => m.id === b.dataset.meeting))));
   root.querySelector('[data-act="appt"]')?.addEventListener('click', () => newAppointmentChooser());
   root.querySelector('[data-act="income"]')?.addEventListener('click', () => openIncomeForm({}));

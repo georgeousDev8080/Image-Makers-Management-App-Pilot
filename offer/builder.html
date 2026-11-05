@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Διαμόρφωση πακέτου γάμου Image Makers.">
-  <title>Image Makers · Οδηγός προσφοράς 2027</title>
+  <title>Image Makers · Πακέτο Γάμου 2027</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%231c1a18'/%3E%3Ccircle cx='32' cy='32' r='21' fill='none' stroke='%23b57a4e' stroke-width='3'/%3E%3Ctext x='32' y='38' text-anchor='middle' font-family='Georgia' font-size='18' font-weight='bold' fill='%23f7f3ed'%3EIM%3C/text%3E%3C/svg%3E">
   <style>
     :root {
@@ -629,9 +629,9 @@
           </div>
           <div style="margin-top:16px">
             <div class="quantity-row">
-              <div><div class="quantity-label">Αφαίρεση μικρών album</div><div class="quantity-note">Έως 3 τεμάχια</div></div>
-              <input class="calc qty" id="removeAlbums" type="number" min="0" max="3" step="1" value="0" data-label="Αφαίρεση μικρού album" data-unit="-80">
-              <div class="quantity-price">−80€/τεμ.</div>
+              <div><div class="quantity-label">Συνολική ποσότητα μικρών album</div><div class="quantity-note">Το βασικό πακέτο περιλαμβάνει 3 τεμάχια</div></div>
+              <input class="calc" id="smallAlbumCount" type="number" min="0" step="1" value="3" inputmode="numeric" aria-label="Συνολική ποσότητα μικρών album">
+              <div class="quantity-price">±80€/τεμ.</div>
             </div>
           </div>
         </section>
@@ -690,12 +690,12 @@
               <p>Η τιμή ενημερώνεται αυτόματα από τις επιλογές και μπορεί να αλλάξει χειροκίνητα, εφόσον χρειαστεί.</p>
             </div>
             <div>
-              <label class="field" for="finalPackagePrice">Τιμή που θα εμφανίζεται στην προσφορά</label>
+              <label class="field" for="finalPackagePrice">Τιμή πακέτου πριν από τα μεταφορικά</label>
               <div class="final-price-input-wrap">
                 <input id="finalPackagePrice" type="number" min="0" max="100000" step="10" value="2800" inputmode="numeric">
                 <span>€</span>
               </div>
-              <div class="calculated-price-note">Υπολογισμένη τιμή: <strong id="calculatedPrice">2.800€</strong></div>
+              <div class="calculated-price-note">Υπολογισμένη τιμή πακέτου: <strong id="calculatedPrice">2.800€</strong></div>
               <button class="price-reset" id="resetFinalPrice" type="button">Επαναφορά στην υπολογισμένη τιμή</button>
             </div>
           </div>
@@ -703,7 +703,16 @@
 
         <section class="section" aria-labelledby="notesHeading">
           <div class="section-head"><h2 id="notesHeading">Σημειώσεις προσφοράς</h2></div>
-          <label class="field">Ειδικές συμφωνίες ή διευκρινίσεις<textarea id="notes" placeholder="Τα μεταφορικά διαμορφώνονται ανάλογα με την τοποθεσία."></textarea></label>
+          <label class="field">Ειδικές συμφωνίες ή διευκρινίσεις<textarea id="notes" placeholder="Προσθέστε οποιαδήποτε ειδική συμφωνία ή διευκρίνιση."></textarea></label>
+        </section>
+
+        <section class="section" aria-labelledby="transportHeading">
+          <div class="section-head"><h2 id="transportHeading">Μεταφορικά έξοδα</h2><span class="section-hint">Προστίθενται στην τελική αξία</span></div>
+          <div class="quantity-row">
+            <div><div class="quantity-label">Κόστος μετακίνησης</div><div class="quantity-note">Συμπληρώστε το συμφωνημένο ποσό</div></div>
+            <input class="calc" id="transportCost" type="number" min="0" step="10" value="0" inputmode="decimal" aria-label="Μεταφορικά έξοδα σε ευρώ">
+            <div class="quantity-price">€</div>
+          </div>
         </section>
       </section>
 
@@ -881,10 +890,10 @@
       <div class="p-grid-2">
         <div class="p-card"><h3>Κάλυψη ημέρας</h3><ul class="p-list"><li>Φωτογραφική και κινηματογραφική κάλυψη στο σπίτι του γαμπρού.</li><li>Φωτογραφική και κινηματογραφική κάλυψη στο σπίτι της νύφης.</li><li>Φωτογραφική και κινηματογραφική κάλυψη της τελετής.</li><li>Φωτογραφική και κινηματογραφική κάλυψη της δεξίωσης έως 3 ώρες μετά την είσοδο.</li></ul></div>
         <div class="p-card"><h3>Παραδοτέα βίντεο</h3><ul class="p-list" id="printCoreDeliverables"></ul></div>
-        <div class="p-card" id="printAlbumCard"><h3>Παραδοτέα φωτογραφίας</h3><ul class="p-list"><li>1 μεγάλο ψηφιακό album 80×30 cm, χωρητικότητας 25 σαλονιών (50 σελίδες).</li><li id="printSmallAlbumsItem"><span id="printSmallAlbumCount">3</span> μικρά ψηφιακά album.</li><li id="printPrints">30 φωτογραφίες 13×18 cm.</li><li>Όλο το φωτογραφικό αρχείο σε ηλεκτρονική μορφή και πλήρη ανάλυση.</li></ul></div>
+        <div class="p-card" id="printAlbumCard"><h3>Παραδοτέα φωτογραφίας</h3><ul class="p-list"><li>1 μεγάλο ψηφιακό album 80×30 cm, χωρητικότητας 25 σαλονιών (50 σελίδες).</li><li id="printSmallAlbumsItem">3 μικρά ψηφιακά album.</li><li id="printPrints">30 φωτογραφίες 13×18 cm.</li><li>Όλο το φωτογραφικό αρχείο σε ηλεκτρονική μορφή και πλήρη ανάλυση.</li></ul></div>
         <div class="p-card" id="printIncludedCard"><h3>Επιπλέον παροχές που περιλαμβάνονται</h3><ul class="p-list" id="printIncludedServices"></ul></div>
       </div>
-      <div class="p-card" style="margin-top:6mm"><h3>Σημειώσεις της προσφοράς</h3><p id="printNotes" class="p-muted" style="font-size:8.5pt;margin:0">Τα μεταφορικά διαμορφώνονται ανάλογα με την τοποθεσία.</p></div>
+      <div class="p-card" style="margin-top:6mm"><h3>Σημειώσεις της προσφοράς</h3><p id="printNotes" class="p-muted" style="font-size:8.5pt;margin:0">Δεν υπάρχουν πρόσθετες σημειώσεις.</p></div>
       <div class="p-footer"><span>IMAGE MAKERS · Το πακέτο σας</span><span class="print-page-index"></span></div>
     </article>
 
@@ -905,10 +914,10 @@
     </article>
 
     <article class="print-page p-pad">
-      <div class="p-brand">IMAGE MAKERS</div><div class="p-kicker">Οικονομική σύνοψη</div><h2 class="p-title">Καθαρή εικόνα της τελικής αξίας.</h2><p class="p-subtitle">Η βασική αξία, οι επιλογές σας και οι τυχόν αφαιρέσεις συγκεντρωμένες σε ένα σημείο.</p>
+      <div class="p-brand">IMAGE MAKERS</div><div class="p-kicker">Οικονομική σύνοψη</div><h2 class="p-title">Καθαρή εικόνα της τελικής αξίας.</h2><p class="p-subtitle">Η βασική αξία, οι επιλογές, οι προσαρμογές και τα μεταφορικά έξοδα συγκεντρωμένα σε ένα σημείο.</p>
       <div class="p-price-box"><div><small>Τελική συμφωνημένη αξία</small><span class="live-couple">—</span></div><strong class="live-total">2.800€</strong></div>
       <table class="p-table"><thead><tr><th>Διαμόρφωση</th><th>Αξία</th></tr></thead><tbody id="printBreakdown"></tbody><tfoot><tr class="p-total-row"><td>Τελική αξία με Φ.Π.Α.</td><td class="live-total">2.800€</td></tr></tfoot></table>
-      <div class="p-card" style="margin-top:8mm"><h3>Τι σημαίνει η τελική αξία</h3><p class="p-muted" style="font-size:8.5pt;margin:0">Το παραπάνω ποσό περιλαμβάνει αποκλειστικά το τελικό πακέτο, τις αναβαθμίσεις και τις προσαρμογές που αναγράφονται στις προηγούμενες σελίδες.</p></div>
+      <div class="p-card" style="margin-top:8mm"><h3>Τι σημαίνει η τελική αξία</h3><p class="p-muted" style="font-size:8.5pt;margin:0">Το παραπάνω ποσό περιλαμβάνει το τελικό πακέτο, τις αναβαθμίσεις, τις προσαρμογές και τα μεταφορικά έξοδα που αναγράφονται στην οικονομική σύνοψη.</p></div>
       <div class="p-footer"><span>IMAGE MAKERS · Οικονομική σύνοψη</span><span class="print-page-index"></span></div>
     </article>
 
@@ -957,6 +966,8 @@
         'Drone next day': 'Δεν περιλαμβάνονται εναέριες λήψεις στη φωτογράφηση next day.',
         'Αφαίρεση μικρού album': 'Το πλήθος των μικρών album μειώθηκε από την αρχική σύνθεση.'
       };
+      const INCLUDED_SMALL_ALBUMS = 3;
+      const SMALL_ALBUM_PRICE = 80;
       let currentSlide = 0;
       let finalPriceManual = false;
 
@@ -967,7 +978,7 @@
 
       const cleanNumber = (input) => {
         const min = Number(input.min || 0);
-        const max = Number(input.max || 999);
+        const max = input.max === '' ? Number.MAX_SAFE_INTEGER : Number(input.max);
         let value = Math.round(Number(input.value) || 0);
         value = Math.max(min, Math.min(max, value));
         input.value = value;
@@ -993,6 +1004,19 @@
           total += value;
           rows.push({ label: input.dataset.label, value, type: value >= 0 ? 'add' : 'subtract' });
         });
+
+        const smallAlbumCount = cleanNumber($('#smallAlbumCount'));
+        const smallAlbumDifference = smallAlbumCount - INCLUDED_SMALL_ALBUMS;
+        if (smallAlbumDifference !== 0) {
+          const quantity = Math.abs(smallAlbumDifference);
+          const value = smallAlbumDifference * SMALL_ALBUM_PRICE;
+          rows.push({
+            label: `${smallAlbumDifference > 0 ? 'Προσθήκη' : 'Αφαίρεση'} μικρού album × ${quantity}`,
+            value,
+            type: value >= 0 ? 'add' : 'subtract'
+          });
+          total += value;
+        }
 
         $$('.qty').forEach((input) => {
           const quantity = cleanNumber(input);
@@ -1023,7 +1047,7 @@
         $('#printPhone2').textContent = safeText($('#phone2').value);
         $('#printChurch').textContent = safeText($('#church').value);
         $('#printReception').textContent = safeText($('#reception').value);
-        $('#printNotes').textContent = safeText($('#notes').value, 'Τα μεταφορικά διαμορφώνονται ανάλογα με την τοποθεσία.');
+        $('#printNotes').textContent = safeText($('#notes').value, 'Δεν υπάρχουν πρόσθετες σημειώσεις.');
 
         const titleCouple = [p1, p2].filter(Boolean).join(' & ');
         document.title = titleCouple ? `Πακέτο Γάμου 2027 · ${titleCouple}` : 'Image Makers · Πακέτο Γάμου 2027';
@@ -1033,17 +1057,18 @@
         const included = fixedIncluded
           .filter((item) => !$(item.selector).checked)
           .map((item) => item.label);
-        const smallAlbums = 3 - cleanNumber($('#removeAlbums'));
+        const smallAlbums = cleanNumber($('#smallAlbumCount'));
         $('#printIncludedServices').innerHTML = included.map((label) => `<li>${label}</li>`).join('');
         $('#printIncludedCard').classList.toggle('is-hidden-block', included.length === 0);
         $('#printAlbumCard').classList.toggle('full-print', included.length === 0);
-        $('#printSmallAlbumCount').textContent = smallAlbums;
+        $('#printSmallAlbumsItem').textContent = `${smallAlbums} ${smallAlbums === 1 ? 'μικρό ψηφιακό album.' : 'μικρά ψηφιακά album.'}`;
         $('#printSmallAlbumsItem').classList.toggle('is-hidden-block', smallAlbums === 0);
 
         const upgrades = $$('.add-option:checked').map((input) => input.dataset.label);
         const extraHours = cleanNumber($('#extraHours'));
         const largeSpreads = cleanNumber($('#largeSpreads'));
         const smallSpreads = cleanNumber($('#smallSpreads'));
+        if (smallAlbums !== INCLUDED_SMALL_ALBUMS) upgrades.push(`${smallAlbums} μικρά album συνολικά`);
         if (extraHours) upgrades.push(`${extraHours} επιπλέον ${extraHours === 1 ? 'ώρα' : 'ώρες'} δεξίωσης`);
         if (largeSpreads) upgrades.push(`${largeSpreads} επιπλέον σαλόνια μεγάλου album`);
         if (smallSpreads) upgrades.push(`${smallSpreads} επιπλέον σαλόνια μικρού album`);
@@ -1081,6 +1106,14 @@
             description: item.description
           });
         });
+        const addedAlbums = Math.max(0, cleanNumber($('#smallAlbumCount')) - INCLUDED_SMALL_ALBUMS);
+        if (addedAlbums) {
+          upgrades.push({
+            label: `${addedAlbums} ${addedAlbums === 1 ? 'επιπλέον μικρό album' : 'επιπλέον μικρά album'}`,
+            value: addedAlbums * SMALL_ALBUM_PRICE,
+            description: 'Πρόσθετα μικρά ψηφιακά album πέρα από τα τρία που περιλαμβάνονται στο βασικό πακέτο.'
+          });
+        }
         return upgrades;
       }
 
@@ -1090,11 +1123,11 @@
           value: Number(input.dataset.price),
           description: reductionDescriptions[input.dataset.label]
         }));
-        const removedAlbums = cleanNumber($('#removeAlbums'));
+        const removedAlbums = Math.max(0, INCLUDED_SMALL_ALBUMS - cleanNumber($('#smallAlbumCount')));
         if (removedAlbums) {
           reductions.push({
             label: `${removedAlbums} ${removedAlbums === 1 ? 'μικρό album' : 'μικρά album'}`,
-            value: removedAlbums * Number($('#removeAlbums').dataset.unit),
+            value: removedAlbums * -SMALL_ALBUM_PRICE,
             description: reductionDescriptions['Αφαίρεση μικρού album']
           });
         }
@@ -1123,35 +1156,42 @@
       function updatePrice() {
         const { total: calculatedTotal, rows } = getCalculation();
         const finalPriceInput = $('#finalPackagePrice');
-        let finalTotal = calculatedTotal;
+        const transportCost = cleanNumber($('#transportCost'));
+        let packageTotal = calculatedTotal;
 
         if (finalPriceManual && finalPriceInput.value !== '') {
           const enteredPrice = Number(finalPriceInput.value);
-          if (Number.isFinite(enteredPrice) && enteredPrice >= 0) finalTotal = Math.round(enteredPrice);
+          if (Number.isFinite(enteredPrice) && enteredPrice >= 0) packageTotal = Math.round(enteredPrice);
         } else {
           finalPriceManual = false;
           finalPriceInput.value = calculatedTotal;
         }
 
+        const finalTotal = packageTotal + transportCost;
         $('#calculatedPrice').textContent = formatMoney(calculatedTotal);
         setText('.live-total', formatMoney(finalTotal));
 
         const changes = rows.slice(1);
-        const manualPriceRow = finalPriceManual && finalTotal !== calculatedTotal
-          ? `<div class="breakdown-row base"><span>Τελική συμφωνημένη τιμή</span><strong>${formatMoney(finalTotal)}</strong></div>`
+        const manualPriceRow = finalPriceManual && packageTotal !== calculatedTotal
+          ? `<div class="breakdown-row base"><span>Συμφωνημένη τιμή πακέτου</span><strong>${formatMoney(packageTotal)}</strong></div>`
+          : '';
+        const transportRow = transportCost
+          ? `<div class="breakdown-row add"><span>Μεταφορικά έξοδα</span><strong>+${formatMoney(transportCost)}</strong></div>`
           : '';
         $('#screenBreakdown').innerHTML = [
           `<div class="breakdown-row base"><span>Βασικό πακέτο</span><strong>${formatMoney(BASE_PRICE)}</strong></div>`,
           ...(changes.length
             ? changes.map((row) => `<div class="breakdown-row ${row.type}"><span>${row.label}</span><strong>${row.value > 0 ? '+' : '−'}${formatMoney(Math.abs(row.value))}</strong></div>`)
             : ['<div class="empty-breakdown">Δεν έχουν γίνει μεταβολές στο βασικό πακέτο.</div>']),
-          manualPriceRow
+          manualPriceRow,
+          transportRow
         ].join('');
 
         const printRows = rows.map((row) => `<tr><td>${row.label}</td><td>${row.type === 'base' ? formatMoney(row.value) : `${row.value > 0 ? '+' : '−'}${formatMoney(Math.abs(row.value))}`}</td></tr>`);
-        if (finalPriceManual && finalTotal !== calculatedTotal) {
-          printRows.push(`<tr><td>Τελική συμφωνημένη τιμή</td><td>${formatMoney(finalTotal)}</td></tr>`);
+        if (finalPriceManual && packageTotal !== calculatedTotal) {
+          printRows.push(`<tr><td>Συμφωνημένη τιμή πακέτου</td><td>${formatMoney(packageTotal)}</td></tr>`);
         }
+        if (transportCost) printRows.push(`<tr><td>Μεταφορικά έξοδα</td><td>+${formatMoney(transportCost)}</td></tr>`);
         $('#printBreakdown').innerHTML = printRows.join('');
       }
 
@@ -1210,6 +1250,8 @@
         $$('input[type="text"], input[type="tel"], input[type="date"], textarea').forEach((input) => { input.value = ''; });
         $$('.calc[type="checkbox"]').forEach((input) => { input.checked = false; });
         $$('.qty').forEach((input) => { input.value = '0'; });
+        $('#smallAlbumCount').value = String(INCLUDED_SMALL_ALBUMS);
+        $('#transportCost').value = '0';
         finalPriceManual = false;
         $('#finalPackagePrice').value = BASE_PRICE;
         $('input[name="prints"]').checked = true;
@@ -1256,8 +1298,10 @@
     })();
   </script>
 <script>
-/* Injected into offer/builder.html — API για την εφαρμογή Image Makers */
+/* Injected — API για την εφαρμογή Image Makers (Οδηγός προσφοράς γάμου / γαμοβάπτισης) */
 (function () {
+  var KIND = 'wedding';
+  var INCLUDED_ALBUMS = 3;
   var params = new URLSearchParams(location.search);
   var embedded = params.get('embed') === '1' && window.parent !== window;
   if (embedded) document.body.classList.add('embedded');
@@ -1277,7 +1321,10 @@
     var removes = s.removes || [], adds = s.adds || [];
     $$('.remove-option').forEach(function (i) { i.checked = removes.indexOf(i.dataset.label) >= 0; });
     $$('.add-option').forEach(function (i) { i.checked = adds.indexOf(i.dataset.label) >= 0; });
-    setVal('#removeAlbums', s.removeAlbums || 0);
+    // μικρά album: συνολική ποσότητα (παλιές προσφορές κρατούσαν «αφαίρεση μικρών album»)
+    var albums = s.smallAlbumCount != null ? Number(s.smallAlbumCount) : INCLUDED_ALBUMS - (Number(s.removeAlbums) || 0);
+    setVal('#smallAlbumCount', isFinite(albums) && albums >= 0 ? albums : INCLUDED_ALBUMS);
+    setVal('#transportCost', Number(s.transportCost) || 0);
     setVal('#extraHours', s.extraHours || 0);
     setVal('#largeSpreads', s.largeSpreads || 0);
     setVal('#smallSpreads', s.smallSpreads || 0);
@@ -1290,6 +1337,8 @@
   function getState() {
     var calculated = num(($('#calculatedPrice') || {}).textContent);
     var finalP = num(($('#finalPackagePrice') || {}).value) || calculated;
+    var transport = num(($('#transportCost') || {}).value);
+    var albums = num(($('#smallAlbumCount') || {}).value);
     var pr = $('input[name="prints"]:checked');
     return {
       partner1: $('#partner1').value.trim(), partner2: $('#partner2').value.trim(),
@@ -1298,11 +1347,13 @@
       church: $('#church').value.trim(), reception: $('#reception').value.trim(), notes: $('#notes').value.trim(),
       removes: $$('.remove-option:checked').map(function (i) { return i.dataset.label; }),
       adds: $$('.add-option:checked').map(function (i) { return i.dataset.label; }),
-      removeAlbums: num($('#removeAlbums').value), extraHours: num($('#extraHours').value),
+      smallAlbumCount: albums, removeAlbums: Math.max(0, INCLUDED_ALBUMS - albums), addAlbums: Math.max(0, albums - INCLUDED_ALBUMS),
+      transportCost: transport, extraHours: num($('#extraHours').value),
       largeSpreads: num($('#largeSpreads').value), smallSpreads: num($('#smallSpreads').value),
       prints: pr ? pr.value : '',
-      calculatedTotal: calculated, total: finalP,
-      finalPrice: finalP !== calculated ? finalP : null
+      calculatedTotal: calculated, packageTotal: finalP, total: finalP + transport,
+      finalPrice: finalP !== calculated ? finalP : null,
+      kind: KIND
     };
   }
 

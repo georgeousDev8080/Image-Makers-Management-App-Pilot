@@ -110,7 +110,8 @@ export function offerSummary(od) {
   const removes = od.removes || [];
   const adds = od.adds || [];
   const included = [...BASE_INCLUDED()];
-  const smallAlbums = 3 - (Number(od.removeAlbums) || 0);
+  if (od.kind === 'wedding_baptism') included.splice(4, 0, L('Μεγάλο ψηφιακό album βάπτισης 70×30 cm · 20 σαλόνια', 'Large baptism album 70×30 cm · 20 spreads'));
+  const smallAlbums = Math.min(3, od.smallAlbumCount != null ? Number(od.smallAlbumCount) : 3 - (Number(od.removeAlbums) || 0));
   if (smallAlbums > 0) included.push(L(`${smallAlbums} μικρά ψηφιακά album`, `${smallAlbums} small digital albums`));
   if (od.prints) included.push(od.prints);
   ['Drone εκκλησίας', 'Φωτογράφηση next day', 'Video next day', 'Drone next day'].forEach((x) => { if (!removes.includes(x)) included.push(x); });
@@ -119,6 +120,8 @@ export function offerSummary(od) {
   if (od.extraHours) upgrades.push(L(`${od.extraHours} επιπλέον ώρες δεξίωσης`, `${od.extraHours} extra reception hours`));
   if (od.largeSpreads) upgrades.push(L(`${od.largeSpreads} επιπλέον σαλόνια μεγάλου album`, `${od.largeSpreads} extra large-album spreads`));
   if (od.smallSpreads) upgrades.push(L(`${od.smallSpreads} επιπλέον σαλόνια μικρού album`, `${od.smallSpreads} extra small-album spreads`));
+  if (od.addAlbums) upgrades.push(L(`${od.addAlbums} ${od.addAlbums === 1 ? 'επιπλέον μικρό album' : 'επιπλέον μικρά album'}`, `${od.addAlbums} extra small album${od.addAlbums === 1 ? '' : 's'}`));
+  if (od.transportCost) upgrades.push(L(`Μεταφορικά έξοδα ${od.transportCost}€`, `Travel costs ${od.transportCost}€`));
   const removed = removes.slice();
   if (od.removeAlbums) removed.push(L(`${od.removeAlbums} μικρά album`, `${od.removeAlbums} small albums`));
   return { included, upgrades, removed, notes: od.notes || '' };
@@ -177,7 +180,7 @@ export function crewBriefHTML(e, myDuty) {
 /** Σύντομο όνομα πακέτου για το φύλλο (π.χ. BASIC PAC + 2ο συνεργείο) */
 export function packageNameFrom(od) {
   if (!od) return '';
-  const parts = [isBaptismOffer(od) ? 'BAPTISM PAC' : 'BASIC PAC'];
+  const parts = [isBaptismOffer(od) ? 'BAPTISM PAC' : od.kind === 'wedding_baptism' ? 'ΓΑΜΟΒΑΠΤΙΣΗ PAC' : 'BASIC PAC'];
   if (isBaptismOffer(od)) {
     const bs = { 'Φωτογράφηση πριν & ψηφιακό album ευχολόγιο': 'PRE-BAPTISM', 'Drone στην εκκλησία': 'DRONE', 'Μικρό album 47×20': 'ΜΙΚΡΟ ALBUM', 'Album Platinum series': 'PLATINUM ALBUM', 'Platinum album case': 'PLATINUM CASE', 'Wooden USB case': 'USB CASE', 'Παράδοση video σε 4K': '4K' };
     (od.adds || []).forEach((a) => parts.push('+' + (bs[a] || a.toUpperCase())));
@@ -189,6 +192,7 @@ export function packageNameFrom(od) {
   const remShort = { 'Drone εκκλησίας': 'ΧΩΡΙΣ DRONE ΕΚΚΛ.', 'Φωτογράφηση next day': 'ΧΩΡΙΣ NEXT DAY PHOTO', 'Video next day': 'ΧΩΡΙΣ NEXT DAY VIDEO', 'Drone next day': 'ΧΩΡΙΣ DRONE NEXT DAY' };
   (od.removes || []).forEach((r) => parts.push('−' + (remShort[r] || r.toUpperCase())));
   if (od.removeAlbums) parts.push(`−${od.removeAlbums} ΜΙΚΡΑ ALBUM`);
+  if (od.addAlbums) parts.push(`+${od.addAlbums} ΜΙΚΡ${od.addAlbums === 1 ? 'Ο' : 'Α'} ALBUM`);
   if (od.extraHours) parts.push(`+${od.extraHours}Ω ΔΕΞΙΩΣΗ`);
   return parts.join(' ');
 }

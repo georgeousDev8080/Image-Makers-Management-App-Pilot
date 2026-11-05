@@ -8,7 +8,7 @@ import { fmtDateLong, fmtTime, normTime, timeInputAttrs, L, esc, icon, money, fm
 import { S, isStaleAppt, STALE_DAYS, saveAppointment, deleteAppointment, uploadAppointmentOffer, openOffer, offerUrl, business, eventView } from '../data.js';
 import { pageHead, emptyState, setTopActions, go, backBtn } from '../layout.js';
 import { catPill, catShort, packageNameFrom, offerSummaryHTML, pickYear, yearOf, yearSelect, bindYear } from '../components.js';
-import { openOfferBuilder, generateOfferPdf, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf, offerKindFor, offerKindOf } from '../offer.js';
+import { openOfferBuilder, generateOfferPdf, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf, offerKindFor, offerKindOf, offerFits } from '../offer.js';
 import { clientPageUrl, downloadClientFile } from './requests.js';
 import { barPairs, hbars, bindTips } from '../charts.js';
 
@@ -19,6 +19,18 @@ const CAT_ACC = { wedding: ['Γάμο', 'a wedding'], baptism: ['Βάπτιση'
 export const apptFor = (cat) => { const x = CAT_ACC[cat] || CAT_ACC.other; return L(`Ραντεβού για ${x[0]}`, `Appointment for ${x[1]}`); };
 export const isScheduled = (a) => a.status === 'scheduled';
 const tm = (t) => (t ? String(t).slice(0, 5) : '');
+/** Τι υπάρχει ήδη στην ίδια ημερομηνία εκδήλωσης: κλεισμένες εκδηλώσεις και ενδεχόμενες (προσφορές σε αναμονή) */
+export function dateConflictHTML(date, exceptId = null) {
+  if (!date) return '';
+  const evs = [...S.events.values()].filter((e) => e.status !== 'cancelled' && e.event_date <= date && (e.end_date || e.event_date) >= date);
+  const maybes = S.appointments.filter((a) => a.id !== exceptId && a.status === 'pending' && a.event_date === date);
+  if (!evs.length && !maybes.length) return `<div class="small muted">✓ ${esc(L('Δεν υπάρχει άλλη εκδήλωση ή προσφορά σε αναμονή αυτή την ημερομηνία.', 'No other event or pending offer on this date.'))}</div>`;
+  const cat = (c) => lbl(CATEGORIES, c);
+  return `<div class="banner yellow" style="margin:0">${icon('warning')}<div><b>${esc(L('Αυτή την ημερομηνία υπάρχουν ήδη:', 'Already on this date:'))}</b><span>${[
+    ...evs.map((e) => esc(`${L('Εκδήλωση', 'Event')}: ${cat(e.category)}${e.church_location ? ' · ' + e.church_location : ''}${e.event_time ? ' · ' + String(e.event_time).slice(0, 5) : ''}`)),
+    ...maybes.map((a) => esc(`${L('Ενδεχόμενη εκδήλωση', 'Possible event')}: ${cat(a.category)} · ${apptName(a)}${a.church ? ' · ' + a.church : ''}`)),
+  ].join('<br>')}</span></div></div>`;
+}
 const inYear = (a) => yearOf(a.appt_date) === st.year;
 export const apptName = (a) => [a.name1, a.name2].filter(Boolean).join(' & ') || L('Χωρίς όνομα', 'No name');
 const ageDays = (a) => Math.floor((Date.now() - new Date(a.status_at).getTime()) / 864e5);
@@ -120,9 +132,10 @@ export function openScheduleSheet({ date = '', appt = null } = {}) {
       ${fld('phone', L('Τηλέφωνο', 'Phone'), { req: true, type: 'tel', im: 'tel', ph: '69XXXXXXXX' })}
       ${fld('event_date', L('Πότε είναι η εκδήλωση', 'When the event is'), { req: true, type: 'date' })}
     </div>
+    <div id="dchk">${dateConflictHTML(f.event_date, appt?.id)}</div>
     <div class="field"><label>${esc(L('Σημειώσεις (προαιρετικά)', 'Notes (optional)'))}</label><textarea class="textarea" name="notes" style="min-height:60px">${esc(f.notes)}</textarea></div>
   </div>`;
-  body.querySelectorAll('[name]').forEach((i) => i.addEventListener('input', () => { f[i.name] = i.value; i.classList.remove('invalid'); }));
+  body.querySelectorAll('[name]').forEach((i) => i.addEventListener('input', () => { f[i.name] = i.value; i.classList.remove('invalid'); if (i.name === 'event_date') body.querySelector('#dchk').innerHTML = dateConflictHTML(f.event_date, appt?.id); }));
   body.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { f.category = b.dataset.cat; body.querySelectorAll('[data-cat]').forEach((x) => x.classList.toggle('on', x === b)); }));
   const s = sheet({ title: appt ? L('Αλλαγή ραντεβού', 'Edit appointment') : L('Προγραμματισμός ραντεβού', 'Schedule appointment'), body, right: `<button class="btn plain" data-save><b>${esc(L('Αποθήκευση', 'Save'))}</b></button>` });
   s.root.querySelector('[data-save]').addEventListener('click', async (ev) => {
@@ -276,8 +289,8 @@ export async function ensurePdf(a, btn) {
 async function editOffer(a) {
   const kind = offerKindFor(a.category);
   const pre = offerPrefill(a);
-  if (offerKindOf(a.offer_data) !== kind) { Object.keys(pre).forEach((k) => { if (!['partner1', 'partner2', 'phone1', 'phone2', 'eventDate', 'church', 'reception', 'city'].includes(k)) delete pre[k]; }); }
-  const res = await openOfferBuilder({ kind, prefill: { ...pre, finalPrice: offerKindOf(a.offer_data) === kind ? a.offer_data?.finalPrice ?? undefined : undefined }, saveLabel: L('Αποθήκευση στο ραντεβού', 'Save to appointment') });
+  if (!offerFits(a.offer_data, kind)) { Object.keys(pre).forEach((k) => { if (!['partner1', 'partner2', 'phone1', 'phone2', 'eventDate', 'church', 'reception', 'city'].includes(k)) delete pre[k]; }); }
+  const res = await openOfferBuilder({ kind, prefill: { ...pre, finalPrice: offerFits(a.offer_data, kind) ? a.offer_data?.finalPrice ?? undefined : undefined }, saveLabel: L('Αποθήκευση στο ραντεβού', 'Save to appointment') });
   if (!res) return;
   try {
     const path = await uploadAppointmentOffer(a.id, res.pdf);
@@ -429,6 +442,7 @@ export function renderAppointmentForm(root, params = {}) {
     + `<div class="card pad"><div class="form-grid">
       ${fld('appt_date', L('Ημερομηνία ραντεβού', 'Appointment date'), { req: true, type: 'date' })}
       ${fld('event_date', L('Ημερομηνία εκδήλωσης', 'Event date'), { type: 'date' })}
+      <div class="field full" id="dchk">${dateConflictHTML(F.event_date, F.id || null)}</div>
       <div class="field full"><label>${esc(L('Κατηγορία εκδήλωσης', 'Event category'))} <span class="req">*</span></label><div class="chips">${CATEGORIES.map((c) => `<button type="button" class="chip ${F.category === c.v ? 'on' : ''}" data-cat="${c.v}"><span class="cat-dot cat-${c.v}"></span>${esc(L(c.el, c.en))}</button>`).join('')}</div></div>
       ${fld('name1', L('Ονοματεπώνυμο 1', 'Full name 1'), { req: true, ph: L('π.χ. Μαρία Παπαδοπούλου', 'e.g. Maria Papadopoulou') })}
       ${fld('name2', L('Ονοματεπώνυμο 2', 'Full name 2'), { ph: L('π.χ. Γιώργος Ιωάννου', 'e.g. George Ioannou') })}
@@ -449,11 +463,11 @@ export function renderAppointmentForm(root, params = {}) {
       <div class="field mt"><label>${esc(L('Αξία προσφοράς (€)', 'Offer value (€)'))}</label><div class="input-wrap"><input class="input" name="total" inputmode="decimal" value="${esc(F.total ?? '')}" placeholder="2800"><span class="suffix">€</span></div><div class="help">${esc(L('Συμπληρώνεται αυτόματα από τον Οδηγό.', 'Filled automatically by the builder.'))}</div></div>
     </div>
     <div class="wizard-foot"><span></span><button class="btn primary large" data-save>${icon('check')} ${esc(edit && !presenting ? L('Αποθήκευση αλλαγών', 'Save changes') : L('Αποθήκευση ραντεβού', 'Save appointment'))}</button></div>`;
-  root.querySelectorAll('[name]').forEach((i) => i.addEventListener('input', () => { F[i.name] = i.value; i.classList.remove('invalid'); }));
+  root.querySelectorAll('[name]').forEach((i) => i.addEventListener('input', () => { F[i.name] = i.value; i.classList.remove('invalid'); if (i.name === 'event_date') root.querySelector('#dchk').innerHTML = dateConflictHTML(F.event_date, F.id || null); }));
   root.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => { F.category = b.dataset.cat; root.querySelectorAll('[data-cat]').forEach((x) => x.classList.toggle('on', x === b)); }));
   root.querySelector('[data-builder]').addEventListener('click', async () => {
     const kind = offerKindFor(F.category);
-    const res = await openOfferBuilder({ kind, prefill: { ...(F.offer_data && offerKindOf(F.offer_data) === kind ? F.offer_data : {}), partner1: F.name1, partner2: F.name2, phone1: F.phone, eventDate: F.event_date, church: F.church, reception: F.reception, city: (F.church || '').split(',').slice(1).join(',').trim(), finalPrice: offerKindOf(F.offer_data) === kind ? F.offer_data?.finalPrice ?? undefined : undefined }, saveLabel: L('Αποθήκευση στο ραντεβού', 'Save to appointment') });
+    const res = await openOfferBuilder({ kind, prefill: { ...(F.offer_data && offerFits(F.offer_data, kind) ? F.offer_data : {}), partner1: F.name1, partner2: F.name2, phone1: F.phone, eventDate: F.event_date, church: F.church, reception: F.reception, city: (F.church || '').split(',').slice(1).join(',').trim(), finalPrice: offerKindOf(F.offer_data) === kind ? F.offer_data?.finalPrice ?? undefined : undefined }, saveLabel: L('Αποθήκευση στο ραντεβού', 'Save to appointment') });
     if (!res) return;
     F.pdf = res.pdf; F.pdfName = res.fileName; F.offer_data = res.state; F.total = res.total;
     // ό,τι γράφτηκε στον Οδηγό περνά και στη φόρμα, ώστε φόρμα και PDF να συμφωνούν

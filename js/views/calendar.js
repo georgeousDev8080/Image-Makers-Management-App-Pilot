@@ -110,10 +110,20 @@ function buildExtras(admin, onlyMine, mine) {
     const t = String(a.appt_time).slice(0, 5);
     out.push({ key: 'a:' + a.id, sub: 'appt', ref: a, date: a.appt_date, time: t, label: `${apptFor(a.category)} ${t}`, tip: `${apptFor(a.category)} ${t} · ${apptName(a)}${a.phone ? ' · ' + a.phone : ''}`, done: a.status !== 'scheduled' });
   });
+  // Ενδεχόμενες εκδηλώσεις: ραντεβού / προσφορές σε αναμονή απάντησης, στην ημερομηνία της εκδήλωσης
+  if (admin && !onlyMine) S.appointments.filter((a) => a.status === 'pending' && a.event_date).forEach((a) => {
+    const place = maybePlace(a); const t = maybeTime(a);
+    out.push({ key: 'p:' + a.id, sub: 'maybe', ref: a, date: a.event_date, time: t, cat: a.category,
+      label: `${L('Ενδεχόμενη εκδήλωση', 'Possible event')} · ${catLabel(a.category)}${place ? ' · ' + place : ''}`,
+      tip: [L('Ενδεχόμενη εκδήλωση (προσφορά σε αναμονή)', 'Possible event (offer pending)'), catLabel(a.category), t, place, apptName(a)].filter(Boolean).join(' · ') });
+  });
   XS = out; XBY = {};
   out.forEach((x) => { (XBY[x.date] ||= []).push(x); });
   Object.values(XBY).forEach((l) => l.sort((a, b) => (a.time || '').localeCompare(b.time || '')));
 }
+/** Τοποθεσία / ώρα ενδεχόμενης εκδήλωσης από τα στοιχεία του ραντεβού ή της προσφοράς */
+const maybePlace = (a) => String(a.church || a.offer_data?.church || a.reception || '').split(' · ')[0].trim();
+const maybeTime = (a) => { const m = String([a.church_time, a.church, a.offer_data?.church].filter(Boolean).join(' ')).match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/); return m ? `${m[1].padStart(2, '0')}:${m[2]}` : ''; };
 const xCls = (x) => `x-${x.sub} ${x.kind2 ? 'x-' + x.kind2 : ''} ${x.done ? 'x-done' : ''}`;
 function xClick(key) {
   const x = XS.find((y) => y.key === key); if (!x) return;
@@ -123,7 +133,7 @@ function xClick(key) {
   else if (x.ref.status === 'scheduled') scheduledActions(x.ref);
   else openAppointment(x.ref);
 }
-const xRow = (x) => `<button class="row has-icon" data-x="${x.key}"><span class="row-icon ${xCls(x)}">${x.sub === 'appt' ? icon('handshake') : x.sub === 'note' ? '📌' : x.sub === 'meet' ? '👥' : sessionEmoji(x.kind2)}</span><div class="main-col"><div class="t">${esc(x.sub === 'appt' ? x.label : x.label.replace(/^\S+\s/, ''))}</div><div class="s">${esc(x.sub === 'appt' ? x.tip.split(' · ').slice(1).join(' · ') : x.sub === 'note' ? ([x.time, x.ref.notes].filter(Boolean).join(' · ') || L('Χωρίς ώρα', 'No time')) : x.sub === 'meet' ? [x.time, (x.ref.reasons || []).join(', ')].join(' · ') : [x.time || L('ώρα: δεν έχει οριστεί', 'time: not set'), x.tip.split(' · ').slice(-2).join(' · ')].join(' · '))}</div></div>${icon('chevR', 'chev')}</button>`;
+const xRow = (x) => (x.sub === 'maybe' ? `<button class="row has-icon maybe-row" data-x="${x.key}"><span class="row-icon ${xCls(x)} cat-${x.cat}">❔</span><div class="main-col"><div class="t">${esc(x.label)}</div><div class="s">${esc([x.time || L('ώρα: ;', 'time: ?'), apptName(x.ref), L('προσφορά σε αναμονή απάντησης', 'offer awaiting an answer')].join(' · '))}</div></div>${icon('chevR', 'chev')}</button>` : `<button class="row has-icon" data-x="${x.key}"><span class="row-icon ${xCls(x)}">${x.sub === 'appt' ? icon('handshake') : x.sub === 'note' ? '📌' : x.sub === 'meet' ? '👥' : sessionEmoji(x.kind2)}</span><div class="main-col"><div class="t">${esc(x.sub === 'appt' ? x.label : x.label.replace(/^\S+\s/, ''))}</div><div class="s">${esc(x.sub === 'appt' ? x.tip.split(' · ').slice(1).join(' · ') : x.sub === 'note' ? ([x.time, x.ref.notes].filter(Boolean).join(' · ') || L('Χωρίς ώρα', 'No time')) : x.sub === 'meet' ? [x.time, (x.ref.reasons || []).join(', ')].join(' · ') : [x.time || L('ώρα: δεν έχει οριστεί', 'time: not set'), x.tip.split(' · ').slice(-2).join(' · ')].join(' · '))}</div></div>${icon('chevR', 'chev')}</button>`);
 
 /** Όλα τα στοιχεία του ημερολογίου ως διαστήματα ημερών (εκδηλώσεις + απουσίες, οι πολυήμερες ενωμένες) */
 let VIEWS = [];

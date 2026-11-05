@@ -26,6 +26,19 @@ function fitWrap(wrap) {
   if (h < 320) h = window.innerHeight - barH - tabH - 20;
   wrap.style.maxHeight = `${Math.max(260, Math.round(h))}px`;
 }
+/** Ροδέλα: όταν ο πίνακας δεν έχει άλλο να κυλήσει (πάνω/κάτω), κυλάει η σελίδα */
+function wheelPass(wrap) {
+  if (wrap._wheel) return; wrap._wheel = true;
+  wrap.addEventListener('wheel', (e) => {
+    if (e.ctrlKey || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+    const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY;
+    const max = wrap.scrollHeight - wrap.clientHeight;
+    const atEnd = dy > 0 ? wrap.scrollTop >= max - 1 : wrap.scrollTop <= 0;
+    if (!atEnd) return;
+    e.preventDefault();
+    window.scrollBy(0, dy);
+  }, { passive: false });
+}
 let fitBound = false;
 function bindFit() {
   if (fitBound) return; fitBound = true;
@@ -83,7 +96,7 @@ export function renderGrid(container, cols, opts) {
   container.innerHTML = html;
 
   const wrap = container.querySelector('.xl-wrap');
-  fitWrap(wrap);
+  fitWrap(wrap); wheelPass(wrap);
   wrap.scrollLeft = mem.scrollLeft; wrap.scrollTop = mem.scrollTop;
   wrap.addEventListener('scroll', () => { mem.scrollLeft = wrap.scrollLeft; mem.scrollTop = wrap.scrollTop; }, { passive: true });
 

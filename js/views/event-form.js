@@ -6,7 +6,7 @@ import { S, coupleName, profileName, saveCustomer, saveEvent, saveFinance, setCr
 import { pageHead, go, backBtn } from '../layout.js';
 import { dutyPicker, avatar, packageNameFrom, offerSummaryHTML, CREW_TASKS, crewBriefTexts } from '../components.js';
 import { pickLocation } from '../mappicker.js';
-import { openOfferBuilder, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf, offerKindFor, offerKindOf } from '../offer.js';
+import { openOfferBuilder, requestToOfferState, pickPdfFile, offerIsStale, refreshOfferPdf, offerKindFor, offerKindOf, offerFits } from '../offer.js';
 
 const addDays1 = (iso) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); };
 let W = null;
@@ -97,7 +97,7 @@ function freshState(params) {
 /** Ο σωστός Οδηγός για την κατηγορία: βάπτιση → Οδηγός βάπτισης, αλλιώς Οδηγός γάμου */
 const offerKind = () => offerKindFor(W.ev.category);
 /** Η προσφορά φτιάχτηκε με άλλον Οδηγό (π.χ. γάμου, ενώ η εκδήλωση είναι βάπτιση) — χρειάζεται νέα */
-const offerMismatch = () => !!W.offer.data && needsOffer(W.ev.category) && offerKindOf(W.offer.data) !== offerKind()
+const offerMismatch = () => !!W.offer.data && needsOffer(W.ev.category) && !offerFits(W.offer.data, offerKind())
   && (W.mode !== 'edit' || !!W.offer.pdf || W.ev.category !== W.origCategory);
 const offerReady = () => !needsOffer(W.ev.category) || (!!(W.offer.pdf || W.offer.existingPath || W.offer.fromAppointment) && !offerMismatch());
 const STEPS = () => [L('Πελάτης', 'Customer'), L('Εκδήλωση', 'Event'), L('Συνεργείο', 'Crew'), needsOffer(W.ev.category) ? L('Προσφορά & πακέτο', 'Offer & package') : L('Πακέτο', 'Package')];
@@ -186,7 +186,7 @@ function validate(root, step) {
     return true;
   }
   if (step === 3) {
-    if (offerMismatch()) { toastErr(L('Χρειάζεται νέα προσφορά', 'A new offer is needed'), offerKind() === 'baptism' ? L('Η προσφορά που υπάρχει είναι για γάμο. Δημιουργήστε την προσφορά με τον Οδηγό προσφοράς βάπτισης.', 'The existing offer is for a wedding. Create the offer with the baptism offer builder.') : L('Η προσφορά που υπάρχει είναι για βάπτιση. Δημιουργήστε νέα με τον Οδηγό προσφοράς.', 'The existing offer is for a baptism. Create a new one with the offer builder.')); return false; }
+    if (offerMismatch()) { toastErr(L('Χρειάζεται νέα προσφορά', 'A new offer is needed'), offerKind() === 'baptism' ? L('Η προσφορά που υπάρχει είναι για γάμο. Δημιουργήστε την προσφορά με τον Οδηγό προσφοράς βάπτισης.', 'The existing offer is for a wedding. Create the offer with the baptism offer builder.') : L('Η προσφορά που υπάρχει είναι για άλλο τύπο εκδήλωσης. Δημιουργήστε νέα με τον Οδηγό προσφοράς.', 'The existing offer is for another event type. Create a new one with the offer builder.')); return false; }
     if (needsOffer(W.ev.category) && !W.offer.pdf && !W.offer.existingPath && !W.offer.fromAppointment) { toastErr(L('Λείπει η προσφορά (PDF)', 'Offer PDF missing'), L('Δημιουργήστε την με τον Οδηγό προσφοράς ή ανεβάστε έτοιμο PDF.', 'Create it with the offer builder or upload a ready PDF.')); return false; }
     const p = parseMoney(W.fin.package_price);
     if (W.fin.package_price !== '' && (p === null || p < 0)) { showErr(root, 'package_price', L('Μη έγκυρο ποσό', 'Invalid amount')); return false; }
@@ -508,7 +508,7 @@ function stepOffer(body, root, params) {
     <div class="card pad">
       <div class="spread"><b>${esc(L('Προσφορά (PDF)', 'Offer (PDF)'))} <span class="req" style="color:var(--red)">*</span></b>${has ? `<span class="pill green">${icon('check')} ${esc(L('Επισυνάφθηκε', 'Attached'))}</span>` : mism ? `<span class="pill red">${esc(L('Χρειάζεται νέα', 'New one needed'))}</span>` : `<span class="pill red">${esc(L('Λείπει', 'Missing'))}</span>`}</div>
       <p class="muted small mt-s">${esc(L('Το PDF το βλέπουν μόνο οι διαχειριστές. Το συνεργείο βλέπει μόνο τι περιλαμβάνει το πακέτο, χωρίς τιμές.', 'Only admins can open the PDF. The crew only sees what the package includes, without prices.'))}</p>
-      ${mism ? `<div class="banner mt-s" style="margin-bottom:0">${icon('warning')}<div><b>${esc(bap ? L('Η προσφορά που υπάρχει είναι για γάμο', 'The existing offer is for a wedding') : L('Η προσφορά που υπάρχει είναι για βάπτιση', 'The existing offer is for a baptism'))}</b><span>${esc(bap ? L('Για βάπτιση η προσφορά γίνεται με τον Οδηγό προσφοράς βάπτισης. Πατήστε το κουμπί από κάτω.', 'For a baptism, the offer is made with the baptism offer builder. Tap the button below.') : L('Δημιουργήστε νέα προσφορά με τον Οδηγό προσφοράς.', 'Create a new offer with the offer builder.'))}</span></div></div>` : ''}
+      ${mism ? `<div class="banner mt-s" style="margin-bottom:0">${icon('warning')}<div><b>${esc(bap ? L('Η προσφορά που υπάρχει είναι για γάμο', 'The existing offer is for a wedding') : L('Η προσφορά που υπάρχει είναι για άλλο τύπο εκδήλωσης', 'The existing offer is for another event type'))}</b><span>${esc(bap ? L('Για βάπτιση η προσφορά γίνεται με τον Οδηγό προσφοράς βάπτισης. Πατήστε το κουμπί από κάτω.', 'For a baptism, the offer is made with the baptism offer builder. Tap the button below.') : L('Δημιουργήστε νέα προσφορά με τον Οδηγό προσφοράς.', 'Create a new offer with the offer builder.'))}</span></div></div>` : ''}
       ${has ? `<div class="offer-box" style="padding:12px 0 0"><div class="pdf-thumb">PDF</div><div class="main-col" style="flex:1"><div class="t">${esc(W.offer.pdfName || L('Υπάρχουσα προσφορά', 'Existing offer'))}</div><div class="s">${esc(W.offer.pdf ? L('Θα ανέβει με την αποθήκευση', 'Will upload when you save') : W.offer.fromAppointment && !W.offer.existingPath ? L('Από το ραντεβού — θα αντιγραφεί στην εκδήλωση', 'From the appointment — will be copied to the event') : L('Ήδη αποθηκευμένη', 'Already saved'))}</div></div></div>` : ''}
       <div class="grid cols-2 mt" style="gap:10px">
         <button class="btn primary large" data-builder>${icon('wand')} ${esc(W.offer.data && !mism ? (bap ? L('Επεξεργασία στον Οδηγό βάπτισης', 'Edit in baptism builder') : L('Επεξεργασία στον Οδηγό προσφοράς', 'Edit in offer builder')) : (bap ? L('Δημιουργία με τον Οδηγό βάπτισης', 'Create with baptism builder') : L('Δημιουργία με τον Οδηγό προσφοράς', 'Create with offer builder')))}</button>
@@ -528,7 +528,7 @@ function stepOffer(body, root, params) {
   bindInputs(body, W.fin);
   body.querySelector('[data-builder]')?.addEventListener('click', async () => {
     const kind = offerKind();
-    const same = W.offer.data && offerKindOf(W.offer.data) === kind;
+    const same = W.offer.data && offerFits(W.offer.data, kind);
     const res = await openOfferBuilder({ kind, prefill: { ...(same ? W.offer.data : {}), partner1: c?.name1 || '', partner2: c?.name2 || '', phone1: c?.phone1 || '', phone2: c?.phone2 || '', eventDate: W.ev.event_date, church: [W.ev.church_location, W.ev.event_time].filter(Boolean).join(' · '), reception: kind === 'baptism' ? '' : W.ev.reception_location, city: (W.ev.church_location || '').split(',').pop().trim(), finalPrice: same ? (W.fin.package_price || undefined) : undefined } });
     if (!res) return;
     W.offer.pdf = res.pdf; W.offer.pdfName = res.fileName; W.offer.data = res.state;

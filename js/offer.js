@@ -52,10 +52,13 @@ export function pickPdfFile() {
 }
 
 const SYNC_KEYS = ['partner1', 'partner2', 'phone1', 'eventDate', 'church', 'reception'];
-/** Ποιος Οδηγός προσφοράς: βάπτιση → offer/baptism.html, αλλιώς ο Οδηγός γάμου */
-export const offerKindFor = (category) => (category === 'baptism' ? 'baptism' : 'wedding');
-export const offerKindOf = (state) => (state?.kind === 'baptism' ? 'baptism' : 'wedding');
-const builderUrl = (kind) => (kind === 'baptism' ? 'offer/baptism.html?embed=1' : 'offer/builder.html?embed=1');
+/** Ποιος Οδηγός προσφοράς: βάπτιση → offer/baptism.html, γαμοβάπτιση → offer/wedding-baptism.html, αλλιώς ο Οδηγός γάμου */
+export const offerKindFor = (category) => (category === 'baptism' ? 'baptism' : category === 'wedding_baptism' ? 'wedding_baptism' : 'wedding');
+export const offerKindOf = (state) => (state?.kind === 'baptism' ? 'baptism' : state?.kind === 'wedding_baptism' ? 'wedding_baptism' : 'wedding');
+/** Η προσφορά ταιριάζει στον τύπο εκδήλωσης; (παλιές γαμοβαπτίσεις είχαν προσφορά από τον Οδηγό γάμου) */
+export const offerFits = (state, kind) => { const k = offerKindOf(state); return k === kind || (kind === 'wedding_baptism' && k === 'wedding'); };
+const builderUrl = (kind) => (kind === 'baptism' ? 'offer/baptism.html?embed=1' : kind === 'wedding_baptism' ? 'offer/wedding-baptism.html?embed=1' : 'offer/builder.html?embed=1');
+export const offerBuilderTitle = (kind) => (kind === 'baptism' ? L('Οδηγός προσφοράς βάπτισης', 'Baptism offer builder') : kind === 'wedding_baptism' ? L('Οδηγός προσφοράς γαμοβάπτισης', 'Wedding & baptism offer builder') : L('Οδηγός προσφοράς γάμου', 'Wedding offer builder'));
 const norm = (v) => String(v ?? '').trim().replace(/\s+/g, ' ');
 /** Τα στοιχεία της φόρμας διαφέρουν από αυτά που τυπώθηκαν στο PDF; */
 export function offerIsStale(state, fields) {
@@ -104,7 +107,7 @@ export function openOfferBuilder({ prefill = {}, saveLabel = null, kind = 'weddi
     layer.className = 'offer-layer';
     layer.innerHTML = `<div class="offer-bar">
         <button class="btn" data-x>${icon('x')} <span class="hide-mobile">${esc(L('Ακύρωση', 'Cancel'))}</span></button>
-        <b>${esc(kind === 'baptism' ? L('Οδηγός προσφοράς βάπτισης', 'Baptism offer builder') : L('Οδηγός προσφοράς', 'Offer builder'))}</b>
+        <b>${esc(offerBuilderTitle(kind))}</b>
         <button class="btn primary" data-save>${icon('check')} ${esc(saveLabel || L('Αποθήκευση στην εκδήλωση', 'Save to event'))}</button>
       </div>
       <iframe title="${esc(L('Οδηγός προσφοράς', 'Offer builder'))}" src="${builderUrl(kind)}"></iframe>
@@ -136,7 +139,7 @@ export function openOfferBuilder({ prefill = {}, saveLabel = null, kind = 'weddi
         const safe = [state.partner1, state.partner2].filter(Boolean).join('_').replace(/[^\p{L}\p{N}_-]+/gu, '_').slice(0, 60) || 'offer';
         const fileName = `Image_Makers_Prosfora_${safe}_${state.eventDate || ''}.pdf`;
         const file = new File([blob], fileName, { type: 'application/pdf' });
-        done({ pdf: file, fileName, state: kind === 'baptism' ? { ...state, kind: 'baptism' } : state, total: state.total });
+        done({ pdf: file, fileName, state: { ...state, kind }, total: state.total });
       } catch (e) {
         console.error(e);
         busyEl.hidden = true;
@@ -153,7 +156,7 @@ export async function editOfferForEvent(id) {
   const { e, c, f } = v;
   const kind = offerKindFor(e.category);
   // παλιά προσφορά άλλου τύπου (π.χ. γάμου σε βάπτιση): ξεκινά καθαρός ο σωστός Οδηγός
-  const prev = e.offer_data && offerKindOf(e.offer_data) === kind ? e.offer_data : {};
+  const prev = e.offer_data && offerFits(e.offer_data, kind) ? e.offer_data : {};
   const prefill = {
     ...prev,
     partner1: c?.name1 || '', partner2: c?.name2 || '', phone1: c?.phone1 || '', phone2: c?.phone2 || '',
