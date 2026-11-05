@@ -47,16 +47,19 @@ async function placeOf(e) {
 
 /** Πρόγνωση για την ημέρα & ώρα της εκδήλωσης → { emoji, text, temp, rain, wind, hour, place } ή { later: n } ή null */
 export async function eventWeather(e, today) {
-  const days = Math.round((new Date(e.event_date) - new Date(today)) / 864e5);
+  // πολυήμερη σε εξέλιξη: ο καιρός της σημερινής ημέρας
+  const day = e.event_date < today && (e.end_date || e.event_date) >= today ? today : e.event_date;
+  const days = Math.round((new Date(day) - new Date(today)) / 864e5);
   if (days < 0) return null;
   if (days > FORECAST_DAYS - 1) return { later: days - (FORECAST_DAYS - 1) };
   const place = await placeOf(e);
   if (!place) return null;
   const hour = Number(String(e.event_time || '12:00').slice(0, 2)) || 12;
-  const k = `wx:${place.lat.toFixed(2)},${place.lng.toFixed(2)}:${e.event_date}`;
+  const k = `wx:${place.lat.toFixed(2)},${place.lng.toFixed(2)}:${day}`;
   let data = mem.get(k);
   if (!data) {
-    data = getJSON(`https://api.open-meteo.com/v1/forecast?${new URLSearchParams({ latitude: place.lat, longitude: place.lng, hourly: 'temperature_2m,precipitation_probability,weather_code,wind_speed_10m', timezone: 'Europe/Athens', start_date: e.event_date, end_date: e.event_date })}`);
+    data = getJSON(`https://api.open-meteo.com/v1/forecast?${new URLSearchParams({ latitude: place.lat, longitude: place.lng, hourly: 'temperature_2m,precipitation_probability,weather_code,wind_speed_10m', timezone: 'Europe/Athens', start_date: day, end_date: day })}`);
+    data.catch(() => mem.delete(k)); // σε σφάλμα δικτύου: νέα προσπάθεια την επόμενη φορά
     mem.set(k, data);
     setTimeout(() => mem.delete(k), 60 * 60 * 1000); // ανανέωση κάθε ώρα
   }

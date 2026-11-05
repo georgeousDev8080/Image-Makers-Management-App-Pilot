@@ -2956,3 +2956,56 @@ begin
   if new.editing_status is distinct from old.editing_status then new.editing_status_at := now(); end if;
   return new;
 end $$;
+
+-- =====================================================================
+-- 2026-11-05 · Έλεγχος ασφαλείας (v1.9.1)
+-- =====================================================================
+-- run_automations: μόνο διαχειριστές (ή pg_cron / triggers χωρίς χρήστη)
+do $$
+declare d text;
+begin
+  d := pg_get_functiondef('public.run_automations(uuid)'::regprocedure);
+  if position('audit_guard' in d) = 0 then
+    d := regexp_replace(d, E'\\nbegin\\n', E'\nbegin\n  -- audit_guard\n  if auth.uid() is not null and not public.is_admin() then return 0; end if;\n', '');
+    execute d;
+  end if;
+end $$;
+
+-- δημόσιο αίτημα προσφοράς: η ημερομηνία δημιουργίας ορίζεται πάντα από τον server
+create or replace function private.on_offer_request()
+ returns trigger language plpgsql security definer set search_path to 'public', 'private'
+as $function$
+declare v_recent int;
+begin
+  if tg_op = 'INSERT' then
+    new.created_at := now();
+    select count(*) into v_recent from public.offer_requests where created_at > now() - interval '10 minutes';
+    if v_recent > 30 then raise exception 'rate_limited'; end if;
+    if pg_column_size(new) > 100000 then raise exception 'too_large'; end if;
+    new.status := 'new';
+    new.customer_id := null; new.event_id := null; new.handled_by := null;
+  end if;
+  return new;
+end $function$;
+
+-- RLS: auth.uid() μία φορά ανά ερώτημα
+alter policy profiles_select on public.profiles using ((id = (select auth.uid())) or has_role());
+alter policy profiles_update_self on public.profiles using (id = (select auth.uid())) with check (id = (select auth.uid()));
+alter policy notif_own on public.notifications using (user_id = (select auth.uid()));
+alter policy notif_own_update on public.notifications using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+alter policy notif_own_delete on public.notifications using (user_id = (select auth.uid()));
+alter policy push_own on public.push_subscriptions using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+alter policy absences_select on public.absences using (is_admin() or (user_id = (select auth.uid())));
+alter policy absences_insert on public.absences with check (has_role() and (is_admin() or (user_id = (select auth.uid()))));
+alter policy absences_update on public.absences using (is_admin() or (user_id = (select auth.uid()))) with check (is_admin() or (user_id = (select auth.uid())));
+alter policy absences_delete on public.absences using (is_admin() or (user_id = (select auth.uid())));
+alter policy meetings_select on public.meetings using (is_admin() or ((select auth.uid()) = any (participants)));
+
+-- ευρετήρια για τα foreign keys που χρησιμοποιούνται
+create index if not exists appointments_event_id_idx on public.appointments(event_id);
+create index if not exists appointments_request_id_idx on public.appointments(request_id);
+create index if not exists message_queue_event_id_idx on public.message_queue(event_id);
+create index if not exists message_queue_payment_id_idx on public.message_queue(payment_id);
+create index if not exists offer_requests_event_id_idx on public.offer_requests(event_id);
+create index if not exists expenses_crew_id_idx on public.expenses(crew_id);
+create index if not exists push_subscriptions_user_id_idx on public.push_subscriptions(user_id);

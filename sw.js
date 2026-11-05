@@ -1,11 +1,12 @@
 /* Image Makers · Service Worker — offline λειτουργία & ειδοποιήσεις push */
-const CACHE = 'im-v52';
+const CACHE = 'im-v53';
 const SHELL = [
   './', 'index.html', 'legal.html', 'config.js', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/core.js', 'js/data.js', 'js/layout.js', 'js/components.js', 'js/push.js', 'js/offer.js', 'js/grid.js', 'js/backup.js', 'js/charts.js', 'js/mappicker.js', 'js/weather.js', 'js/whatsnew.js', 'js/backupgate.js',
   'js/views/auth.js', 'js/views/home.js', 'js/views/calendar.js', 'js/views/events.js', 'js/views/event-form.js',
   'js/views/customers.js', 'js/views/money.js', 'js/views/sheets.js', 'js/views/requests.js', 'js/views/appointments.js', 'js/views/workflow.js', 'js/views/outbox.js',
-  'js/views/team.js', 'js/views/settings.js', 'js/views/help.js', 'js/views/notifications.js', 'js/views/absences.js',
+  'js/views/team.js', 'js/views/settings.js', 'js/views/help.js', 'js/views/notifications.js', 'js/views/absences.js', 'js/views/sessions.js', 'js/views/meetings.js', 'js/views/calnotes.js', 'js/diva.js',
+  'offer/builder.html', 'offer/baptism.html', 'offer/wedding-baptism.html',
   'vendor/supabase.js', 'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/leaflet/images/marker-icon.png', 'vendor/leaflet/images/marker-icon-2x.png', 'vendor/leaflet/images/marker-shadow.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/logo-white.png', 'icons/hero.jpg',
   'icons/badge-96.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png',
 ];

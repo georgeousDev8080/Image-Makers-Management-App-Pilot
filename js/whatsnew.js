@@ -8,6 +8,12 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.9.1', date: '05/11/2026',
+    items: [
+      ['🛠️', 'Διορθώσεις σφαλμάτων και βελτιώσεις σε ταχύτητα, σταθερότητα και ασφάλεια.', 'Bug fixes and improvements to speed, stability and security.'],
+    ],
+  },
+  {
     v: '1.9', date: '05/11/2026',
     items: [
       ['💍', 'Νέα φόρμα προσφοράς για Γάμο (με αριθμό μικρών album και κόστος μετακίνησης) και καινούρια προσφορά για Γαμοβάπτιση, που δουλεύει όπως οι υπόλοιπες: από το ραντεβού, το link και την εκδήλωση, με PDF.', 'New Wedding offer form (with number of small albums and travel cost) and a new Wedding + Baptism offer that works like the others: from the appointment, the link and the event, with PDF.'],
