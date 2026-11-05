@@ -1347,3 +1347,6 @@ button.mp-r:hover { background: var(--fill-2); }
 .hero-wx .wx small { color: rgba(255,255,255,.72); font-size: 12px; }
 .hero-wx .wx.later { padding-left: 12px; font-size: 13px; color: rgba(255,255,255,.8); }
 .hero-item .hero-wx { margin-top: 8px; }
+
+/* Αντίγραφα ασφαλείας: όσο τρέχει μια ενέργεια */
+.row.loading { opacity: .55; pointer-events: none; cursor: progress; }

@@ -8,7 +8,7 @@ import { pushState, enablePush, disablePushHere, sendTest, setupServerPush, serv
 import { verifyPinPrompt, showNewPin, lockAfterMinutes, TERMS_ENABLED } from './auth.js';
 import { exportAllXlsx, exportFullZip, importBackup, importOldSheet } from '../backup.js';
 
-export const APP_VERSION = '1.9.1';
+export const APP_VERSION = '1.9.2';
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; });
 
@@ -99,12 +99,14 @@ export function renderSettings(root) {
     root.querySelector('#cr_save').addEventListener('click', async (e) => { const _btn = e.currentTarget; busy(_btn, true); try { await saveSetting('crew_reminder', { enabled: root.querySelector('#cr_on').checked, days_before: Number(root.querySelector('#cr_days').value) || 1, hour: Math.min(23, Number(root.querySelector('#cr_hour').value) || 18) }); toast(L('Αποθηκεύτηκε', 'Saved')); } finally { busy(_btn, false); } });
     root.querySelectorAll('[data-bk]').forEach((b) => b.addEventListener('click', async () => {
       const k = b.dataset.bk;
+      if (b.dataset.busy) return; b.dataset.busy = '1'; b.classList.add('loading'); b.setAttribute('aria-busy', 'true');
       try {
         if (k === 'xlsx') await exportAllXlsx();
         if (k === 'zip') await exportFullZip();
         if (k === 'restore') await importBackup();
         if (k === 'old') await importOldSheet();
       } catch (e) { console.error(e); toastErr(L('Δεν ολοκληρώθηκε', 'Not completed'), e.message); }
+      finally { delete b.dataset.busy; b.classList.remove('loading'); b.removeAttribute('aria-busy'); }
     }));
     drawServerBox(root);
   }

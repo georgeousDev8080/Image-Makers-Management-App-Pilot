@@ -3009,3 +3009,54 @@ create index if not exists message_queue_payment_id_idx on public.message_queue(
 create index if not exists offer_requests_event_id_idx on public.offer_requests(event_id);
 create index if not exists expenses_crew_id_idx on public.expenses(crew_id);
 create index if not exists push_subscriptions_user_id_idx on public.push_subscriptions(user_id);
+
+-- =====================================================================
+-- 2026-11-05 · Λειτουργία επαναφοράς (v1.9.2)
+-- Όσο ένας διαχειριστής κάνει επαναφορά/εισαγωγή, οι δικές του εισαγωγές δεν στέλνουν
+-- ειδοποιήσεις στην ομάδα και δεν ξαναβάζουν μηνύματα πελατών στην ουρά (λήγει σε 20').
+-- =====================================================================
+create or replace function private.restore_active()
+ returns boolean language sql stable security definer set search_path to 'public', 'private'
+as $$
+  select coalesce((
+    select (value::jsonb->>'by') = auth.uid()::text and (value::jsonb->>'until')::timestamptz > now()
+      from private.config where key = 'restore_mode'), false)
+$$;
+
+create or replace function public.set_restore_mode(p_on boolean)
+ returns void language plpgsql security definer set search_path to 'public', 'private'
+as $$
+begin
+  if not public.is_admin() then raise exception 'not_allowed'; end if;
+  if p_on then
+    insert into private.config values ('restore_mode', jsonb_build_object('by', auth.uid(), 'until', now() + interval '20 minutes')::text)
+      on conflict (key) do update set value = excluded.value;
+    perform private.log('restore_started', 'backup', null, null);
+  else
+    delete from private.config where key = 'restore_mode' and (value::jsonb->>'by') = auth.uid()::text;
+    perform private.log('restore_finished', 'backup', null, null);
+  end if;
+end $$;
+revoke all on function public.set_restore_mode(boolean) from public, anon;
+grant execute on function public.set_restore_mode(boolean) to authenticated;
+
+create or replace function private.notifications_restore_guard()
+ returns trigger language plpgsql security definer set search_path to 'public', 'private'
+as $$
+begin
+  if private.restore_active() then return null; end if;
+  return new;
+end $$;
+drop trigger if exists notifications_restore_guard on public.notifications;
+create trigger notifications_restore_guard before insert on public.notifications
+  for each row execute function private.notifications_restore_guard();
+
+do $$
+declare d text;
+begin
+  d := pg_get_functiondef('public.run_automations(uuid)'::regprocedure);
+  if position('restore_guard' in d) = 0 then
+    d := replace(d, E'  -- audit_guard\n', E'  -- audit_guard\n  -- restore_guard\n  if private.restore_active() then return 0; end if;\n');
+    execute d;
+  end if;
+end $$;
