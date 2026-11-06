@@ -3113,3 +3113,21 @@ grant execute on function public.storage_trash_done(text[]) to authenticated;
 
 select cron.unschedule('imagemakers-retention') where exists (select 1 from cron.job where jobname = 'imagemakers-retention');
 select cron.schedule('imagemakers-retention', '17 3 1 * *', 'select private.retention_cleanup()');
+
+-- =====================================================================
+-- 2026-11-06 · Υπενθύμιση εκδήλωσης στο συνεργείο: τύπος εκδήλωσης αντί για όνομα πελάτη
+-- =====================================================================
+do $$
+declare d text; a text; b text;
+begin
+  d := pg_get_functiondef('public.run_automations(uuid)'::regprocedure);
+  a := $x$concat_ws(' & ', nullif(cu.name1, ''), nullif(cu.name2, '')) as couple$x$;
+  b := $x$coalesce(r.couple, '') || ' · ' ||$x$;
+  if position(a in d) > 0 and position(b in d) > 0 then
+    d := replace(d, a, 'e.category');
+    d := replace(d, b, $x$private.tr(r.lang,
+                  case r.category when 'wedding' then 'Γάμος' when 'baptism' then 'Βάπτιση' when 'wedding_baptism' then 'Γαμοβάπτιση' when 'promo' then 'Διαφημιστικό' else 'Εκδήλωση' end,
+                  case r.category when 'wedding' then 'Wedding' when 'baptism' then 'Baptism' when 'wedding_baptism' then 'Wedding & baptism' when 'promo' then 'Promotional' else 'Event' end) || ' · ' ||$x$);
+    execute d;
+  end if;
+end $$;
