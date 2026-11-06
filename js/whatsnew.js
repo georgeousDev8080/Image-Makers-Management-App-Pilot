@@ -8,6 +8,12 @@ import { pageHead } from './layout.js';
 
 export const RELEASES = [
   {
+    v: '1.9.3', date: '06/11/2026',
+    items: [
+      ['🛠️', 'Βελτιώσεις στην πρώτη είσοδο και στην ενεργοποίηση των ειδοποιήσεων, και διορθώσεις σφαλμάτων.', 'Improvements to first sign-in and turning on notifications, and bug fixes.'],
+    ],
+  },
+  {
     v: '1.9.2', date: '05/11/2026',
     items: [
       ['🗄️', 'Βελτιώσεις στα αντίγραφα ασφαλείας και στην επαναφορά δεδομένων, και διορθώσεις σφαλμάτων.', 'Improvements to backups and data restore, and bug fixes.'],

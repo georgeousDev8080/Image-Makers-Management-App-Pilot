@@ -315,6 +315,8 @@ export function showNewPin({ recovery = false, forced = false } = {}) {
           // (το rpc του Supabase δεν έχει .catch — χρειάζεται try/await)
           try { await sb.rpc('pin_changed'); } catch (e) { console.warn('pin_changed', e); }
           if (S.profile) S.profile.must_change_pin = false;
+          // πρώτη είσοδος (αρχικό PIN): η συσκευή ξεκινά «από την αρχή» — ξαναδείχνει την περιήγηση (με τις ειδοποιήσεις)
+          if (forced) { try { localStorage.removeItem('im.tour.' + data.user.id); localStorage.removeItem('im.wn.' + data.user.id); } catch {} }
           markUnlocked();
           toast(L('Το νέο PIN αποθηκεύτηκε', 'New PIN saved'));
           pad.destroy(); elx.remove(); resolve(true); return true;

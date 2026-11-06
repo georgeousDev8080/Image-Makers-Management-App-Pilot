@@ -206,7 +206,13 @@ export async function showTour(force = false) {
       <div class="dots">${slides.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>
       <div class="spread"><button class="btn plain" data-skip>${esc(i === slides.length - 1 ? '' : L('Παράλειψη', 'Skip'))}</button><button class="btn primary" data-next>${esc(i === slides.length - 1 ? L('Ας ξεκινήσουμε!', 'Let’s start!') : L('Επόμενο', 'Next'))}</button></div></div>`;
     elx.querySelector('[data-next]').onclick = () => { if (i === slides.length - 1) close(); else { i++; draw(); } };
-    elx.querySelector('[data-skip]').onclick = close;
+    // «Παράλειψη»: αν οι ειδοποιήσεις δεν είναι ενεργές, περνά πρώτα από τη σελίδα των ειδοποιήσεων
+    elx.querySelector('[data-skip]').onclick = async () => {
+      const pi = slides.findIndex((x) => x.push);
+      const ps = pi > i ? await pushState().catch(() => 'unsupported') : 'on';
+      if (ps !== 'on' && ps !== 'unsupported') { i = pi; draw(); return; }
+      close();
+    };
     elx.querySelector('[data-push]')?.addEventListener('click', async () => { const r = await enablePush().catch(() => 'error'); if (r === 'on') toast(L('Ενεργοποιήθηκαν!', 'Turned on!')); else if (r === 'server-missing') toast(L('Θα ενεργοποιηθούν όταν ολοκληρωθεί η ρύθμιση από διαχειριστή.', 'They will work after admin setup is finished.'), { type: 'info' }); draw(); });
   };
   if (force || !document.querySelector('.tour')) { document.body.appendChild(elx); draw(); }
