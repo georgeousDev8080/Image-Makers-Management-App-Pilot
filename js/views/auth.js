@@ -8,7 +8,7 @@ import { enablePush, pushState } from '../push.js';
 const PIN_LEN = 6;
 // Διακόπτης όρων χρήσης: false = χωρίς οθόνη αποδοχής και χωρίς συνδέσμους (προσωρινά, μέχρι την παράδοση).
 export const TERMS_ENABLED = true;
-export const TERMS_VERSION = '1.0';
+export const TERMS_VERSION = '1.1';
 export const legalLinks = () => !TERMS_ENABLED ? '' : `<a href="legal.html#terms" target="_blank" rel="noopener">${esc(L('Όροι χρήσης', 'Terms of use'))}</a> · <a href="legal.html#privacy" target="_blank" rel="noopener">${esc(L('Απόρρητο', 'Privacy'))}</a>`;
 const credit = `<div class="credit center" style="margin-top:28px">${TERMS_ENABLED ? `<div style="margin-bottom:6px">${esc(L('Με τη χρήση της εφαρμογής αποδέχεστε τους', 'By using the app you accept the'))} ${legalLinks()}.</div>` : ''}made by <b>“georgeousDev”</b> software solutions · <a href="mailto:gkararizosg@gmail.com">gkararizosg@gmail.com</a></div>`;
 
@@ -431,14 +431,14 @@ export function renderTermsGate(root) {
       <p>${esc(L('Πριν συνεχίσετε, διαβάστε και αποδεχτείτε τους όρους της εφαρμογής.', 'Before you continue, please read and accept the terms of the app.'))}</p>
       <div class="card pad mt" style="text-align:left">
         <ul class="small" style="padding-left:18px;display:grid;gap:6px;margin:0">
-          <li>${esc(L('Η εφαρμογή παρέχεται «ως έχει». Ο προγραμματιστής δεν ευθύνεται για δυσλειτουργίες, διακοπές ή απώλεια δεδομένων, στον βαθμό που επιτρέπει ο νόμος.', 'The app is provided "as is". The developer is not liable for malfunctions, outages or data loss, to the extent permitted by law.'))}</li>
-          <li>${esc(L('Η φιλοξενία και η βάση δεδομένων ανήκουν και ελέγχονται από την Image Makers, η οποία είναι υπεύθυνη για τα δεδομένα και τα αντίγραφα ασφαλείας.', 'Hosting and the database are owned and controlled by Image Makers, which is responsible for the data and backups.'))}</li>
+          <li>${esc(L('Η εφαρμογή είναι εσωτερικό εργαλείο οργάνωσης και παραδίδεται «ως έχει». Ο περιορισμός ευθύνης ισχύει μόνο όσο το επιτρέπει ο νόμος.', 'The app is an internal organisation tool delivered "as is". Limitations of liability apply only as far as the law allows.'))}</li>
+          <li>${esc(L('Υπεύθυνη για τα δεδομένα είναι η Image Makers. Κρατάτε το PIN μυστικό και τα αντίγραφα ασφαλείας σε ασφαλές μέσο.', 'Image Makers is responsible for the data. Keep your PIN secret and backups on secure storage.'))}</li>
           <li>${esc(L('Δεν είναι λογιστικό σύστημα· τα ποσά και τα μηνύματα ελέγχονται πριν χρησιμοποιηθούν.', 'It is not an accounting system; amounts and messages must be checked before use.'))}</li>
           <li>${esc(L('Τεχνική υποστήριξη μόνο κατόπιν συμφωνίας και αμοιβής.', 'Technical support only by agreement and for a fee.'))}</li>
-          <li>${esc(L('Τα προσωπικά δεδομένα επεξεργάζονται σύμφωνα με τον ΓΚΠΔ (GDPR).', 'Personal data is processed in line with the GDPR.'))}</li>
+          <li>${esc(L('Τα προσωπικά δεδομένα επεξεργάζονται σύμφωνα με τον ΓΚΠΔ (GDPR), μόνο για τη δουλειά και για όσο χρειάζεται.', 'Personal data is processed in line with the GDPR, only for work and only as long as needed.'))}</li>
         </ul>
         <a class="btn block mt" href="legal.html" target="_blank" rel="noopener">${icon('book')} ${esc(L('Ανάγνωση πλήρους κειμένου', 'Read the full text'))}</a>
-        <label class="check-row mt" style="align-items:flex-start;cursor:pointer"><input type="checkbox" id="tAgree" style="width:20px;height:20px;flex:none;margin-top:2px;accent-color:var(--accent)"><span>${esc(L('Διάβασα και αποδέχομαι τους Όρους χρήσης, την Πολιτική απορρήτου και την Αποποίηση ευθύνης.', 'I have read and accept the Terms of use, the Privacy policy and the Disclaimer.'))}</span></label>
+        <label class="check-row mt" style="align-items:flex-start;cursor:pointer"><input type="checkbox" id="tAgree" style="width:20px;height:20px;flex:none;margin-top:2px;accent-color:var(--accent)"><span>${esc(L('Διάβασα και αποδέχομαι τους Όρους χρήσης και έλαβα γνώση της Πολιτικής απορρήτου.', 'I have read and accept the Terms of use and have read the Privacy policy.'))}</span></label>
         <button class="btn primary block mt" id="tOk" disabled>${esc(L('Αποδέχομαι', 'I accept'))}</button>
         <button class="btn plain block mt-s" id="tOut">${icon('logout')} ${esc(L('Αποσύνδεση', 'Sign out'))}</button>
       </div>

@@ -3060,3 +3060,56 @@ begin
     execute d;
   end if;
 end $$;
+
+-- =====================================================================
+-- 2026-11-06 · Περίοδοι διατήρησης (Πολιτική απορρήτου 2.5, v1.9.4)
+-- 12 μήνες: ανωνυμοποίηση ραντεβού χωρίς συνεργασία, διαγραφή αιτημάτων σελίδας προσφοράς
+-- και ειδοποιήσεων. Τα PDF διαγράφονται από την εφαρμογή (διαχειριστής) μέσω Storage API.
+-- =====================================================================
+create table if not exists private.storage_trash (path text primary key, added_at timestamptz not null default now());
+
+create or replace function private.retention_cleanup()
+ returns jsonb language plpgsql security definer set search_path to 'public', 'private'
+as $$
+declare n_ap int := 0; n_req int := 0; n_not int := 0; cutoff date := (now() at time zone 'Europe/Athens')::date - interval '12 months';
+begin
+  insert into private.storage_trash(path)
+    select offer_path from public.appointments
+     where event_id is null and offer_path is not null and name1 is distinct from '—'
+       and status in ('pending','scheduled','rejected')
+       and greatest(appt_date, coalesce(event_date, appt_date)) < cutoff
+  on conflict do nothing;
+  update public.appointments set name1 = '—', name2 = null, phone = null, email = null, church = null, church_time = null,
+         reception = null, reception_time = null, notes = null, comments = null, selections = null, offer_data = null,
+         offer_path = null, customer_id = null
+   where event_id is null and name1 is distinct from '—'
+     and status in ('pending','scheduled','rejected')
+     and greatest(appt_date, coalesce(event_date, appt_date)) < cutoff;
+  get diagnostics n_ap = row_count;
+  delete from public.offer_requests where event_id is null and created_at < now() - interval '12 months';
+  get diagnostics n_req = row_count;
+  delete from public.notifications where created_at < now() - interval '12 months';
+  get diagnostics n_not = row_count;
+  if n_ap + n_req + n_not > 0 then
+    perform private.log('retention_cleanup', 'privacy', null, jsonb_build_object('appointments', n_ap, 'requests', n_req, 'notifications', n_not));
+  end if;
+  return jsonb_build_object('appointments', n_ap, 'requests', n_req, 'notifications', n_not);
+end $$;
+
+create or replace function public.storage_trash_list()
+ returns setof text language sql stable security definer set search_path to 'public', 'private'
+as $$ select path from private.storage_trash where public.is_admin() order by added_at limit 100 $$;
+create or replace function public.storage_trash_done(p_paths text[])
+ returns void language plpgsql security definer set search_path to 'public', 'private'
+as $$
+begin
+  if not public.is_admin() then raise exception 'not_allowed'; end if;
+  delete from private.storage_trash where path = any(p_paths);
+end $$;
+revoke all on function public.storage_trash_list() from public, anon;
+revoke all on function public.storage_trash_done(text[]) from public, anon;
+grant execute on function public.storage_trash_list() to authenticated;
+grant execute on function public.storage_trash_done(text[]) to authenticated;
+
+select cron.unschedule('imagemakers-retention') where exists (select 1 from cron.job where jobname = 'imagemakers-retention');
+select cron.schedule('imagemakers-retention', '17 3 1 * *', 'select private.retention_cleanup()');

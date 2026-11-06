@@ -348,7 +348,7 @@
           <div class="field"><label for="reception">Χώρος δεξίωσης</label><input id="reception" name="reception" type="text" maxlength="120" placeholder="Όνομα και περιοχή χώρου" required></div>
           <div class="field"><label for="receptionTime">Ώρα δεξίωσης</label><input id="receptionTime" name="receptionTime" type="text" inputmode="numeric" maxlength="5" placeholder="ΩΩ:ΛΛ π.χ. 18:00" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" title="Ώρα σε μορφή ΩΩ:ΛΛ, π.χ. 18:00" data-time required></div>
         </div>
-        <label class="consent"><input id="privacyConsent" type="checkbox" required><span>Έχω ενημερωθεί ότι τα στοιχεία χρησιμοποιούνται αποκλειστικά για την επεξεργασία του αιτήματος και την επικοινωνία από την Image Makers.</span></label>
+        <label class="consent"><input id="privacyConsent" type="checkbox" required><span>Διάβασα την <a href="../legal.html#privacy" target="_blank" rel="noopener" style="text-decoration:underline">ενημέρωση για τα προσωπικά δεδομένα</a> και ζητώ να μου σταλεί προσφορά.</span></label>
       </form>
     </section>
 
@@ -432,23 +432,20 @@
       </div>
       <div class="submission-status" id="submissionStatus" role="status" aria-live="polite"></div>
       <p class="final-note">Η αποστολή των επιλογών αποτελεί αίτημα ενδιαφέροντος και όχι οριστική κράτηση. Η ομάδα της Image Makers θα επικοινωνήσει μαζί σας για επιβεβαίωση διαθεσιμότητας και λεπτομερειών.</p>
-      <p class="final-note" data-legal>Με την αποστολή, τα στοιχεία που συμπληρώσατε (ονόματα, τηλέφωνα, email, ημερομηνία, τοποθεσίες και επιλογές) διαβιβάζονται στην Image Makers αποκλειστικά για τη σύνταξη της προσφοράς και την επικοινωνία μαζί σας, σύμφωνα με τον ΓΚΠΔ. <a id="privacyLink" href="../legal.html#privacy" target="_blank" rel="noopener" style="color:#e8ded4;text-decoration:underline">Πολιτική απορρήτου</a></p>
+      <p class="final-note" data-legal><b>Προσωπικά δεδομένα:</b> Υπεύθυνος επεξεργασίας είναι η Image Makers (28ης Οκτωβρίου 40, Λάρισα, 2410 550361, digital.imagemakers@gmail.com). Τα στοιχεία που συμπληρώνετε (ονόματα, τηλέφωνα, email, ημερομηνία, τοποθεσίες, ώρες και επιλογές) χρησιμοποιούνται μόνο για να σας ετοιμάσουμε προσφορά και να επικοινωνήσουμε μαζί σας, επειδή το ζητάτε εσείς (άρθρο 6 παρ. 1 β ΓΚΠΔ). Φυλάσσονται με ασφάλεια σε servers εντός ΕΕ και δεν δίνονται σε κανέναν για διαφήμιση. Αν δεν κλείσουμε συνεργασία, διαγράφονται το αργότερο 12 μήνες μετά (ή νωρίτερα, αν το ζητήσετε). Έχετε δικαίωμα πρόσβασης, διόρθωσης, διαγραφής και εναντίωσης, καθώς και καταγγελίας στην Αρχή Προστασίας Δεδομένων (www.dpa.gr). <a id="privacyLink" href="../legal.html#privacy" target="_blank" rel="noopener" style="color:#e8ded4;text-decoration:underline">Πλήρης πολιτική απορρήτου</a></p>
       <div class="contact-strip"><span>IMAGE MAKERS · Photography & Cinematography</span><span>2410 550361 · digital.imagemakers@gmail.com · 28ης Οκτωβρίου 40</span></div>
     </section>
   </main>
 
   <div class="mobile-total"><div><small>Το πακέτο σας</small><strong class="live-total">2.800€</strong></div><a class="button button-light" href="#summary">Σύνοψη</a></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <iframe name="submissionFrame" id="submissionFrame" title="Αποστολή φόρμας" hidden></iframe>
 
   <script src="../config.js"></script>
   <script>/*__IM_INLINE_CONFIG__*/</script>
   <script>
     (() => {
       const BASE_PRICE = 2800;
-      const SUBMISSION_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwvajFsNb7ww5pvvOCCE8hlSKtE6UOywl-3qnRHA3-6gE2MDpMhfFdQgMJ-OAGLUMq2/exec';
-      const FORM_TOKEN = '56c521f4be1da20fe2035d7c4c9376fb';
-      const STARTED_AT = Date.now();
+      const STARTED_AT = Date.now(); // προστασία από αυτόματες αποστολές (ελάχιστος χρόνος συμπλήρωσης)
       const $ = (selector) => document.querySelector(selector);
       const $$ = (selector) => [...document.querySelectorAll(selector)];
       const money = (value) => `${Math.round(value).toLocaleString('el-GR')}€`;
@@ -606,26 +603,6 @@
         ].join('\n');
       }
 
-      function submissionPayload() {
-        const state = calculate();
-        const details = weddingDetails();
-        const payload = {
-          token: FORM_TOKEN,
-          started_at: String(STARTED_AT),
-          website: '',
-          ...details,
-          smallAlbums: String(state.albums),
-          extraHours: String(quantity('extraHours')),
-          largeSpreads: String(quantity('largeSpreads')),
-          smallSpreads: String(quantity('smallSpreads')),
-          prints: state.prints,
-          clientTotal: String(state.total)
-        };
-        $$('.included-option').forEach((input) => { payload[`include_${input.dataset.key}`] = input.checked ? '1' : '0'; });
-        $$('.upgrade-option').forEach((input) => { payload[`upgrade_${input.dataset.key}`] = input.checked ? '1' : '0'; });
-        return payload;
-      }
-
       function showSubmissionStatus(type, message) {
         const node = $('#submissionStatus');
         node.className = `submission-status show ${type}`;
@@ -702,21 +679,6 @@
         update();
       }));
       $('#submitOffer').addEventListener('click', submitOffer);
-      window.addEventListener('message', (event) => {
-        let trustedOrigin = false;
-        try {
-          const hostname = new URL(event.origin).hostname;
-          trustedOrigin = hostname === 'script.google.com' || hostname.endsWith('.googleusercontent.com');
-        } catch {}
-        if (!trustedOrigin || event.data?.source !== 'image-makers-wedding-offer') return;
-        clearTimeout(window.submissionTimer);
-        setSending(false);
-        if (event.data.ok) {
-          showSubmissionStatus('success', event.data.message || 'Οι επιλογές σας στάλθηκαν με επιτυχία. Η Image Makers θα επικοινωνήσει μαζί σας.');
-        } else {
-          showSubmissionStatus('error', event.data.message || 'Η αποστολή δεν ολοκληρώθηκε. Δοκιμάστε ξανά σε λίγο.');
-        }
-      });
       $('#copySummary').addEventListener('click', async () => {
         const text = summaryText();
         try {

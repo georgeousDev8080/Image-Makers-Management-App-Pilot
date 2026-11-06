@@ -259,6 +259,18 @@ async function startApp() {
   if (!location.hash.startsWith('#/whatsnew')) maybeShowWhatsNew();
 }
 
+/** Περίοδοι διατήρησης: διαγραφή των PDF που άφησε ο μηνιαίος καθαρισμός της βάσης (μόνο διαχειριστές) */
+async function cleanStorageTrash() {
+  if (!isAdmin()) return;
+  try {
+    const { data, error } = await sb.rpc('storage_trash_list');
+    if (error || !data?.length) return;
+    const paths = data.map((x) => (typeof x === 'string' ? x : Object.values(x)[0])).filter(Boolean);
+    const { error: re } = await sb.storage.from('offers').remove(paths);
+    if (!re) await sb.rpc('storage_trash_done', { p_paths: paths });
+  } catch (e) { console.warn('storage trash', e); }
+}
+
 async function enterApp() {
   const root = $('#root');
   try { await loadProfile(); } catch (e) { console.error(e); }
@@ -288,6 +300,7 @@ async function enterApp() {
   try { await loadAll(); } catch (e) { console.error(e); toast(L('Πρόβλημα φόρτωσης δεδομένων', 'Could not load data'), { type: 'err', body: e.message }); }
   startRealtime();
   ensureSubscription().catch(() => {});
+  cleanStorageTrash();
   // 1η του μήνα: υποχρεωτικό αντίγραφο ασφαλείας για τους διαχειριστές
   if (backupDue()) { document.querySelectorAll('.boot').forEach((b) => b.remove()); await showBackupGate(); }
   await startApp();
